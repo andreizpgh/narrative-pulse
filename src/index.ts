@@ -9,6 +9,7 @@ import { renderTerminalReport } from "./visual/terminal-report.js";
 import { renderSankey } from "./visual/sankey.js";
 import { renderHtmlReport } from "./visual/html-report.js";
 import { config } from "./config.js";
+import { startWatchMode } from "./scheduler/cron.js";
 
 const program = new Command();
 
@@ -54,10 +55,51 @@ program
 program
   .command("watch")
   .description("Start 24/7 watch mode with periodic scans")
-  .action(() => {
-    console.log("Watch mode not yet implemented. Coming in the next update.");
-    console.log("Use 'npx narrative-pulse scan' for one-time scans.");
-    process.exit(0);
+  .option("-s, --schedule <cron>", "Cron schedule expression", config.cronSchedule)
+  .option("--no-sankey", "Skip Sankey diagram generation")
+  .option("--no-html", "Skip HTML report generation")
+  .action(async (options: { schedule: string; sankey: boolean; html: boolean }) => {
+    try {
+      // Build the scan function with visual output
+      const scanWithVisuals = async () => {
+        const result = await runScan();
+        renderTerminalReport(result);
+
+        if (options.sankey) {
+          try {
+            const sankeyPath = await renderSankey(
+              result.narratives,
+              result.rotations
+            );
+            console.log(`[Watch] Sankey saved: ${sankeyPath}`);
+          } catch (err) {
+            console.error(
+              `[Watch] Sankey generation failed: ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        }
+
+        if (options.html) {
+          try {
+            const htmlPath = await renderHtmlReport(result);
+            console.log(`[Watch] HTML report saved: ${htmlPath}`);
+          } catch (err) {
+            console.error(
+              `[Watch] HTML report failed: ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        }
+
+        return result;
+      };
+
+      startWatchMode(scanWithVisuals, options.schedule);
+    } catch (error) {
+      console.error(
+        `\nError: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
   });
 
 // ── sectors ─────────────────────────────────────────────────
