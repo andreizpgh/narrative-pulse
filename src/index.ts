@@ -2,6 +2,14 @@
 
 import { Command } from "commander";
 
+import { runScan } from "./engine/scanner.js";
+import { fetchNetflows } from "./api/netflows.js";
+import { discoverSectors } from "./engine/discovery.js";
+import { renderTerminalReport } from "./visual/terminal-report.js";
+import { renderSankey } from "./visual/sankey.js";
+import { renderHtmlReport } from "./visual/html-report.js";
+import { config } from "./config.js";
+
 const program = new Command();
 
 program
@@ -9,28 +17,94 @@ program
   .description("Track WHERE Smart Money is rotating between crypto narratives")
   .version("1.0.0");
 
+// ── scan ────────────────────────────────────────────────────
+
 program
   .command("scan")
   .description("Run a one-time narrative scan across all chains")
-  .action(() => {
-    console.log("Scanning narratives...");
-    // TODO: implement scanner pipeline
+  .option("--no-sankey", "Skip Sankey diagram generation")
+  .option("--no-html", "Skip HTML report generation")
+  .action(async (options: { sankey: boolean; html: boolean }) => {
+    try {
+      const result = await runScan();
+      renderTerminalReport(result);
+
+      if (options.sankey) {
+        const sankeyPath = await renderSankey(
+          result.narratives,
+          result.rotations
+        );
+        console.log(`\nSankey diagram saved: ${sankeyPath}`);
+      }
+
+      if (options.html) {
+        const htmlPath = await renderHtmlReport(result);
+        console.log(`HTML report saved: ${htmlPath}`);
+      }
+    } catch (error) {
+      console.error(
+        `\nError: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
   });
+
+// ── watch ───────────────────────────────────────────────────
 
 program
   .command("watch")
   .description("Start 24/7 watch mode with periodic scans")
   .action(() => {
-    console.log("Starting 24/7 watch mode...");
-    // TODO: implement cron scheduler
+    console.log("Watch mode not yet implemented. Coming in the next update.");
+    console.log("Use 'npx narrative-pulse scan' for one-time scans.");
+    process.exit(0);
   });
+
+// ── sectors ─────────────────────────────────────────────────
 
 program
   .command("sectors")
   .description("Discover and list all detected sectors")
-  .action(() => {
-    console.log("Discovering sectors...");
-    // TODO: implement sector discovery
+  .action(async () => {
+    try {
+      console.log("Discovering sectors...\n");
+      const netflows = await fetchNetflows(
+        config.chains,
+        config.minMarketCapUsd,
+        config.minTraderCount
+      );
+      const sectors = discoverSectors(netflows);
+
+      if (sectors.length === 0) {
+        console.log("No sectors found. Try adjusting filters.");
+      } else {
+        console.log(`Found ${sectors.length} sectors:\n`);
+        for (const sector of sectors) {
+          const tokenCount = netflows.filter((e) =>
+            e.token_sectors.includes(sector)
+          ).length;
+          console.log(`  ${sector} (${tokenCount} tokens)`);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `\nError: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
   });
+
+// ── Global error handlers ───────────────────────────────────
+
+process.on("uncaughtException", (error: Error) => {
+  console.error(`\nFatal error: ${error.message}`);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason: unknown) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  console.error(`\nUnhandled rejection: ${message}`);
+  process.exit(1);
+});
 
 program.parse();
