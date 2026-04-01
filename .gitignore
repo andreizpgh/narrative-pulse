@@ -1,0 +1,9 @@
+node_modules/
+dist/
+output/
+.env
+.env.*
+.DS_Store
+*.tgz
+.opencode/
+opencode.json
