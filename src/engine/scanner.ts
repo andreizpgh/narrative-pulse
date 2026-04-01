@@ -9,6 +9,7 @@ import { discoverSectors } from "./discovery.js";
 import { aggregateByNarrative, toNarrativeKey } from "./aggregator.js";
 import { classifyTokens } from "./classifier.js";
 import { generateSubNarratives } from "./sub-narratives.js";
+import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
 import { config } from "../config.js";
 import type {
   ScanResult,
@@ -16,6 +17,7 @@ import type {
   NarrativeSummary,
   ClassifiedToken,
   NarrativeKey,
+  NarrativeRotation,
   SubNarrative,
 } from "../types.js";
 
@@ -127,6 +129,22 @@ function stepClassification(
   return classified;
 }
 
+async function stepRotations(
+  narratives: NarrativeSummary[]
+): Promise<NarrativeRotation[]> {
+  log("Step 5.5/6: Computing narrative rotations...");
+
+  const previous = await loadSnapshot();
+  const rotations = computeRotations(narratives, previous);
+
+  log(
+    `Step 5.5/6: ${rotations.length} rotations detected` +
+    `${previous ? " (vs previous scan)" : " (first run — no previous data)"}`
+  );
+
+  return rotations;
+}
+
 async function stepSubNarratives(
   topNarrative: NarrativeSummary | undefined,
   entries: NetflowEntry[]
@@ -201,6 +219,9 @@ export async function runScan(): Promise<ScanResult> {
   const tokenNarrativeMap = buildTokenNarrativeMap(netflowEntries);
   assignTopTokens(narratives, classified, tokenNarrativeMap);
 
+  // Step 5.5: Compute rotations (needs previous snapshot)
+  const rotations = await stepRotations(narratives);
+
   // Step 6: Sub-narratives for top narrative
   const topNarrative = narratives.length > 0 ? narratives[0] : undefined;
   const subNarratives = await stepSubNarratives(topNarrative, netflowEntries);
@@ -210,12 +231,15 @@ export async function runScan(): Promise<ScanResult> {
     timestamp: new Date().toISOString(),
     sectors,
     narratives,
-    rotations: [], // TODO: rotation tracking (commit 13)
+    rotations,
     subNarratives: subNarratives ?? undefined,
     topNarrativeKey: topNarrative?.key,
     apiCallsUsed: 0, // TODO: proper API call tracking
     creditsUsed: 0, // TODO: proper credits tracking
   };
+
+  // Save snapshot for next run's rotation tracking
+  await saveSnapshot(narratives);
 
   log(
     `Scan complete! ${narratives.length} narratives, ${classified.length} classified tokens`
