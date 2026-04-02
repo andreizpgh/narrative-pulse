@@ -14,6 +14,18 @@ export const CATEGORY_ORDER: Record<TokenCategory, number> = {
 };
 
 /**
+ * Normalize a blockchain address for comparison.
+ * EVM addresses (0x-prefixed) are lowercased.
+ * Solana and other non-EVM addresses are kept as-is (case-sensitive).
+ */
+function normalizeAddress(address: string): string {
+  if (address.startsWith("0x") || address.startsWith("0X")) {
+    return address.toLowerCase();
+  }
+  return address;
+}
+
+/**
  * Classifies tokens into Hot / Watch / Avoid categories based on
  * Smart Money netflow data (from netflows API) and market data
  * (from token-screener API).
@@ -34,13 +46,19 @@ export function classifyTokens(
   screenerData: Map<string, TokenScreenerEntry>,
   thresholds: Config["netflowThresholds"]
 ): ClassifiedToken[] {
+  // Build normalized screener lookup: normalized_address → entry
+  const screenerNormalized = new Map<string, TokenScreenerEntry>();
   // Build secondary lookup: "symbol:chain" → screener entry (lowercase key)
   const screenerBySymbolChain = new Map<string, TokenScreenerEntry>();
   for (const [, entry] of screenerData) {
-    const lookupKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    const normKey = normalizeAddress(entry.token_address);
     // Keep first match only (avoid overwriting with duplicate entries)
-    if (!screenerBySymbolChain.has(lookupKey)) {
-      screenerBySymbolChain.set(lookupKey, entry);
+    if (!screenerNormalized.has(normKey)) {
+      screenerNormalized.set(normKey, entry);
+    }
+    const symbolKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    if (!screenerBySymbolChain.has(symbolKey)) {
+      screenerBySymbolChain.set(symbolKey, entry);
     }
   }
 
@@ -49,8 +67,8 @@ export function classifyTokens(
   let missCount = 0;
 
   for (const netflow of netflows) {
-    // Try exact address match first, then fallback to symbol+chain
-    let screener = screenerData.get(netflow.token_address);
+    // Try normalized address match first, then fallback to symbol+chain
+    let screener = screenerNormalized.get(normalizeAddress(netflow.token_address));
     if (!screener) {
       const fallbackKey = `${netflow.token_symbol.toLowerCase()}:${netflow.chain}`;
       screener = screenerBySymbolChain.get(fallbackKey);

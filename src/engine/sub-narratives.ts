@@ -77,6 +77,18 @@ function buildPrompt(narrativeKey: NarrativeKey, tokenCount: number, tokenList: 
 // JSON Extraction from Agent Response
 // ============================================================
 
+/**
+ * Remove control characters that break JSON.parse.
+ * Keeps already-escaped sequences (\\n, \\t) intact.
+ */
+function sanitizeJsonString(str: string): string {
+  return str.replace(/[\x00-\x1f]/g, (ch) => {
+    if (ch === "\n" || ch === "\r") return " ";
+    if (ch === "\t") return " ";
+    return "";
+  });
+}
+
 function extractJson(content: string): string {
   // 1. Try direct JSON parse
   try {
@@ -124,7 +136,8 @@ function isValidRawItem(item: unknown): item is RawSubNarrativeItem {
 function parseResponse(content: string): SubNarrative[] | undefined {
   try {
     const jsonStr = extractJson(content);
-    const parsed: unknown = JSON.parse(jsonStr);
+    const sanitized = sanitizeJsonString(jsonStr);
+    const parsed: unknown = JSON.parse(sanitized);
 
     if (!Array.isArray(parsed)) {
       log("Agent response is not a JSON array — skipping sub-narratives");

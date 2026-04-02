@@ -51,6 +51,7 @@ interface SankeyLink {
   source: string;
   target: string;
   value: number;
+  _rawValue?: number;
   lineStyle: { color: string };
 }
 
@@ -66,6 +67,15 @@ interface SankeyData {
 
 function log(message: string): void {
   console.log(`[Sankey] ${message}`);
+}
+
+/**
+ * Truncate long narrative names so labels don't overflow the chart.
+ * Full name is preserved for tooltips.
+ */
+function truncateName(name: string, maxLen = 20): string {
+  if (name.length <= maxLen) return name;
+  return name.slice(0, maxLen - 1) + "…";
 }
 
 /**
@@ -131,7 +141,7 @@ function buildAllocationData(narratives: NarrativeSummary[]): SankeyData {
   };
 
   const narrativeNodes: SankeyNode[] = top.map((n) => ({
-    name: n.displayName,
+    name: truncateName(n.displayName),
     itemStyle: {
       color: n.totalNetflow24h >= 0 ? COLOR_INFLOW : COLOR_OUTFLOW,
     },
@@ -139,11 +149,14 @@ function buildAllocationData(narratives: NarrativeSummary[]): SankeyData {
 
   const links: SankeyLink[] = top.map((n) => {
     const isInflow = n.totalNetflow24h >= 0;
+    const rawValue = Math.abs(n.totalNetflow24h) || 1;
+    // Power-scale to compress extreme ratios (300:1 → ~4:1)
+    const displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
     return {
       source: "Smart Money",
-      target: n.displayName,
-      // Minimum value of 1 so zero-netflow narratives still show as thin lines
-      value: Math.abs(n.totalNetflow24h) || 1,
+      target: truncateName(n.displayName),
+      value: displayValue,
+      _rawValue: rawValue,
       lineStyle: {
         color: isInflow ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
       },
@@ -215,18 +228,23 @@ function buildRotationData(
         ? COLOR_INFLOW
         : COLOR_OUTFLOW
       : TEXT_SECONDARY;
-    return { name, itemStyle: { color } };
+    return { name: truncateName(name), itemStyle: { color } };
   });
 
-  const links: SankeyLink[] = deduped.map((r) => ({
-    source: resolveName(r.from, nameMap),
-    target: resolveName(r.to, nameMap),
-    value: Math.abs(r.valueUsd) || 1,
-    lineStyle: {
-      color:
-        r.direction === "inflow" ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
-    },
-  }));
+  const links: SankeyLink[] = deduped.map((r) => {
+    const rawValue = Math.abs(r.valueUsd) || 1;
+    const displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
+    return {
+      source: truncateName(resolveName(r.from, nameMap)),
+      target: truncateName(resolveName(r.to, nameMap)),
+      value: displayValue,
+      _rawValue: rawValue,
+      lineStyle: {
+        color:
+          r.direction === "inflow" ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
+      },
+    };
+  });
 
   return {
     title: "Narrative Rotation Map — Capital Flows",
@@ -259,15 +277,15 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
       borderColor: "#2a2a4a",
       textStyle: { color: TEXT_LABEL, fontSize: 13 },
       formatter: (params: unknown) => {
-        // ECharts tooltip formatter in SSR — return plain string
         const p = params as {
           dataType?: string;
           name?: string;
-          data?: { source?: string; target?: string; value?: number };
+          data?: { source?: string; target?: string; value?: number; _rawValue?: number };
         };
         if (p.dataType === "edge" && p.data) {
-          const { source, target, value } = p.data;
-          const formatted = value != null ? formatUsd(value) : "N/A";
+          const { source, target } = p.data;
+          const realValue = p.data._rawValue ?? p.data.value ?? 0;
+          const formatted = formatUsd(realValue);
           return `${source} → ${target}<br/>Flow: ${formatted}`;
         }
         return p.name ?? "";
@@ -281,10 +299,10 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
         nodeGap: 16,
         nodeWidth: 24,
         layoutIterations: 32,
-        top: 70,
+        top: 60,
         bottom: 40,
-        left: 60,
-        right: 60,
+        left: 40,
+        right: 200,
         label: {
           fontSize: 13,
           color: TEXT_LABEL,

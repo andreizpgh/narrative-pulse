@@ -561,6 +561,12 @@ function generateHtml(data: HtmlReportData): string {
       return div.innerHTML;
     }
 
+    function truncateName(name, maxLen) {
+      maxLen = maxLen || 20;
+      if (name.length <= maxLen) return name;
+      return name.slice(0, maxLen - 1) + '\\u2026';
+    }
+
     // ── Header Rendering ────────────────────────────────────
 
     (function renderHeader() {
@@ -618,7 +624,7 @@ function generateHtml(data: HtmlReportData): string {
 
         nodes = SCAN_DATA.narratives.map(function(n) {
           return {
-            name: n.displayName,
+            name: truncateName(n.displayName),
             itemStyle: { color: n.isHot ? '#2ecc71' : '#e74c3c' }
           };
         });
@@ -635,10 +641,13 @@ function generateHtml(data: HtmlReportData): string {
         });
 
         links = Object.values(pairMap).map(function(r) {
+          var rawValue = Math.abs(r.valueUsd) || 1;
+          var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
           return {
-            source: resolveName(r.from),
-            target: resolveName(r.to),
-            value: Math.abs(r.valueUsd),
+            source: truncateName(resolveName(r.from)),
+            target: truncateName(resolveName(r.to)),
+            value: displayValue,
+            _rawValue: rawValue,
             lineStyle: {
               color: r.direction === 'inflow'
                 ? 'rgba(46, 204, 113, 0.5)'
@@ -652,7 +661,7 @@ function generateHtml(data: HtmlReportData): string {
 
         nodes = topNarratives.map(function(n) {
           return {
-            name: n.displayName,
+            name: truncateName(n.displayName),
             itemStyle: { color: n.totalNetflow24h >= 0 ? '#2ecc71' : '#e74c3c' }
           };
         });
@@ -660,10 +669,13 @@ function generateHtml(data: HtmlReportData): string {
         nodes.unshift({ name: 'Smart Money', itemStyle: { color: '#6c5ce7' } });
 
         links = topNarratives.map(function(n) {
+          var rawValue = Math.abs(n.totalNetflow24h) || 1;
+          var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
           return {
             source: 'Smart Money',
-            target: n.displayName,
-            value: Math.max(Math.abs(n.totalNetflow24h), 100),
+            target: truncateName(n.displayName),
+            value: displayValue,
+            _rawValue: rawValue,
             lineStyle: {
               color: n.totalNetflow24h >= 0
                 ? 'rgba(46, 204, 113, 0.5)'
@@ -684,7 +696,8 @@ function generateHtml(data: HtmlReportData): string {
           triggerOn: 'mousemove',
           formatter: function(params) {
             if (params.dataType === 'edge') {
-              return params.data.source + ' \u2192 ' + params.data.target + '<br/>Flow: ' + formatUsd(params.data.value);
+              var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
+              return params.data.source + ' \u2192 ' + params.data.target + '<br/>Flow: ' + formatUsd(realValue);
             }
             return params.name;
           }
@@ -697,6 +710,10 @@ function generateHtml(data: HtmlReportData): string {
           nodeGap: 20,
           nodeWidth: 30,
           layoutIterations: 32,
+          top: 60,
+          bottom: 40,
+          left: 40,
+          right: 200,
           label: { fontSize: 13, color: '#e0e0e0' },
           lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.4 },
           data: nodes,
