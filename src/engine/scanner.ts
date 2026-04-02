@@ -13,6 +13,7 @@ import { generateSubNarratives } from "./sub-narratives.js";
 import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
 import { enrichTokenData, detectEarlySignals } from "./enricher.js";
 import { config } from "../config.js";
+import { normalizeAddress } from "../utils/normalize.js";
 import type {
   ScanResult,
   NetflowEntry,
@@ -155,10 +156,7 @@ function stepClassification(
   // Build enriched lookup map for classifier
   const enrichedMap = new Map<string, EnrichedTokenData>();
   for (const token of enrichedData) {
-    const normAddr = token.token_address.startsWith("0x") || token.token_address.startsWith("0X")
-      ? token.token_address.toLowerCase()
-      : token.token_address;
-    enrichedMap.set(normAddr, token);
+    enrichedMap.set(normalizeAddress(token.token_address), token);
   }
 
   const classified = classifyTokens(

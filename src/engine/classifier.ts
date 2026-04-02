@@ -6,6 +6,7 @@ import type {
   EnrichedTokenData,
   Config,
 } from "../types.js";
+import { normalizeAddress } from "../utils/normalize.js";
 
 /** Sort order for token categories: hot first, watch second, avoid last. */
 export const CATEGORY_ORDER: Record<TokenCategory, number> = {
@@ -13,18 +14,6 @@ export const CATEGORY_ORDER: Record<TokenCategory, number> = {
   watch: 1,
   avoid: 2,
 };
-
-/**
- * Normalize a blockchain address for comparison.
- * EVM addresses (0x-prefixed) are lowercased.
- * Solana and other non-EVM addresses are kept as-is (case-sensitive).
- */
-function normalizeAddress(address: string): string {
-  if (address.startsWith("0x") || address.startsWith("0X")) {
-    return address.toLowerCase();
-  }
-  return address;
-}
 
 /**
  * Classifies tokens into Hot / Watch / Avoid categories based on

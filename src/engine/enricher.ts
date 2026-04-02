@@ -4,10 +4,10 @@
 // ============================================================
 
 import { fetchDexScreenerData } from "../api/dexscreener.js";
+import { normalizeAddress } from "../utils/normalize.js";
 import type {
   NetflowEntry,
   TokenScreenerEntry,
-  HoldingsEntry,
   DexScreenerPair,
   EnrichedTokenData,
   EarlySignalToken,
@@ -24,17 +24,9 @@ function log(message: string): void {
   console.log(`[Enricher] ${message}`);
 }
 
-/**
- * Normalize a blockchain address for consistent lookup.
- * EVM addresses (0x-prefixed) are lowercased.
- * Solana and other non-EVM addresses are kept as-is.
- */
-function normalizeAddress(address: string): string {
-  if (address.startsWith("0x") || address.startsWith("0X")) {
-    return address.toLowerCase();
-  }
-  return address;
-}
+// ============================================================
+// Public API
+// ============================================================
 
 /**
  * Build EnrichedTokenData for a single token by merging data sources.
@@ -107,8 +99,7 @@ function buildEnrichedToken(
  */
 export async function enrichTokenData(
   netflowEntries: NetflowEntry[],
-  screenerData: Map<string, TokenScreenerEntry>,
-  holdingsData?: Map<string, HoldingsEntry>
+  screenerData: Map<string, TokenScreenerEntry>
 ): Promise<EnrichedTokenData[]> {
   if (netflowEntries.length === 0) {
     log("No netflow entries to enrich");
@@ -126,18 +117,6 @@ export async function enrichTokenData(
     const symbolKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
     if (!screenerBySymbolChain.has(symbolKey)) {
       screenerBySymbolChain.set(symbolKey, entry);
-    }
-  }
-
-  // Build holdings lookup (optional)
-  const holdingsNormalized = new Map<string, HoldingsEntry>();
-  if (holdingsData) {
-    for (const [, entry] of holdingsData) {
-      const normKey = normalizeAddress(entry.token_address);
-      const existing = holdingsNormalized.get(normKey);
-      if (existing === undefined || entry.value_usd > existing.value_usd) {
-        holdingsNormalized.set(normKey, entry);
-      }
     }
   }
 
@@ -174,10 +153,6 @@ export async function enrichTokenData(
     } else {
       noData++;
     }
-
-    // If holdings data is available, we could enrich marketCap further
-    // Currently just passing through — holdings can supplement future logic
-    void holdingsNormalized; // referenced for future use
 
     enriched.push(buildEnrichedToken(netflow, dexPair, screener));
   }

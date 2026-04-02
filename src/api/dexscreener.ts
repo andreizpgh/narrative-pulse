@@ -6,6 +6,7 @@
 
 import type { DexScreenerPair, DexScreenerResponse } from "../types.js";
 import { config } from "../config.js";
+import { normalizeAddress } from "../utils/normalize.js";
 
 // ============================================================
 // Types
@@ -42,18 +43,6 @@ function log(message: string): void {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Normalize a blockchain address for consistent lookup.
- * EVM addresses (0x-prefixed) are lowercased.
- * Solana and other non-EVM addresses are kept as-is.
- */
-function normalizeAddress(address: string): string {
-  if (address.startsWith("0x") || address.startsWith("0X")) {
-    return address.toLowerCase();
-  }
-  return address;
 }
 
 /**
@@ -196,12 +185,12 @@ export async function fetchDexScreenerData(
 
   for (const [, token] of uniqueTokens) {
     const normAddr = normalizeAddress(token.address);
-    const cached = getCached(`${normAddr}:${token.chain}`);
+    const dexChain = toDexScreenerChain(token.chain);
+    const cached = getCached(`${normAddr}:${dexChain}`);
     if (cached !== null) {
       result.set(normAddr, cached);
       cacheHits++;
     } else {
-      const dexChain = toDexScreenerChain(token.chain);
       const batch = uncachedByChain.get(dexChain);
       if (batch) {
         batch.push(token.address);
