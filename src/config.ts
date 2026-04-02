@@ -11,4 +11,19 @@ export const config: Config = {
   },
   apiPageSize: 50,
   cronSchedule: "0 */4 * * *", // Every 4 hours
+  external: {
+    dexscreener: {
+      baseUrl: "https://api.dexscreener.com",
+      cacheTtlMs: 5 * 60 * 1000,    // 5 minutes
+      timeoutMs: 3_000,               // 3 seconds
+      maxRetries: 1,
+      batchSize: 30,
+    },
+  },
+  earlySignal: {
+    minNetflowUsd: 1_000,
+    maxPriceChangePercent: 5,
+    minBuySellRatio: 1.5,
+    minVolumeUsd: 50_000,
+  },
 };

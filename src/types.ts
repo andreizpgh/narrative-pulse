@@ -77,6 +77,11 @@ export interface ClassifiedToken {
   sellVolume: number;
   traderCount: number;
   marketCapUsd: number;
+  // Enriched fields from DexScreener
+  volume24h: number;
+  liquidity: number;
+  priceChange1h: number;
+  isEarlySignal: boolean;
 }
 
 export interface SubNarrative {
@@ -93,6 +98,8 @@ export interface ScanResult {
   rotations: NarrativeRotation[]; // Flows between narratives
   subNarratives?: SubNarrative[]; // Sub-narratives of top narrative (if any)
   topNarrativeKey?: NarrativeKey; // Key of the top narrative
+  earlySignals: EarlySignalToken[];
+  enrichedTokens: EnrichedTokenData[];
   apiCallsUsed: number;
   creditsUsed: number;
 }
@@ -108,6 +115,16 @@ export interface NarrativeRotation {
 // Config Types
 // ============================================================
 
+export interface ExternalApiConfig {
+  dexscreener: {
+    baseUrl: string;
+    cacheTtlMs: number;
+    timeoutMs: number;
+    maxRetries: number;
+    batchSize: number;
+  };
+}
+
 export interface Config {
   chains: string[];
   minMarketCapUsd: number;
@@ -119,4 +136,108 @@ export interface Config {
   };
   apiPageSize: number;
   cronSchedule: string;
+  external: ExternalApiConfig;
+  earlySignal: {
+    minNetflowUsd: number;
+    maxPriceChangePercent: number;
+    minBuySellRatio: number;
+    minVolumeUsd: number;
+  };
+}
+
+// ============================================================
+// DexScreener API Response Types
+// ============================================================
+
+export interface DexScreenerPair {
+  chainId: string;
+  dexId: string;
+  pairAddress: string;
+  baseToken: {
+    address: string;
+    name: string;
+    symbol: string;
+  };
+  quoteToken: {
+    address: string | null;
+    name: string | null;
+    symbol: string | null;
+  };
+  priceNative: string;
+  priceUsd: string | null;
+  txns: {
+    m5: { buys: number; sells: number };
+    h1: { buys: number; sells: number };
+    h6: { buys: number; sells: number };
+    h24: { buys: number; sells: number };
+  };
+  volume: {
+    m5: number;
+    h1: number;
+    h6: number;
+    h24: number;
+  };
+  priceChange: {
+    m5: number;
+    h1: number;
+    h6: number;
+    h24: number;
+  } | null;
+  liquidity: {
+    usd: number | null;
+    base: number;
+    quote: number;
+  } | null;
+  fdv: number | null;
+  marketCap: number | null;
+  pairCreatedAt: number | null;
+}
+
+export interface DexScreenerResponse {
+  schemaVersion: string;
+  pairs: DexScreenerPair[] | null;
+}
+
+// ============================================================
+// Enriched Token Data (merged Nansen + DexScreener)
+// ============================================================
+
+export interface EnrichedTokenData {
+  token_address: string;
+  token_symbol: string;
+  chain: string;
+  // DexScreener enrichment
+  priceUsd: number;
+  priceChange24h: number;
+  priceChange1h: number;
+  volume24h: number;
+  liquidity: number;
+  marketCap: number;
+  fdv: number;
+  buys24h: number;
+  sells24h: number;
+  // Nansen data
+  netflow24hUsd: number;
+  netflow7dUsd: number;
+  traderCount: number;
+  tokenSectors: string[];
+  tokenAgeDays: number;
+}
+
+// ============================================================
+// Early Signal Token
+// ============================================================
+
+export interface EarlySignalToken {
+  token_symbol: string;
+  token_address: string;
+  chain: string;
+  netflow24hUsd: number;
+  priceChange24h: number;
+  volume24h: number;
+  buyPressure: number; // buys/sells ratio
+  liquidity: number;
+  marketCap: number;
+  narrativeKey: string;
+  narrativeDisplayName: string;
 }

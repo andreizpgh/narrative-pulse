@@ -11,6 +11,7 @@ import { aggregateByNarrative, toNarrativeKey } from "./aggregator.js";
 import { classifyTokens } from "./classifier.js";
 import { generateSubNarratives } from "./sub-narratives.js";
 import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
+import { enrichTokenData, detectEarlySignals } from "./enricher.js";
 import { config } from "../config.js";
 import type {
   ScanResult,
@@ -20,6 +21,9 @@ import type {
   NarrativeKey,
   NarrativeRotation,
   SubNarrative,
+  EnrichedTokenData,
+  EarlySignalToken,
+  TokenScreenerEntry,
 } from "../types.js";
 
 // ============================================================
@@ -95,69 +99,111 @@ function assignTopTokens(
 // ============================================================
 
 async function stepFetchNetflows(): Promise<NetflowEntry[]> {
-  log("Step 1/6: Fetching Smart Money netflows...");
+  log("Step 1/9: Fetching Smart Money netflows...");
   const entries = await fetchNetflows(
     config.chains,
     config.minMarketCapUsd,
     config.minTraderCount
   );
-  log(`Step 1/6: Got ${entries.length} netflow entries`);
+  log(`Step 1/9: Got ${entries.length} netflow entries`);
   return entries;
 }
 
-async function stepFetchScreener(): Promise<Map<string, import("../types.js").TokenScreenerEntry>> {
-  log("Step 2/6: Fetching token screener data...");
+async function stepFetchScreener(): Promise<Map<string, TokenScreenerEntry>> {
+  log("Step 2/9: Fetching token screener data...");
   const screenerData = await fetchTokenScreener(
     config.chains,
     config.minMarketCapUsd
   );
-  log(`Step 2/6: Got ${screenerData.size} screener entries`);
+  log(`Step 2/9: Got ${screenerData.size} screener entries`);
   return screenerData;
+}
+
+async function stepEnrich(
+  netflowEntries: NetflowEntry[],
+  screenerData: Map<string, TokenScreenerEntry>
+): Promise<EnrichedTokenData[]> {
+  log("Step 3/9: Enriching tokens with DexScreener data...");
+  try {
+    const enriched = await enrichTokenData(netflowEntries, screenerData);
+    log(`Step 3/9: Enriched ${enriched.length} tokens`);
+    return enriched;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log(`Step 3/9: DexScreener enrichment failed (${msg}) — continuing without enrichment`);
+    return [];
+  }
 }
 
 function stepDiscovery(entries: NetflowEntry[]): string[] {
   const sectors = discoverSectors(entries);
-  log(`Step 3/6: Discovering sectors (found ${sectors.length})`);
+  log(`Step 4/9: Discovering sectors (found ${sectors.length})`);
   return sectors;
 }
 
 function stepAggregation(entries: NetflowEntry[]): NarrativeSummary[] {
   const narratives = aggregateByNarrative(entries);
-  log(`Step 4/6: Aggregating by narrative (found ${narratives.length} narratives)`);
+  log(`Step 5/9: Aggregating by narrative (found ${narratives.length} narratives)`);
   return narratives;
 }
 
 function stepClassification(
   entries: NetflowEntry[],
-  screenerData: Map<string, import("../types.js").TokenScreenerEntry>,
-  narratives: NarrativeSummary[]
+  screenerData: Map<string, TokenScreenerEntry>,
+  enrichedData: EnrichedTokenData[]
 ): ClassifiedToken[] {
+  // Build enriched lookup map for classifier
+  const enrichedMap = new Map<string, EnrichedTokenData>();
+  for (const token of enrichedData) {
+    const normAddr = token.token_address.startsWith("0x") || token.token_address.startsWith("0X")
+      ? token.token_address.toLowerCase()
+      : token.token_address;
+    enrichedMap.set(normAddr, token);
+  }
+
   const classified = classifyTokens(
     entries,
     screenerData,
-    config.netflowThresholds
+    config.netflowThresholds,
+    enrichedMap
   );
 
   const hotCount = classified.filter((t) => t.category === "hot").length;
   const watchCount = classified.filter((t) => t.category === "watch").length;
   const avoidCount = classified.filter((t) => t.category === "avoid").length;
   log(
-    `Step 5/6: Classifying tokens (${hotCount} hot, ${watchCount} watch, ${avoidCount} avoid)`
+    `Step 6/9: Classifying tokens (${hotCount} hot, ${watchCount} watch, ${avoidCount} avoid)`
   );
 
   return classified;
 }
 
+function stepEarlySignals(
+  enrichedTokens: EnrichedTokenData[],
+  narratives: NarrativeSummary[],
+  tokenNarrativeMap: Map<string, NarrativeKey>
+): EarlySignalToken[] {
+  log("Step 7/9: Detecting early signal tokens...");
+  const signals = detectEarlySignals(
+    enrichedTokens,
+    narratives,
+    tokenNarrativeMap,
+    config.earlySignal
+  );
+  log(`Step 7/9: ${signals.length} early signals detected`);
+  return signals;
+}
+
 async function stepRotations(
   narratives: NarrativeSummary[]
 ): Promise<NarrativeRotation[]> {
-  log("Step 5.5/6: Computing narrative rotations...");
+  log("Step 8/9: Computing narrative rotations...");
 
   const previous = await loadSnapshot();
   const rotations = computeRotations(narratives, previous);
 
   log(
-    `Step 5.5/6: ${rotations.length} rotations detected` +
+    `Step 8/9: ${rotations.length} rotations detected` +
     `${previous ? " (vs previous scan)" : " (first run — no previous data)"}`
   );
 
@@ -169,11 +215,11 @@ async function stepSubNarratives(
   entries: NetflowEntry[]
 ): Promise<SubNarrative[] | undefined> {
   if (!topNarrative) {
-    log("Step 6/6: No top narrative — skipping sub-narrative generation");
+    log("Step 9/9: No top narrative — skipping sub-narrative generation");
     return undefined;
   }
 
-  log(`Step 6/6: Generating sub-narratives for "${topNarrative.displayName}"...`);
+  log(`Step 9/9: Generating sub-narratives for "${topNarrative.displayName}"...`);
 
   // Filter netflow entries that belong to the top narrative
   const topEntries = entries.filter(
@@ -186,14 +232,14 @@ async function stepSubNarratives(
   try {
     const result = await generateSubNarratives(topNarrative.key, topEntries);
     if (result) {
-      log(`Step 6/6: Generated ${result.length} sub-narratives`);
+      log(`Step 9/9: Generated ${result.length} sub-narratives`);
     } else {
-      log("Step 6/6: No sub-narratives generated");
+      log("Step 9/9: No sub-narratives generated");
     }
     return result;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    log(`Step 6/6: Sub-narrative generation failed (${msg}) — continuing without`);
+    log(`Step 9/9: Sub-narrative generation failed (${msg}) — continuing without`);
     return undefined;
   }
 }
@@ -206,13 +252,17 @@ async function stepSubNarratives(
  * Runs the full Narrative Pulse scan pipeline:
  *   1. Fetch Smart Money netflows
  *   2. Fetch token screener data
- *   3. Discover sectors
- *   4. Aggregate by narrative
- *   5. Classify tokens (Hot/Watch/Avoid) and assign to narratives
- *   6. Generate sub-narratives for the top narrative
+ *   3. Enrich with DexScreener price/volume data
+ *   4. Discover sectors
+ *   5. Aggregate by narrative
+ *   6. Classify tokens (Hot/Watch/Avoid) with enriched data
+ *   7. Detect early signal tokens
+ *   8. Compute narrative rotations
+ *   9. Generate sub-narratives for the top narrative
  *
  * Steps 1 and 2 are critical — if they fail, an error is thrown.
- * Step 6 is optional — failures are swallowed gracefully.
+ * Step 3 (enrichment) gracefully degrades on failure.
+ * Step 9 is optional — failures are swallowed gracefully.
  */
 export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanResult> {
   const skipAgent = options?.skipAgent ?? true;
@@ -228,24 +278,38 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   // Step 2: Fetch token screener (critical)
   const screenerData = await stepFetchScreener();
 
-  // Step 3: Discover sectors
+  // Step 3: Enrich with DexScreener (graceful — failures return empty array)
+  const enrichedTokens = await stepEnrich(netflowEntries, screenerData);
+
+  // Step 4: Discover sectors
   const sectors = stepDiscovery(netflowEntries);
 
-  // Step 4: Aggregate by narrative
+  // Step 5: Aggregate by narrative
   const narratives = stepAggregation(netflowEntries);
 
-  // Step 5: Classify tokens and assign to narratives
-  const classified = stepClassification(netflowEntries, screenerData, narratives);
+  // Step 6: Classify tokens with enriched data and assign to narratives
+  const classified = stepClassification(netflowEntries, screenerData, enrichedTokens);
   const tokenNarrativeMap = buildTokenNarrativeMap(netflowEntries);
   assignTopTokens(narratives, classified, tokenNarrativeMap);
 
-  // Step 5.5: Compute rotations (needs previous snapshot)
+  // Step 7: Detect early signals
+  const earlySignals = stepEarlySignals(enrichedTokens, narratives, tokenNarrativeMap);
+
+  // Mark classified tokens that are early signals
+  const earlySignalAddresses = new Set(earlySignals.map((s) => s.token_address));
+  for (const token of classified) {
+    if (earlySignalAddresses.has(token.token_address)) {
+      token.isEarlySignal = true;
+    }
+  }
+
+  // Step 8: Compute rotations (needs previous snapshot)
   const rotations = await stepRotations(narratives);
 
-  // Step 6: Sub-narratives for top narrative (OPTIONAL — costs 2000 credits)
+  // Step 9: Sub-narratives for top narrative (OPTIONAL — costs 2000 credits)
   const topNarrative = narratives.length > 0 ? narratives[0] : undefined;
   const subNarratives = skipAgent
-    ? (log("Step 6/6: Agent API skipped (use --deep to enable, costs 2000 credits)"), undefined)
+    ? (log("Step 9/9: Agent API skipped (use --deep to enable, costs 2000 credits)"), undefined)
     : await stepSubNarratives(topNarrative, netflowEntries);
 
   // Build result
@@ -257,6 +321,8 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
     rotations,
     subNarratives: subNarratives ?? undefined,
     topNarrativeKey: topNarrative?.key,
+    earlySignals,
+    enrichedTokens,
     apiCallsUsed: stats.apiCalls,
     creditsUsed: stats.creditsUsed,
   };
@@ -265,7 +331,7 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   await saveSnapshot(narratives);
 
   log(
-    `Scan complete! ${narratives.length} narratives, ${classified.length} classified tokens`
+    `Scan complete! ${narratives.length} narratives, ${classified.length} classified tokens, ${earlySignals.length} early signals`
   );
 
   return result;

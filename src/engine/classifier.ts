@@ -3,6 +3,7 @@ import type {
   TokenScreenerEntry,
   TokenCategory,
   ClassifiedToken,
+  EnrichedTokenData,
   Config,
 } from "../types.js";
 
@@ -44,7 +45,8 @@ function normalizeAddress(address: string): string {
 export function classifyTokens(
   netflows: NetflowEntry[],
   screenerData: Map<string, TokenScreenerEntry>,
-  thresholds: Config["netflowThresholds"]
+  thresholds: Config["netflowThresholds"],
+  enrichedData?: Map<string, EnrichedTokenData>
 ): ClassifiedToken[] {
   // Build normalized screener lookup: normalized_address → entry
   const screenerNormalized = new Map<string, TokenScreenerEntry>();
@@ -73,9 +75,14 @@ export function classifyTokens(
     const screener = screenerNormalized.get(normalizedAddr)
       ?? screenerBySymbolChain.get(symbolChainKey);
 
+    // Look up enriched data for this token
+    const enriched = enrichedData
+      ? enrichedData.get(normalizedAddr)
+      : undefined;
+
     const category: TokenCategory | null = screener
-      ? (matchCount++, determineCategory(netflow, screener, thresholds))
-      : (missCount++, determineCategoryNetflowOnly(netflow));
+      ? (matchCount++, determineCategory(netflow, screener, thresholds, enriched))
+      : (missCount++, determineCategoryNetflowOnly(netflow, enriched));
 
     // Skip tokens with no meaningful signal (null = neutral)
     if (category === null) {
@@ -90,11 +97,15 @@ export function classifyTokens(
       category,
       netflow24hUsd: netflow.net_flow_24h_usd,
       netflow7dUsd: netflow.net_flow_7d_usd,
-      priceChange: screener?.price_change ?? 0,
-      buyVolume: screener?.buy_volume ?? 0,
-      sellVolume: screener?.sell_volume ?? 0,
+      priceChange: enriched?.priceChange24h ?? screener?.price_change ?? 0,
+      buyVolume: enriched?.buys24h ?? screener?.buy_volume ?? 0,
+      sellVolume: enriched?.sells24h ?? screener?.sell_volume ?? 0,
       traderCount: netflow.trader_count,
-      marketCapUsd: netflow.market_cap_usd ?? 0,
+      marketCapUsd: enriched?.marketCap ?? netflow.market_cap_usd ?? 0,
+      volume24h: enriched?.volume24h ?? 0,
+      liquidity: enriched?.liquidity ?? 0,
+      priceChange1h: enriched?.priceChange1h ?? 0,
+      isEarlySignal: false,
     });
   }
 
@@ -116,18 +127,27 @@ export function classifyTokens(
  * Determines the category for a token that has screener data.
  * Returns null for tokens without a strong signal.
  *
+ * When enriched data is provided, uses DexScreener price/buy-sell data
+ * for more accurate classification. Otherwise falls back to screener data.
+ *
  * Evaluation order: Hot (strict) → Watch → Avoid → null (neutral).
  */
 function determineCategory(
   netflow: NetflowEntry,
   screener: TokenScreenerEntry,
-  thresholds: Config["netflowThresholds"]
+  thresholds: Config["netflowThresholds"],
+  enriched?: EnrichedTokenData
 ): TokenCategory | null {
+  // Use enriched data when available, otherwise screener
+  const priceChange = enriched?.priceChange24h ?? screener.price_change;
+  const buyVolume = enriched?.buys24h ?? screener.buy_volume;
+  const sellVolume = enriched?.sells24h ?? screener.sell_volume;
+
   // Hot: SM accumulates AND price already rising
   if (
     netflow.net_flow_24h_usd > thresholds.hot.minNetflowUsd &&
-    screener.price_change > thresholds.hot.minPriceChange &&
-    screener.buy_volume > screener.sell_volume
+    priceChange > thresholds.hot.minPriceChange &&
+    buyVolume > sellVolume
   ) {
     return "hot";
   }
@@ -149,17 +169,33 @@ function determineCategory(
 /**
  * Determines the category for a token WITHOUT screener data.
  * Uses netflow-only thresholds (higher than screener-backed classification).
+ * When enriched data is available, uses it for supplementary checks.
  * Returns null for tokens without meaningful netflow.
  */
 function determineCategoryNetflowOnly(
-  netflow: NetflowEntry
+  netflow: NetflowEntry,
+  enriched?: EnrichedTokenData
 ): TokenCategory | null {
-  // Strong accumulation without price data
-  if (netflow.net_flow_24h_usd > 5_000) return "hot";
-  // Moderate accumulation
-  if (netflow.net_flow_24h_usd > 1_000) return "watch";
-  // Distribution
-  if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+  // If we have enriched data, use it for better classification
+  if (enriched) {
+    const buyVolume = enriched.buys24h;
+    const sellVolume = Math.max(enriched.sells24h, 1);
+
+    // Strong accumulation with buy pressure
+    if (netflow.net_flow_24h_usd > 5_000 && buyVolume > sellVolume) return "hot";
+    // Moderate accumulation
+    if (netflow.net_flow_24h_usd > 1_000) return "watch";
+    // Distribution
+    if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+  } else {
+    // No enriched data — pure netflow-based classification
+    // Strong accumulation without price data
+    if (netflow.net_flow_24h_usd > 5_000) return "hot";
+    // Moderate accumulation
+    if (netflow.net_flow_24h_usd > 1_000) return "watch";
+    // Distribution
+    if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+  }
 
   // Not enough signal to classify
   return null;
