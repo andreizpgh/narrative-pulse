@@ -871,9 +871,12 @@ export function renderDashboardHtml(): string {
       // Take top 15 by |netflow|
       var top = narratives.slice(0, 15);
 
-      var names = top.map(function(n) { return n.displayName; });
-      var values = top.map(function(n) { return n.totalNetflow24h; });
-      var colors = top.map(function(n) {
+      // Reverse for display (top = highest |netflow| at bottom of chart)
+      var reversed = top.slice().reverse();
+
+      var names = reversed.map(function(n) { return n.displayName; });
+      var values = reversed.map(function(n) { return n.totalNetflow24h; });
+      var colors = reversed.map(function(n) {
         return n.totalNetflow24h >= 0 ? '#34d399' : '#f87171';
       });
 
@@ -907,16 +910,16 @@ export function renderDashboardHtml(): string {
         },
         yAxis: {
           type: 'category',
-          data: names.reverse(),
+          data: names,
           axisLabel: { color: '#e8e9ed', fontSize: 13, fontWeight: 500 },
           axisLine: { lineStyle: { color: '#2a2d3a' } }
         },
         series: [{
           type: 'bar',
-          data: values.reverse().map(function(v, i) {
+          data: values.map(function(v, i) {
             return {
               value: v,
-              itemStyle: { color: colors.reverse()[i], borderRadius: v >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4] }
+              itemStyle: { color: colors[i], borderRadius: v >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4] }
             };
           }),
           barWidth: '60%'

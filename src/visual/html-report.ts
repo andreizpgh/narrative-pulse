@@ -600,7 +600,7 @@ function generateHtml(data: HtmlReportData): string {
       var heroEl = document.getElementById('hero-metric');
       if (strongest) {
         var cls = strongest.totalNetflow24h >= 0 ? 'positive' : 'negative';
-        var direction = strongest.totalNetflow24d >= 0 ? 'into' : 'out of';
+        var direction = strongest.totalNetflow24h >= 0 ? 'into' : 'out of';
         var netflowCls = strongest.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
         heroEl.className = 'hero-metric ' + cls;
         heroEl.innerHTML = 'Strongest signal: Smart Money is flowing <strong>' +
