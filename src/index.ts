@@ -10,6 +10,7 @@ import { renderSankey } from "./visual/sankey.js";
 import { renderHtmlReport } from "./visual/html-report.js";
 import { config } from "./config.js";
 import { startWatchMode } from "./scheduler/cron.js";
+import { startServer } from "./server/index.js";
 
 const program = new Command();
 
@@ -132,6 +133,32 @@ program
     } catch (error) {
       console.error(
         `\nError: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
+  });
+
+// ── serve ─────────────────────────────────────────────────
+
+program
+  .command("serve")
+  .description("Start live dashboard server")
+  .option("-p, --port <number>", "Server port", "3000")
+  .option("--deep", "Include Agent API deep analysis (costs 2000 extra credits)")
+  .action(async (options: { port: string; deep: boolean }) => {
+    const port = parseInt(options.port, 10);
+    if (isNaN(port)) {
+      console.error("Invalid port number");
+      process.exit(1);
+    }
+    try {
+      await startServer({
+        port,
+        skipAgent: !options.deep,
+      });
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`
       );
       process.exit(1);
     }

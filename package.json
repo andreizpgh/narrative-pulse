@@ -24,17 +24,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "echarts": "^5.5.0",
-    "sharp": "^0.33.0",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.5",
     "commander": "^12.0.0",
-    "node-cron": "^3.0.3"
+    "echarts": "^5.5.0",
+    "express": "^5.2.1",
+    "node-cron": "^3.0.3",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
-    "tsx": "^4.7.0",
+    "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
-    "@types/node-cron": "^3.0.11"
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0"
   }
 }
