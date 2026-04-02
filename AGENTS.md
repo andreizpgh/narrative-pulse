@@ -1,102 +1,61 @@
 # Narrative Pulse — Technical Reference for AI Agents
 
-> **Для полного контекста проекта читай `docs/narrative-pulse-concept.md`**
->
-> **Специфичные инструкции для агентов**: `.opencode/agents/`
-
----
-
 ## 1. Project Overview
 
-**Narrative Pulse** — CLI-инструмент для отслеживания ротаций Smart Money между крипто-нарративами. Использует Nansen CLI/API для получения on-chain данных, агрегирует на уровне секторов, классифицирует токены (Hot/Watch/Avoid) и генерирует визуальные отчёты.
+**Narrative Pulse** — Smart Money Narrative Intelligence Platform. Tracks capital flows between crypto narratives using Nansen API + DexScreener + CoinGecko enrichment.
 
-**Контекст:** Проект создан для Nansen CLI Build Challenge (Week 3). Дедлайн: 5 апреля 2026. Цель — 1-е место.
+**Contest**: Nansen CLI Build Challenge, Week 3. **Deadline**: April 5, 2026. **Goal**: 1st place.
 
----
-
-## 2. Technical Architecture
-
-### Module Structure
+## 2. Architecture (V2)
 
 ```
 src/
-├── index.ts          # Entry point + CLI commands (commander)
-├── types.ts          # Все TypeScript интерфейсы
-├── config.ts         # Конфигурация (chains, thresholds)
+├── index.ts              # CLI commands (commander)
+├── types.ts              # All TypeScript interfaces
+├── config.ts             # Configuration
 ├── api/
-│   ├── client.ts     # HTTP клиент для Nansen API
-│   ├── netflows.ts   # smart-money/netflows
-│   ├── token-screener.ts  # tgm/token-screener
-│   ├── holdings.ts   # smart-money/holdings
-│   └── agent.ts      # agent/fast (SSE streaming)
+│   ├── client.ts         # Nansen HTTP client
+│   ├── netflows.ts       # smart-money/netflow
+│   ├── token-screener.ts # token-screener
+│   ├── agent.ts          # agent/fast (SSE)
+│   └── dexscreener.ts    # DexScreener price/volume enrichment [NEW]
 ├── engine/
-│   ├── discovery.ts  # Discovery query — список секторов
-│   ├── aggregator.ts # Агрегация по нарративам
-│   ├── classifier.ts # Hot/Watch/Avoid
-│   ├── sub-narratives.ts  # Agent API суб-нарративы
-│   └── scanner.ts    # Orchestrator — полный pipeline
+│   ├── discovery.ts      # Sector discovery
+│   ├── aggregator.ts     # Narrative aggregation
+│   ├── classifier.ts     # Hot/Watch/Avoid
+│   ├── early-signal.ts   # Early signal detection [NEW]
+│   ├── sub-narratives.ts # Agent API sub-narratives
+│   ├── rotations.ts      # Narrative rotation tracking
+│   └── scanner.ts        # Pipeline orchestrator
 ├── visual/
-│   ├── sankey.ts     # ECharts Sankey (SSR)
-│   ├── sunburst.ts   # ECharts Sunburst (опционально)
-│   ├── html-report.ts     # Standalone HTML отчёт
-│   └── terminal_report.ts # CLI formatted output
+│   ├── sankey.ts         # Bar chart PNG (ECharts SSR)
+│   ├── html-report.ts    # HTML report template
+│   ├── terminal-report.ts # CLI output
+│   └── research-card.ts  # Shareable PNG cards [NEW]
+├── server/
+│   └── index.ts          # Express dynamic dashboard [NEW]
+├── mcp/
+│   └── server.ts          # MCP server for AI agents [NEW]
 └── scheduler/
-    └── cron.ts       # node-cron 24/7 mode
+    └── cron.ts            # 24/7 cron mode
 ```
-
-### Key Files
-
-| Файл | Назначение |
-|------|-----------|
-| `src/index.ts` | Entry point + CLI commands |
-| `src/types.ts` | TypeScript interfaces |
-| `src/config.ts` | Chains, thresholds, pagination |
-| `src/api/client.ts` | Nansen HTTP client (auth, rate limits) |
-
----
 
 ## 3. Code Conventions
 
-### TypeScript
-
-- **STRICT TYPING**: `any` запрещён. Все типы в `src/types.ts`
-- **Self-documenting code**: ясные имена, логичная структура
-- **Single responsibility**: одна функция = одно действие
-
-### Error Handling
-
-- **Все API-вызовы**: `try/catch` с логированием
-- **Rate limit handling**: очередь с задержками (20 req/sec, 300 req/min)
-- **Graceful degradation**: если один endpoint падает — pipeline продолжает
-
-### Именование
-
-- Файлы: `verbNoun.ts` (`fetchNetflows.ts`, `classifyTokens.ts`)
-- Функции: `fetchNetflows()`, `classifyTokens()`, `renderSankey()`
-- Логика файла соответствует названию
-
----
+- **TypeScript strict**: no `any`. All types in `src/types.ts`
+- **Error handling**: try/catch on all API calls, retry with backoff
+- **File naming**: `verbNoun.ts`
+- **Commits**: one logical unit per commit, format: `type: description`
 
 ## 4. Documentation Map
 
-| Документ | Назначение |
-|----------|-----------|
-| `docs/narrative-pulse-concept.md` | Полный контекст проекта + ресёрч |
-| `docs/narrative-pulse-techplan.md` | Детальный техплан по дням |
-| `docs/narrative-pulse-metaplan.md` | Git-стратегия + презентация |
-
----
+| Document | Purpose |
+|---|---|
+| `docs/HANDOFF-v2.md` | **READ FIRST** - Complete V2 context, plan, API research |
+| `START-PROMPT.md` | Start prompt for new context window |
 
 ## 5. MCP Integration
 
-- **MiniMax** — Web-поиск и AI Vision.
-  - `MiniMax_web_search` — `@researcher`
-  - `MiniMax_understand_image` — `@vision`
-- **Context7** — Актуальная документация фреймворков.
-  - Размещён: `@researcher`
-- **Jina Reader** — Чтение веб-страниц (markdown).
-  - Размещён: `@researcher`
-
----
-
-**Правило**: При изменении архитектуры агентов обновляйте `opencode.json` и этот файл (AGENTS.md).
+- **MiniMax** - Web search + AI Vision
+- **Context7** - Framework documentation
+- **Jina Reader** - Web page reading
