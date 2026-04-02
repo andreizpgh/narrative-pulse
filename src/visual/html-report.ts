@@ -13,6 +13,7 @@ import type {
   ClassifiedToken,
   SubNarrative,
   NarrativeRotation,
+  EarlySignalToken,
 } from "../types.js";
 
 // ============================================================
@@ -50,6 +51,16 @@ interface HtmlReportSubNarrative {
   tokens: string[];
 }
 
+interface HtmlReportEarlySignal {
+  token_symbol: string;
+  netflow24hUsd: number;
+  priceChange24h: number;
+  volume24h: number;
+  buyPressure: number;
+  marketCap: number;
+  narrativeDisplayName: string;
+}
+
 interface HtmlReportData {
   timestamp: string;
   creditsUsed: number;
@@ -57,6 +68,7 @@ interface HtmlReportData {
   rotations: HtmlReportRotation[];
   subNarratives?: HtmlReportSubNarrative[];
   topNarrativeKey?: string;
+  earlySignals: HtmlReportEarlySignal[];
 }
 
 // ============================================================
@@ -106,6 +118,18 @@ function toHtmlSubNarrative(s: SubNarrative): HtmlReportSubNarrative {
   };
 }
 
+function toHtmlEarlySignal(t: EarlySignalToken): HtmlReportEarlySignal {
+  return {
+    token_symbol: t.token_symbol,
+    netflow24hUsd: t.netflow24hUsd,
+    priceChange24h: t.priceChange24h,
+    volume24h: t.volume24h,
+    buyPressure: t.buyPressure,
+    marketCap: t.marketCap,
+    narrativeDisplayName: t.narrativeDisplayName,
+  };
+}
+
 function toHtmlReportData(result: ScanResult): HtmlReportData {
   return {
     timestamp: result.timestamp,
@@ -114,6 +138,7 @@ function toHtmlReportData(result: ScanResult): HtmlReportData {
     rotations: result.rotations.map(toHtmlRotation),
     subNarratives: result.subNarratives?.map(toHtmlSubNarrative),
     topNarrativeKey: result.topNarrativeKey,
+    earlySignals: result.earlySignals.map(toHtmlEarlySignal),
   };
 }
 
@@ -363,6 +388,37 @@ function generateHtml(data: HtmlReportData): string {
 
     .sub-narrative-tokens { margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary); }
 
+    /* Early Signals */
+
+    .early-signals-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      border-left: 4px solid var(--color-positive);
+    }
+
+    .early-signals-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--color-positive);
+    }
+
+    .early-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--color-positive);
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
     /* Card utility */
 
     .card {
@@ -438,6 +494,9 @@ function generateHtml(data: HtmlReportData): string {
 
     <!-- Sub-narratives (only rendered if data exists) -->
     <div id="sub-narratives"></div>
+
+    <!-- Early Signals (only rendered if data exists) -->
+    <div id="early-signals"></div>
 
     <!-- Footer -->
     <div class="footer">
@@ -772,6 +831,41 @@ function generateHtml(data: HtmlReportData): string {
         html += '</div>';
       });
 
+      html += '</div>';
+      container.innerHTML = html;
+    })();
+
+    // ── Early Signals (only if data exists) ─────────────
+
+    (function renderEarlySignals() {
+      if (!SCAN_DATA.earlySignals || SCAN_DATA.earlySignals.length === 0) return;
+
+      var container = document.getElementById('early-signals');
+
+      var html = '<div class="early-signals-card">';
+      html += '<div class="early-signals-title">Early Signal Tokens \\u2014 Smart Money Accumulating Before Price Move</div>';
+
+      html += '<table class="token-table">';
+      html += '<thead><tr>';
+      html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Volume 24h</th><th>Buy Pressure</th><th>Market Cap</th>';
+      html += '</tr></thead><tbody>';
+
+      SCAN_DATA.earlySignals.forEach(function(t) {
+        var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+        var priceCls = t.priceChange24h > 0 ? 'netflow-positive' : (t.priceChange24h < 0 ? 'netflow-negative' : '');
+        var pressureText = !t.buyPressure || t.buyPressure <= 0 ? '\\u2014' : t.buyPressure.toFixed(1) + 'x';
+
+        html += '<tr>';
+        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong><span class="early-badge">EARLY SIGNAL</span></td>';
+        html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
+        html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
+        html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
+        html += '<td class="mono">' + pressureText + '</td>';
+        html += '<td class="mono">' + formatMcap(t.marketCap) + '</td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
       html += '</div>';
       container.innerHTML = html;
     })();
