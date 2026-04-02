@@ -2,19 +2,29 @@ import type { NetflowEntry, NarrativeKey, NarrativeSummary } from "../types.js";
 
 /**
  * Converts a list of sectors into a normalized NarrativeKey.
- * Sectors are sorted alphabetically and joined with "+".
- * Example: ["Infrastructure", "AI"] → "AI+Infrastructure"
+ *
+ * Simplification rules to reduce noise:
+ *  - 1 sector  → use as-is
+ *  - 2 sectors → sorted join with "+" (e.g. "AI+DeFi")
+ *  - 3+ sectors → use only the first sector (collapse into broader category)
  */
 export function toNarrativeKey(sectors: string[]): string {
-  return [...sectors].sort().join("+");
+  if (sectors.length === 0) return "";
+  if (sectors.length === 1) return sectors[0];
+  if (sectors.length === 2) return [...sectors].sort().join("+");
+  // 3+ sectors: collapse to first sector only
+  return sectors[0];
 }
 
 /**
  * Groups netflow entries by narrative (derived from token_sectors)
  * and computes aggregate statistics for each narrative.
  *
- * Entries with missing or empty token_sectors are skipped.
- * Results are sorted by totalNetflow24h descending (hottest first).
+ * Simplification: tokens with 3+ sectors are collapsed to their first sector.
+ * After grouping, narratives with fewer than 2 tokens AND less than $500
+ * absolute netflow are filtered out (noise reduction).
+ *
+ * Results are sorted by |totalNetflow24h| descending.
  */
 export function aggregateByNarrative(
   entries: NetflowEntry[]
@@ -27,6 +37,8 @@ export function aggregateByNarrative(
     }
 
     const key = toNarrativeKey(entry.token_sectors);
+    if (key === "") continue;
+
     const group = groups.get(key);
 
     if (group) {
@@ -52,6 +64,11 @@ export function aggregateByNarrative(
       0
     );
 
+    // Filter: keep narratives with 2+ tokens OR |netflow| > $500
+    const isSignificant =
+      group.length >= 2 || Math.abs(totalNetflow24h) > 500;
+    if (!isSignificant) continue;
+
     summaries.push({
       key,
       displayName: key.replace(/\+/g, " "),
@@ -64,7 +81,8 @@ export function aggregateByNarrative(
     });
   }
 
-  summaries.sort((a, b) => b.totalNetflow24h - a.totalNetflow24h);
+  // Sort by absolute 24h netflow descending (most impactful first)
+  summaries.sort((a, b) => Math.abs(b.totalNetflow24h) - Math.abs(a.totalNetflow24h));
 
   return summaries;
 }

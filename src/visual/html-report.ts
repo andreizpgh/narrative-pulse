@@ -468,6 +468,25 @@ function generateHtml(data: HtmlReportData): string {
 
     /* ── Responsive ─────────────────────────────────────── */
 
+    .sector-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .sector-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(108, 92, 231, 0.15);
+      color: #a29bfe;
+      border: 1px solid rgba(108, 92, 231, 0.3);
+    }
+
     @media (max-width: 768px) {
       .header h1 { font-size: 1.5rem; }
       .header .stats { gap: 16px; }
@@ -487,6 +506,7 @@ function generateHtml(data: HtmlReportData): string {
       <h1>Narrative Pulse</h1>
       <p class="subtitle" id="header-subtitle">Smart Money Rotation Report</p>
       <div class="stats" id="header-stats"></div>
+      <div class="sector-tags" id="sector-tags"></div>
     </header>
 
     <!-- Sankey Chart -->
@@ -560,6 +580,14 @@ function generateHtml(data: HtmlReportData): string {
         '<div class="stat"><div class="stat-value">' + totalTokens + '</div><div class="stat-label">Tokens</div></div>' +
         '<div class="stat"><div class="stat-value">' + SCAN_DATA.rotations.length + '</div><div class="stat-label">Rotations</div></div>' +
         '<div class="stat"><div class="stat-value">' + SCAN_DATA.apiCallsUsed + '</div><div class="stat-label">API Calls</div></div>';
+
+      // Render sector tags
+      if (SCAN_DATA.sectors && SCAN_DATA.sectors.length > 0) {
+        var sectorHtml = SCAN_DATA.sectors.slice(0, 20).map(function(s) {
+          return '<span class="sector-tag">' + escapeHtml(s) + '</span>';
+        }).join('');
+        document.getElementById('sector-tags').innerHTML = sectorHtml;
+      }
     })();
 
     // ── Sankey Chart ────────────────────────────────────────
@@ -570,51 +598,84 @@ function generateHtml(data: HtmlReportData): string {
       var chartDom = document.getElementById('sankey-chart');
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
 
-      // Build name resolution map
-      var nameMap = {};
-      SCAN_DATA.narratives.forEach(function(n) {
-        nameMap[n.displayName] = n.displayName;
-      });
+      // Decide mode: rotation (inter-narrative flows) or allocation (Smart Money → Narratives)
+      var hasRotations = SCAN_DATA.rotations && SCAN_DATA.rotations.length > 5;
 
-      function resolveName(key) {
-        return nameMap[key] || key.replace(/\\+/g, ' ');
-      }
+      var nodes, links;
 
-      // Build nodes
-      var nodes = SCAN_DATA.narratives.map(function(n) {
-        return {
-          name: n.displayName,
-          itemStyle: { color: n.isHot ? '#2ecc71' : '#e74c3c' }
-        };
-      });
+      if (hasRotations) {
+        // Rotation mode: flows between narratives
 
-      // Deduplicate cycles: keep only the larger flow per pair
-      var pairMap = {};
-      SCAN_DATA.rotations.forEach(function(r) {
-        var src = resolveName(r.from);
-        var tgt = resolveName(r.to);
-        var pairKey = [src, tgt].sort().join('||');
-        if (!pairMap[pairKey] || Math.abs(r.valueUsd) > Math.abs(pairMap[pairKey].valueUsd)) {
-          pairMap[pairKey] = r;
+        // Build name resolution map
+        var nameMap = {};
+        SCAN_DATA.narratives.forEach(function(n) {
+          nameMap[n.displayName] = n.displayName;
+        });
+
+        function resolveName(key) {
+          return nameMap[key] || key.replace(/\\+/g, ' ');
         }
-      });
 
-      var links = Object.values(pairMap).map(function(r) {
-        return {
-          source: resolveName(r.from),
-          target: resolveName(r.to),
-          value: Math.abs(r.valueUsd),
-          lineStyle: {
-            color: r.direction === 'inflow'
-              ? 'rgba(46, 204, 113, 0.5)'
-              : 'rgba(231, 76, 60, 0.5)'
+        nodes = SCAN_DATA.narratives.map(function(n) {
+          return {
+            name: n.displayName,
+            itemStyle: { color: n.isHot ? '#2ecc71' : '#e74c3c' }
+          };
+        });
+
+        // Deduplicate cycles: keep only the larger flow per pair
+        var pairMap = {};
+        SCAN_DATA.rotations.forEach(function(r) {
+          var src = resolveName(r.from);
+          var tgt = resolveName(r.to);
+          var pairKey = [src, tgt].sort().join('||');
+          if (!pairMap[pairKey] || Math.abs(r.valueUsd) > Math.abs(pairMap[pairKey].valueUsd)) {
+            pairMap[pairKey] = r;
           }
-        };
-      });
+        });
+
+        links = Object.values(pairMap).map(function(r) {
+          return {
+            source: resolveName(r.from),
+            target: resolveName(r.to),
+            value: Math.abs(r.valueUsd),
+            lineStyle: {
+              color: r.direction === 'inflow'
+                ? 'rgba(46, 204, 113, 0.5)'
+                : 'rgba(231, 76, 60, 0.5)'
+            }
+          };
+        });
+      } else {
+        // Allocation mode: Smart Money → Narratives
+        var topNarratives = SCAN_DATA.narratives.slice(0, 12);
+
+        nodes = topNarratives.map(function(n) {
+          return {
+            name: n.displayName,
+            itemStyle: { color: n.totalNetflow24h >= 0 ? '#2ecc71' : '#e74c3c' }
+          };
+        });
+        // Add source node at beginning
+        nodes.unshift({ name: 'Smart Money', itemStyle: { color: '#6c5ce7' } });
+
+        links = topNarratives.map(function(n) {
+          return {
+            source: 'Smart Money',
+            target: n.displayName,
+            value: Math.max(Math.abs(n.totalNetflow24h), 100),
+            lineStyle: {
+              color: n.totalNetflow24h >= 0
+                ? 'rgba(46, 204, 113, 0.5)'
+                : 'rgba(231, 76, 60, 0.5)'
+            }
+          };
+        });
+      }
 
       chart.setOption({
         title: {
-          text: 'Capital Flows Between Narratives',
+          text: hasRotations ? 'Capital Flows Between Narratives' : 'Smart Money Capital Allocation',
           left: 'center',
           textStyle: { fontSize: 16, color: '#e0e0e0' }
         },
@@ -657,8 +718,6 @@ function generateHtml(data: HtmlReportData): string {
       var categoryIcons = { hot: '\uD83D\uDD25', watch: '\uD83D\uDC40', avoid: '\u26D4' };
 
       SCAN_DATA.narratives.forEach(function(narrative) {
-        if (narrative.topTokens.length === 0) return;
-
         var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
 
         html += '<div class="card narrative-section">';
@@ -671,45 +730,49 @@ function generateHtml(data: HtmlReportData): string {
         html += '<span class="narrative-stat">7d Netflow: <strong class="' + (narrative.totalNetflow7d >= 0 ? 'netflow-positive' : 'netflow-negative') + '">' + formatUsd(narrative.totalNetflow7d) + '</strong></span>';
         html += '</div></div>';
 
-        // Group tokens by category
-        var grouped = { hot: [], watch: [], avoid: [] };
-        narrative.topTokens.forEach(function(t) {
-          if (grouped[t.category]) {
-            grouped[t.category].push(t);
-          }
-        });
+        if (narrative.topTokens.length === 0) {
+          html += '<div class="empty-category" style="padding: 12px 8px;">No classified tokens in this scan</div>';
+        } else {
+          // Group tokens by category
+          var grouped = { hot: [], watch: [], avoid: [] };
+          narrative.topTokens.forEach(function(t) {
+            if (grouped[t.category]) {
+              grouped[t.category].push(t);
+            }
+          });
 
-        categories.forEach(function(cat) {
-          html += '<div class="category-section">';
-          html += '<span class="category-badge badge-' + cat + '">' + categoryIcons[cat] + ' ' + categoryLabels[cat] + '</span>';
+          categories.forEach(function(cat) {
+            html += '<div class="category-section">';
+            html += '<span class="category-badge badge-' + cat + '">' + categoryIcons[cat] + ' ' + categoryLabels[cat] + '</span>';
 
-          var tokens = grouped[cat];
-          if (tokens.length === 0) {
-            html += '<div class="empty-category">No tokens in this category</div>';
-          } else {
-            html += '<table class="token-table">';
-            html += '<thead><tr>';
-            html += '<th>Token</th><th>Netflow 24h</th><th>Price \u0394</th><th>Traders</th><th>Market Cap</th>';
-            html += '</tr></thead><tbody>';
+            var tokens = grouped[cat];
+            if (tokens.length === 0) {
+              html += '<div class="empty-category">No tokens in this category</div>';
+            } else {
+              html += '<table class="token-table">';
+              html += '<thead><tr>';
+              html += '<th>Token</th><th>Netflow 24h</th><th>Price \u0394</th><th>Traders</th><th>Market Cap</th>';
+              html += '</tr></thead><tbody>';
 
-            tokens.forEach(function(t) {
-              var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
-              var priceCls = t.priceChange >= 0 ? 'netflow-positive' : 'netflow-negative';
+              tokens.forEach(function(t) {
+                var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+                var priceCls = t.priceChange >= 0 ? 'netflow-positive' : 'netflow-negative';
 
-              html += '<tr>';
-              html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
-              html += '<td class="' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
-              html += '<td class="' + priceCls + '">' + formatPercent(t.priceChange) + '</td>';
-              html += '<td>' + t.traderCount + '</td>';
-              html += '<td>' + formatMcap(t.marketCapUsd) + '</td>';
-              html += '</tr>';
-            });
+                html += '<tr>';
+                html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
+                html += '<td class="' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
+                html += '<td class="' + priceCls + '">' + formatPercent(t.priceChange) + '</td>';
+                html += '<td>' + t.traderCount + '</td>';
+                html += '<td>' + formatMcap(t.marketCapUsd) + '</td>';
+                html += '</tr>';
+              });
 
-            html += '</tbody></table>';
-          }
+              html += '</tbody></table>';
+            }
 
-          html += '</div>';
-        });
+            html += '</div>';
+          });
+        }
 
         html += '</div>';
       });

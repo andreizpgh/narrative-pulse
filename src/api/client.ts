@@ -48,6 +48,24 @@ const INITIAL_BACKOFF_MS = 1000;
 const BACKOFF_MULTIPLIER = 2;
 
 // ============================================================
+// Global Stats Tracking
+// ============================================================
+
+let globalApiCalls = 0;
+let globalCreditsUsed = 0;
+
+/**
+ * Returns accumulated API call stats and resets the counters.
+ * Call once per scan to get the total usage for that scan.
+ */
+export function getAndResetStats(): { apiCalls: number; creditsUsed: number } {
+  const stats = { apiCalls: globalApiCalls, creditsUsed: globalCreditsUsed };
+  globalApiCalls = 0;
+  globalCreditsUsed = 0;
+  return stats;
+}
+
+// ============================================================
 // Rate Limiter State
 // ============================================================
 
@@ -224,6 +242,10 @@ export async function nansenPost<T>(
       if (creditsRemaining === 0) {
         log("⚠️ Credits exhausted! No remaining credits. Please top up at https://nansen.ai");
       }
+
+      // Track global stats
+      globalApiCalls++;
+      globalCreditsUsed += creditsUsed;
 
       // Log successful request
       log(

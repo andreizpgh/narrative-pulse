@@ -1,6 +1,10 @@
 // ============================================================
-// Sankey Diagram — Narrative Rotation Map (SSR via ECharts)
-// Renders a capital flow visualization between narratives
+// Sankey Diagram — Smart Money Capital Allocation Map (SSR)
+// Two modes:
+//   1. Allocation Sankey: "Smart Money" → Top 12 narratives
+//      (always works, even on first run with zero rotations)
+//   2. Rotation Sankey: narrative → narrative flows
+//      (only when 2+ scans produced meaningful rotations)
 // ============================================================
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -16,14 +20,26 @@ import type { NarrativeSummary, NarrativeRotation } from "../types.js";
 
 const CHART_WIDTH = 1200;
 const CHART_HEIGHT = 800;
+const MAX_NARRATIVES = 12;
 
-const COLOR_HOT = "#2ecc71";
-const COLOR_COLD = "#e74c3c";
-const COLOR_LINK_INFLOW = "rgba(46, 204, 113, 0.5)";
-const COLOR_LINK_OUTFLOW = "rgba(231, 76, 60, 0.5)";
+// Dark theme palette (matches HTML report)
+const BG_COLOR = "#1a1a2e";
+const TEXT_TITLE = "#ffffff";
+const TEXT_LABEL = "#e0e0e0";
+const TEXT_SECONDARY = "#a0a0b0";
+
+// Node / link colors
+const COLOR_SM_SOURCE = "#6c5ce7"; // purple for "Smart Money" node
+const COLOR_INFLOW = "#2ecc71";
+const COLOR_OUTFLOW = "#e74c3c";
+const COLOR_LINK_INFLOW = "rgba(46, 204, 113, 0.45)";
+const COLOR_LINK_OUTFLOW = "rgba(231, 76, 60, 0.45)";
+
+// Minimum rotation links required to use rotation mode
+const MIN_ROTATION_LINKS = 3;
 
 // ============================================================
-// Types (local, for ECharts data structures)
+// Local Types (ECharts data structures)
 // ============================================================
 
 interface SankeyNode {
@@ -38,6 +54,12 @@ interface SankeyLink {
   lineStyle: { color: string };
 }
 
+interface SankeyData {
+  title: string;
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+}
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -47,8 +69,30 @@ function log(message: string): void {
 }
 
 /**
- * Build a lookup map from NarrativeKey → displayName.
- * Falls back to replacing "+" with " " if the key is not found.
+ * Format USD value for tooltip display.
+ */
+function formatUsd(value: number): string {
+  const sign = value >= 0 ? "+" : "-";
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
+  return `${sign}$${abs.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+/**
+ * Resolve a NarrativeKey to a display name.
+ * Falls back to replacing "+" with space.
+ */
+function resolveName(
+  key: string,
+  nameMap: Map<string, string>
+): string {
+  return nameMap.get(key) ?? key.replace(/\+/g, " ");
+}
+
+/**
+ * Build lookup map: NarrativeKey → displayName
  */
 function buildNameMap(narratives: NarrativeSummary[]): Map<string, string> {
   const map = new Map<string, string>();
@@ -59,75 +103,203 @@ function buildNameMap(narratives: NarrativeSummary[]): Map<string, string> {
 }
 
 /**
- * Resolve a NarrativeKey to a display name for the Sankey diagram.
+ * Pick top N narratives sorted by absolute netflow (descending).
  */
-function resolveName(key: string, nameMap: Map<string, string>): string {
-  return nameMap.get(key) ?? key.replace(/\+/g, " ");
+function topNarratives(
+  narratives: NarrativeSummary[],
+  limit: number
+): NarrativeSummary[] {
+  return [...narratives]
+    .sort((a, b) => Math.abs(b.totalNetflow24h) - Math.abs(a.totalNetflow24h))
+    .slice(0, limit);
 }
 
 // ============================================================
-// Build Nodes
-// ============================================================
-
-function buildNodes(narratives: NarrativeSummary[]): SankeyNode[] {
-  return narratives.map((n) => ({
-    name: n.displayName,
-    itemStyle: {
-      color: n.isHot ? COLOR_HOT : COLOR_COLD,
-    },
-  }));
-}
-
-// ============================================================
-// Build Links (with cycle deduplication)
+// Allocation Sankey — Smart Money → Narratives
 // ============================================================
 
 /**
- * Sankey diagrams require a DAG — no cycles allowed.
- * If A→B and B→A both exist, keep only the link with the larger value.
- * This ensures the graph is always acyclic.
+ * Build the "allocation" Sankey: one source node ("Smart Money")
+ * linked to each of the top narratives.
+ */
+function buildAllocationData(narratives: NarrativeSummary[]): SankeyData {
+  const top = topNarratives(narratives, MAX_NARRATIVES);
+
+  const sourceNode: SankeyNode = {
+    name: "Smart Money",
+    itemStyle: { color: COLOR_SM_SOURCE },
+  };
+
+  const narrativeNodes: SankeyNode[] = top.map((n) => ({
+    name: n.displayName,
+    itemStyle: {
+      color: n.totalNetflow24h >= 0 ? COLOR_INFLOW : COLOR_OUTFLOW,
+    },
+  }));
+
+  const links: SankeyLink[] = top.map((n) => {
+    const isInflow = n.totalNetflow24h >= 0;
+    return {
+      source: "Smart Money",
+      target: n.displayName,
+      // Minimum value of 1 so zero-netflow narratives still show as thin lines
+      value: Math.abs(n.totalNetflow24h) || 1,
+      lineStyle: {
+        color: isInflow ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
+      },
+    };
+  });
+
+  return {
+    title: "Smart Money — Capital Allocation Map",
+    nodes: [sourceNode, ...narrativeNodes],
+    links,
+  };
+}
+
+// ============================================================
+// Rotation Sankey — Narrative → Narrative
+// ============================================================
+
+/**
+ * Deduplicate bidirectional cycles (A↔B): keep only the larger flow.
+ * Sankey requires a DAG — no cycles allowed.
  */
 function deduplicateCycles(
   rotations: NarrativeRotation[],
   nameMap: Map<string, string>
 ): NarrativeRotation[] {
-  // Track pairs: always store with sorted key so A↔B maps to same entry
   const pairMap = new Map<string, NarrativeRotation>();
 
   for (const r of rotations) {
-    const sourceName = resolveName(r.from, nameMap);
-    const targetName = resolveName(r.to, nameMap);
-    // Sort names to create a canonical pair key
-    const pairKey = [sourceName, targetName].sort().join("||");
+    const src = resolveName(r.from, nameMap);
+    const tgt = resolveName(r.to, nameMap);
+    const pairKey = [src, tgt].sort().join("||");
 
     const existing = pairMap.get(pairKey);
-    if (!existing) {
+    if (!existing || Math.abs(r.valueUsd) > Math.abs(existing.valueUsd)) {
       pairMap.set(pairKey, r);
-    } else {
-      // Keep the rotation with the larger absolute value
-      if (Math.abs(r.valueUsd) > Math.abs(existing.valueUsd)) {
-        pairMap.set(pairKey, r);
-      }
     }
   }
 
   return Array.from(pairMap.values());
 }
 
-function buildLinks(
+/**
+ * Build the "rotation" Sankey: narrative → narrative capital flows.
+ */
+function buildRotationData(
+  narratives: NarrativeSummary[],
   rotations: NarrativeRotation[],
   nameMap: Map<string, string>
-): SankeyLink[] {
-  const dedupedRotations = deduplicateCycles(rotations, nameMap);
+): SankeyData {
+  const deduped = deduplicateCycles(rotations, nameMap);
 
-  return dedupedRotations.map((r) => ({
+  // Collect unique narrative names that appear in any rotation
+  const nameSet = new Set<string>();
+  for (const r of deduped) {
+    nameSet.add(resolveName(r.from, nameMap));
+    nameSet.add(resolveName(r.to, nameMap));
+  }
+
+  // Build a quick lookup: displayName → NarrativeSummary (for coloring)
+  const narrativeLookup = new Map<string, NarrativeSummary>();
+  for (const n of narratives) {
+    narrativeLookup.set(n.displayName, n);
+  }
+
+  const nodes: SankeyNode[] = Array.from(nameSet).map((name) => {
+    const n = narrativeLookup.get(name);
+    const color = n
+      ? n.totalNetflow24h >= 0
+        ? COLOR_INFLOW
+        : COLOR_OUTFLOW
+      : TEXT_SECONDARY;
+    return { name, itemStyle: { color } };
+  });
+
+  const links: SankeyLink[] = deduped.map((r) => ({
     source: resolveName(r.from, nameMap),
     target: resolveName(r.to, nameMap),
-    value: Math.abs(r.valueUsd),
+    value: Math.abs(r.valueUsd) || 1,
     lineStyle: {
-      color: r.direction === "inflow" ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
+      color:
+        r.direction === "inflow" ? COLOR_LINK_INFLOW : COLOR_LINK_OUTFLOW,
     },
   }));
+
+  return {
+    title: "Narrative Rotation Map — Capital Flows",
+    nodes,
+    links,
+  };
+}
+
+// ============================================================
+// ECharts Option Builder
+// ============================================================
+
+function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
+  return {
+    backgroundColor: BG_COLOR,
+    title: {
+      text: data.title,
+      left: "center",
+      top: 16,
+      textStyle: {
+        fontSize: 22,
+        fontWeight: 700,
+        color: TEXT_TITLE,
+      },
+    },
+    tooltip: {
+      trigger: "item",
+      triggerOn: "mousemove",
+      backgroundColor: "rgba(26, 26, 46, 0.95)",
+      borderColor: "#2a2a4a",
+      textStyle: { color: TEXT_LABEL, fontSize: 13 },
+      formatter: (params: unknown) => {
+        // ECharts tooltip formatter in SSR — return plain string
+        const p = params as {
+          dataType?: string;
+          name?: string;
+          data?: { source?: string; target?: string; value?: number };
+        };
+        if (p.dataType === "edge" && p.data) {
+          const { source, target, value } = p.data;
+          const formatted = value != null ? formatUsd(value) : "N/A";
+          return `${source} → ${target}<br/>Flow: ${formatted}`;
+        }
+        return p.name ?? "";
+      },
+    },
+    series: [
+      {
+        type: "sankey",
+        emphasis: { focus: "adjacency" },
+        nodeAlign: "justify",
+        nodeGap: 16,
+        nodeWidth: 24,
+        layoutIterations: 32,
+        top: 70,
+        bottom: 40,
+        left: 60,
+        right: 60,
+        label: {
+          fontSize: 13,
+          color: TEXT_LABEL,
+          fontWeight: 500,
+        },
+        lineStyle: {
+          color: "gradient",
+          curveness: 0.5,
+          opacity: 0.35,
+        },
+        data: data.nodes,
+        links: data.links,
+      },
+    ],
+  };
 }
 
 // ============================================================
@@ -135,10 +307,16 @@ function buildLinks(
 // ============================================================
 
 /**
- * Render a Sankey diagram visualizing capital flows between narratives.
+ * Render a Sankey diagram visualising Smart Money capital allocation.
  *
- * @param narratives - List of narrative summaries (become nodes)
- * @param rotations - List of rotations between narratives (become links)
+ * Two modes:
+ *  - **Allocation** (default): "Smart Money" → top 12 narratives.
+ *    Always renders, even on the first run when rotations are empty.
+ *  - **Rotation**: narrative → narrative capital flows.
+ *    Used only when enough rotation links exist (requires 2+ scans).
+ *
+ * @param narratives - List of narrative summaries
+ * @param rotations  - List of rotations between narratives (empty on first run)
  * @returns Path to the saved PNG file in the output/ directory
  */
 export async function renderSankey(
@@ -149,13 +327,19 @@ export async function renderSankey(
     throw new Error("No narratives to render");
   }
 
-  // Ensure output directory exists
   await mkdir("output", { recursive: true });
 
-  // Build data structures
+  // Decide which mode to use
   const nameMap = buildNameMap(narratives);
-  const nodes = buildNodes(narratives);
-  const links = buildLinks(rotations, nameMap);
+  const useRotationMode =
+    rotations.length >= MIN_ROTATION_LINKS;
+
+  const data: SankeyData = useRotationMode
+    ? buildRotationData(narratives, rotations, nameMap)
+    : buildAllocationData(narratives);
+
+  const mode = useRotationMode ? "rotation" : "allocation";
+  log(`Mode: ${mode} (${data.nodes.length} nodes, ${data.links.length} links)`);
 
   // Initialize ECharts in SSR mode
   const chart = echarts.init(null, null, {
@@ -166,50 +350,36 @@ export async function renderSankey(
   });
 
   try {
-    // Configure chart options
-    chart.setOption({
-      title: {
-        text: "Narrative Rotation Map — Smart Money Flows",
-        left: "center",
-        textStyle: { fontSize: 24, color: "#333" },
-      },
-      tooltip: {
-        trigger: "item",
-        triggerOn: "mousemove",
-      },
-      series: [
-        {
-          type: "sankey",
-          layout: "none",
-          emphasis: { focus: "adjacency" },
-          nodeAlign: "justify",
-          nodeGap: 20,
-          nodeWidth: 30,
-          layoutIterations: 32,
-          label: { fontSize: 14, color: "#333" },
-          lineStyle: {
-            color: "gradient",
-            curveness: 0.5,
-            opacity: 0.4,
-          },
-          data: nodes,
-          links: links,
-        },
-      ],
-    });
+    const option = buildEchartsOption(data);
+    chart.setOption(option);
 
     // Render SVG string
     const svgStr = chart.renderToSVGString({ useViewBox: true });
 
-    // Convert SVG → PNG via sharp
-    const pngBuffer = await sharp(Buffer.from(svgStr)).png().toBuffer();
+    // Convert SVG → PNG via sharp, compositing on dark background
+    // (ECharts SVG may not include a rect for backgroundColor in SSR mode)
+    const pngBuffer = await sharp({
+      create: {
+        width: CHART_WIDTH,
+        height: CHART_HEIGHT,
+        channels: 4,
+        background: { r: 26, g: 26, b: 46, alpha: 1 }, // #1a1a2e
+      },
+    })
+      .composite([{ input: Buffer.from(svgStr), blend: "over" }])
+      .png()
+      .toBuffer();
 
     // Save to output directory with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const outputPath = join("output", `narrative-rotation-${timestamp}.png`);
-    await writeFile(outputPath, pngBuffer);
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    const prefix = useRotationMode ? "narrative-rotation" : "capital-allocation";
+    const outputPath = join("output", `${prefix}-${timestamp}.png`);
 
-    log(`Saved rotation map to ${outputPath} (${CHART_WIDTH}x${CHART_HEIGHT})`);
+    await writeFile(outputPath, pngBuffer);
+    log(`Saved ${mode} map to ${outputPath} (${CHART_WIDTH}x${CHART_HEIGHT})`);
 
     return outputPath;
   } finally {

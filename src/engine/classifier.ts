@@ -18,6 +18,10 @@ export const CATEGORY_ORDER: Record<TokenCategory, number> = {
  * Smart Money netflow data (from netflows API) and market data
  * (from token-screener API).
  *
+ * Matching logic:
+ *  1. Exact match by token_address (primary)
+ *  2. Fallback match by token_symbol + chain (handles address format differences)
+ *
  * Tokens without matching screener data are skipped.
  * Tokens that don't match any category (neutral) are excluded.
  *
@@ -30,16 +34,35 @@ export function classifyTokens(
   screenerData: Map<string, TokenScreenerEntry>,
   thresholds: Config["netflowThresholds"]
 ): ClassifiedToken[] {
+  // Build secondary lookup: "symbol:chain" → screener entry (lowercase key)
+  const screenerBySymbolChain = new Map<string, TokenScreenerEntry>();
+  for (const [, entry] of screenerData) {
+    const lookupKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    // Keep first match only (avoid overwriting with duplicate entries)
+    if (!screenerBySymbolChain.has(lookupKey)) {
+      screenerBySymbolChain.set(lookupKey, entry);
+    }
+  }
+
   const classified: ClassifiedToken[] = [];
+  let matchCount = 0;
+  let missCount = 0;
 
   for (const netflow of netflows) {
-    const screener = screenerData.get(netflow.token_address);
+    // Try exact address match first, then fallback to symbol+chain
+    let screener = screenerData.get(netflow.token_address);
+    if (!screener) {
+      const fallbackKey = `${netflow.token_symbol.toLowerCase()}:${netflow.chain}`;
+      screener = screenerBySymbolChain.get(fallbackKey);
+    }
 
     // Cannot classify without price/volume data
     if (!screener) {
+      missCount++;
       continue;
     }
 
+    matchCount++;
     const category = determineCategory(netflow, screener, thresholds);
 
     // Neutral tokens are excluded from the result
@@ -60,6 +83,10 @@ export function classifyTokens(
       marketCapUsd: netflow.market_cap_usd ?? 0,
     });
   }
+
+  console.log(
+    `[Classifier] Screener match: ${matchCount}/${netflows.length} tokens (${missCount} unmatched)`
+  );
 
   classified.sort((a, b) => {
     const categoryDiff = CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];

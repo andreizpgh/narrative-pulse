@@ -1,6 +1,7 @@
 // ============================================================
-// Agent API wrapper for /agent/fast endpoint (non-streaming)
+// Agent API wrapper for /agent/fast endpoint
 // Separate from nansenPost — different response format (no data wrapper, no pagination)
+// Handles SSE streaming responses: "data: {json}\n" events are concatenated into a single content string
 // ============================================================
 
 import { getApiKey } from "./client.js";
@@ -87,26 +88,74 @@ export async function queryAgent(prompt: string): Promise<AgentResponse> {
       throw new Error(`Agent API error: ${status} — ${responseBody}`);
     }
 
-    // Parse response body — Agent API returns JSON directly (no { data } wrapper)
-    const raw = (await response.json()) as Record<string, unknown>;
+    // Read as text — Agent API may return SSE format or plain JSON
+    const responseText = await response.text();
 
-    const content = typeof raw.content === "string"
-      ? raw.content
-      : JSON.stringify(raw);
-
-    // Extract credits: headers first, then body fallback
+    // Extract credits from headers first (primary source)
     const creditsUsedHeader = response.headers.get("X-Nansen-Credits-Used");
     const creditsRemainingHeader = response.headers.get("X-Nansen-Credits-Remaining");
 
-    const creditsUsed = creditsUsedHeader !== null
+    let creditsUsed = creditsUsedHeader !== null
       ? parseInt(creditsUsedHeader, 10) || 0
-      : (typeof raw.credits_used === "number" ? raw.credits_used : 0);
-
-    const creditsRemaining = creditsRemainingHeader !== null
+      : 0;
+    let creditsRemaining = creditsRemainingHeader !== null
       ? parseInt(creditsRemainingHeader, 10) || 0
-      : (typeof raw.credits_remaining === "number" ? raw.credits_remaining : 0);
+      : 0;
 
-    log(`Agent API query → ${creditsUsed} credits used (${creditsRemaining} remaining)`);
+    // ---- Parse SSE events ----
+    // SSE format: "data: {json}\n\n" per event
+    // Event types: {"ty":"delta","content":"..."} or {"ty":"finish","content":""}
+    let content = "";
+    let sseFound = false;
+
+    const lines = responseText.split("\n");
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const jsonStr = line.slice(6); // Remove "data: " prefix
+        if (jsonStr.trim() === "") continue;
+
+        sseFound = true;
+        try {
+          const event = JSON.parse(jsonStr) as Record<string, unknown>;
+          if (typeof event.content === "string") {
+            content += event.content;
+          }
+          // Fallback: extract credits from body if not in headers
+          if (typeof event.credits_used === "number" && creditsUsed === 0) {
+            creditsUsed = event.credits_used;
+          }
+          if (typeof event.credits_remaining === "number" && creditsRemaining === 0) {
+            creditsRemaining = event.credits_remaining;
+          }
+        } catch {
+          // Malformed SSE line — treat the whole response as raw text
+          content = responseText;
+          break;
+        }
+      }
+    }
+
+    // ---- Fallback: try plain JSON if no SSE events found ----
+    if (!sseFound || !content) {
+      try {
+        const raw = JSON.parse(responseText) as Record<string, unknown>;
+        content = typeof raw.content === "string"
+          ? raw.content
+          : JSON.stringify(raw);
+        // Extract credits from body if not in headers
+        if (typeof raw.credits_used === "number" && creditsUsed === 0) {
+          creditsUsed = raw.credits_used;
+        }
+        if (typeof raw.credits_remaining === "number" && creditsRemaining === 0) {
+          creditsRemaining = raw.credits_remaining;
+        }
+      } catch {
+        // Not JSON either — use raw text as content
+        content = responseText;
+      }
+    }
+
+    log(`Agent API query → ${content.length} chars, ${creditsUsed} credits used (${creditsRemaining} remaining)`);
 
     return { content, creditsUsed, creditsRemaining };
   } catch (error) {

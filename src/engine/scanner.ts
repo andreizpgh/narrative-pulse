@@ -5,6 +5,7 @@
 
 import { fetchNetflows } from "../api/netflows.js";
 import { fetchTokenScreener } from "../api/token-screener.js";
+import { getAndResetStats } from "../api/client.js";
 import { discoverSectors } from "./discovery.js";
 import { aggregateByNarrative, toNarrativeKey } from "./aggregator.js";
 import { classifyTokens } from "./classifier.js";
@@ -227,6 +228,7 @@ export async function runScan(): Promise<ScanResult> {
   const subNarratives = await stepSubNarratives(topNarrative, netflowEntries);
 
   // Build result
+  const stats = getAndResetStats();
   const result: ScanResult = {
     timestamp: new Date().toISOString(),
     sectors,
@@ -234,8 +236,8 @@ export async function runScan(): Promise<ScanResult> {
     rotations,
     subNarratives: subNarratives ?? undefined,
     topNarrativeKey: topNarrative?.key,
-    apiCallsUsed: 0, // TODO: proper API call tracking
-    creditsUsed: 0, // TODO: proper credits tracking
+    apiCallsUsed: stats.apiCalls,
+    creditsUsed: stats.creditsUsed,
   };
 
   // Save snapshot for next run's rotation tracking
