@@ -57,7 +57,7 @@ export function classifyTokens(
       buyVolume: screener.buy_volume,
       sellVolume: screener.sell_volume,
       traderCount: netflow.trader_count,
-      marketCapUsd: netflow.market_cap_usd,
+      marketCapUsd: netflow.market_cap_usd ?? 0,
     });
   }
 

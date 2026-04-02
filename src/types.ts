@@ -13,7 +13,7 @@ export interface NetflowEntry {
   token_sectors: string[];
   trader_count: number;
   token_age_days: number;
-  market_cap_usd: number;
+  market_cap_usd?: number;
 }
 
 export interface TokenScreenerEntry {

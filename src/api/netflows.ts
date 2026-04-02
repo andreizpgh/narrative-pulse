@@ -1,5 +1,5 @@
 // ============================================================
-// smart-money/netflows endpoint wrapper
+// smart-money/netflow endpoint wrapper
 // Fetches Smart Money netflows across chains with pagination
 // ============================================================
 
@@ -12,7 +12,7 @@ import { config } from "../config.js";
 // Constants
 // ============================================================
 
-const ENDPOINT = "/smart-money/netflows";
+const ENDPOINT = "/smart-money/netflow";
 const MAX_PAGES = 5;
 
 // ============================================================
@@ -47,8 +47,15 @@ export async function fetchNetflows(
         order_by: [{ field: "net_flow_24h_usd", direction: "DESC" }],
       };
 
+      const filters: Record<string, unknown> = {};
       if (minMarketCap !== undefined) {
-        body.filters = { market_cap_usd: { min: minMarketCap } };
+        filters.market_cap_usd = { min: minMarketCap };
+      }
+      if (minTraderCount !== undefined) {
+        filters.trader_count = { min: minTraderCount };
+      }
+      if (Object.keys(filters).length > 0) {
+        body.filters = filters;
       }
 
       const response: NansenResponse<NetflowEntry[]> = await nansenPost<NetflowEntry[]>(
@@ -73,15 +80,9 @@ export async function fetchNetflows(
     }
   }
 
-  // Client-side filtering by trader count
-  const filtered =
-    minTraderCount !== undefined
-      ? allEntries.filter((entry) => entry.trader_count >= minTraderCount)
-      : allEntries;
-
   log(
-    `Fetched ${filtered.length} netflow entries across ${totalPages} pages (${totalCredits} credits)`
+    `Fetched ${allEntries.length} netflow entries across ${totalPages} pages (${totalCredits} credits)`
   );
 
-  return filtered;
+  return allEntries;
 }

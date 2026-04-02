@@ -13,7 +13,7 @@ import { config } from "../config.js";
 // Constants
 // ============================================================
 
-const ENDPOINT = "/tgm/token-screener";
+const ENDPOINT = "/token-screener";
 const MAX_PAGES = 10; // token-screener costs only 1 credit per request
 
 // ============================================================
@@ -62,6 +62,7 @@ export async function fetchTokenScreener(
       // Build request body
       const body: Record<string, unknown> = {
         chains,
+        timeframe: "24h",
         pagination: { page, per_page: config.apiPageSize },
         order_by: [{ field: "netflow", direction: "DESC" }],
       };

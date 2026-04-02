@@ -52,7 +52,7 @@ function buildTokenList(tokens: NetflowEntry[]): string {
   const topTokens = tokens.slice(0, MAX_TOKENS_IN_PROMPT);
   return topTokens
     .map((t) =>
-      `${t.token_symbol} | chain: ${t.chain} | netflow_24h: ${formatUsd(t.net_flow_24h_usd)} | mcap: ${formatMcap(t.market_cap_usd)}`
+      `${t.token_symbol} | chain: ${t.chain} | netflow_24h: ${formatUsd(t.net_flow_24h_usd)} | mcap: ${formatMcap(t.market_cap_usd ?? 0)}`
     )
     .join("\n");
 }

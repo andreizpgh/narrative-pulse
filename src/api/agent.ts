@@ -60,8 +60,7 @@ export async function queryAgent(prompt: string): Promise<AgentResponse> {
   const url = `${BASE_URL}${AGENT_ENDPOINT}`;
 
   const body = {
-    messages: [{ role: "user" as const, content: prompt }],
-    stream: false,
+    text: prompt,
   };
 
   try {
