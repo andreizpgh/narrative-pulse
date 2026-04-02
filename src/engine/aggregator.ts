@@ -64,9 +64,9 @@ export function aggregateByNarrative(
       0
     );
 
-    // Filter: keep narratives with at least 1 token (any SM activity is signal)
+    // Filter: keep narratives with meaningful signal
     const isSignificant =
-      group.length >= 1 || Math.abs(totalNetflow24h) > 50;
+      group.length >= 2 || Math.abs(totalNetflow24h) > 1_000;
     if (!isSignificant) continue;
 
     summaries.push({

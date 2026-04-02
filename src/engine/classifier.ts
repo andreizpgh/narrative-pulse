@@ -34,8 +34,8 @@ function normalizeAddress(address: string): string {
  *  1. Exact match by token_address (primary)
  *  2. Fallback match by token_symbol + chain (handles address format differences)
  *
- * Tokens without matching screener data are classified via netflow-only rules.
- * Every token is classified — none are excluded as "neutral".
+ * Tokens without a meaningful signal (neutral zone) are EXCLUDED.
+ * Only tokens with actionable signals are returned.
  *
  * Results are sorted:
  *  1. By category: hot → watch → avoid
@@ -52,7 +52,6 @@ export function classifyTokens(
   const screenerBySymbolChain = new Map<string, TokenScreenerEntry>();
   for (const [, entry] of screenerData) {
     const normKey = normalizeAddress(entry.token_address);
-    // Keep first match only (avoid overwriting with duplicate entries)
     if (!screenerNormalized.has(normKey)) {
       screenerNormalized.set(normKey, entry);
     }
@@ -65,36 +64,24 @@ export function classifyTokens(
   const classified: ClassifiedToken[] = [];
   let matchCount = 0;
   let missCount = 0;
+  let skippedCount = 0;
 
   for (const netflow of netflows) {
     // Try normalized address match first, then fallback to symbol+chain
     const normalizedAddr = normalizeAddress(netflow.token_address);
     const symbolChainKey = `${netflow.token_symbol.toLowerCase()}:${netflow.chain}`;
-    const screener = screenerNormalized.get(normalizedAddr) 
+    const screener = screenerNormalized.get(normalizedAddr)
       ?? screenerBySymbolChain.get(symbolChainKey);
 
-    let category: TokenCategory;
+    const category: TokenCategory | null = screener
+      ? (matchCount++, determineCategory(netflow, screener, thresholds))
+      : (missCount++, determineCategoryNetflowOnly(netflow));
 
-    if (screener) {
-      // Full classification with price/volume data
-      matchCount++;
-      category = determineCategory(netflow, screener, thresholds);
-    } else {
-      // Netflow-only: classify even tiny amounts — any SM activity is useful signal
-      missCount++;
-      if (netflow.net_flow_24h_usd > 500) {
-        category = "hot";
-      } else if (netflow.net_flow_24h_usd > 0) {
-        category = "watch"; // ANY positive SM netflow is interesting
-      } else if (netflow.net_flow_24h_usd < -100) {
-        category = "avoid";
-      } else {
-        // Small negative netflow (-100 to 0) — SM was recently there, still worth watching
-        category = "watch";
-      }
+    // Skip tokens with no meaningful signal (null = neutral)
+    if (category === null) {
+      skippedCount++;
+      continue;
     }
-
-    // Every token must be classified — no null/neutral exclusion
 
     classified.push({
       token_symbol: netflow.token_symbol,
@@ -112,20 +99,9 @@ export function classifyTokens(
   }
 
   console.log(
-    `[Classifier] Screener match: ${matchCount}/${netflows.length} tokens (${missCount} unmatched, classified via netflow-only)`
+    `[Classifier] Screener match: ${matchCount}/${netflows.length}, ` +
+    `classified: ${classified.length}, skipped: ${skippedCount} (neutral/no signal)`
   );
-
-  // Debug: show some examples of unmatched tokens
-  if (missCount > 0) {
-    const unmatched = netflows.filter(n => {
-      const addr = normalizeAddress(n.token_address);
-      const sym = `${n.token_symbol.toLowerCase()}:${n.chain}`;
-      return !screenerNormalized.has(addr) && !screenerBySymbolChain.has(sym);
-    }).slice(0, 3);
-    console.log(
-      `[Classifier] Unmatched examples: ${unmatched.map(t => `${t.token_symbol}(${t.chain}:${t.token_address.slice(0, 10)}...)`).join(", ")}`
-    );
-  }
 
   classified.sort((a, b) => {
     const categoryDiff = CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
@@ -137,18 +113,16 @@ export function classifyTokens(
 }
 
 /**
- * Determines the category for a single token.
- * Always returns a category — even tokens in the "neutral" zone are classified as "watch"
- * because any SM activity is useful signal.
+ * Determines the category for a token that has screener data.
+ * Returns null for tokens without a strong signal.
  *
- * Evaluation order matters: Hot is checked before Watch
- * because Hot is a stricter subset of Watch.
+ * Evaluation order: Hot (strict) → Watch → Avoid → null (neutral).
  */
 function determineCategory(
   netflow: NetflowEntry,
   screener: TokenScreenerEntry,
   thresholds: Config["netflowThresholds"]
-): TokenCategory {
+): TokenCategory | null {
   // Hot: SM accumulates AND price already rising
   if (
     netflow.net_flow_24h_usd > thresholds.hot.minNetflowUsd &&
@@ -168,7 +142,25 @@ function determineCategory(
     return "avoid";
   }
 
-  // Neutral — between watch and avoid thresholds, still classify as watch
-  // (SM was active on this token — that's useful data)
-  return "watch";
+  // Neutral — has screener data but no strong signal
+  return null;
+}
+
+/**
+ * Determines the category for a token WITHOUT screener data.
+ * Uses netflow-only thresholds (higher than screener-backed classification).
+ * Returns null for tokens without meaningful netflow.
+ */
+function determineCategoryNetflowOnly(
+  netflow: NetflowEntry
+): TokenCategory | null {
+  // Strong accumulation without price data
+  if (netflow.net_flow_24h_usd > 5_000) return "hot";
+  // Moderate accumulation
+  if (netflow.net_flow_24h_usd > 1_000) return "watch";
+  // Distribution
+  if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+
+  // Not enough signal to classify
+  return null;
 }
