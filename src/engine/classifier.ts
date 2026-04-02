@@ -102,6 +102,7 @@ export function classifyTokens(
       chain: netflow.chain,
       category,
       netflow24hUsd: netflow.net_flow_24h_usd,
+      netflow7dUsd: netflow.net_flow_7d_usd,
       priceChange: screener?.price_change ?? 0,
       buyVolume: screener?.buy_volume ?? 0,
       sellVolume: screener?.sell_volume ?? 0,

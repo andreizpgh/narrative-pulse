@@ -1,6 +1,7 @@
 // ============================================================
-// HTML Report — Standalone interactive report with ECharts
-// Generates a self-contained HTML file that opens in any browser
+// HTML Report — Standalone interactive Smart Money dashboard
+// Generates a self-contained HTML file with ECharts Sankey,
+// narrative cards, and token tables. Opens in any browser.
 // ============================================================
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -22,10 +23,10 @@ interface HtmlReportToken {
   token_symbol: string;
   category: string;
   netflow24hUsd: number;
+  netflow7dUsd: number;
   priceChange: number;
   buyVolume: number;
   sellVolume: number;
-  traderCount: number;
   marketCapUsd: number;
 }
 
@@ -34,7 +35,6 @@ interface HtmlReportNarrative {
   totalNetflow24h: number;
   totalNetflow7d: number;
   tokenCount: number;
-  traderCount: number;
   isHot: boolean;
   topTokens: HtmlReportToken[];
 }
@@ -55,9 +55,7 @@ interface HtmlReportSubNarrative {
 
 interface HtmlReportData {
   timestamp: string;
-  apiCallsUsed: number;
   creditsUsed: number;
-  sectors: string[];
   narratives: HtmlReportNarrative[];
   rotations: HtmlReportRotation[];
   subNarratives?: HtmlReportSubNarrative[];
@@ -77,10 +75,10 @@ function toHtmlToken(t: ClassifiedToken): HtmlReportToken {
     token_symbol: t.token_symbol,
     category: t.category,
     netflow24hUsd: t.netflow24hUsd,
+    netflow7dUsd: t.netflow7dUsd ?? 0,
     priceChange: t.priceChange,
     buyVolume: t.buyVolume,
     sellVolume: t.sellVolume,
-    traderCount: t.traderCount,
     marketCapUsd: t.marketCapUsd,
   };
 }
@@ -91,7 +89,6 @@ function toHtmlNarrative(n: NarrativeSummary): HtmlReportNarrative {
     totalNetflow24h: n.totalNetflow24h,
     totalNetflow7d: n.totalNetflow7d,
     tokenCount: n.tokenCount,
-    traderCount: n.traderCount,
     isHot: n.isHot,
     topTokens: n.topTokens.map(toHtmlToken),
   };
@@ -118,9 +115,7 @@ function toHtmlSubNarrative(s: SubNarrative): HtmlReportSubNarrative {
 function toHtmlReportData(result: ScanResult): HtmlReportData {
   return {
     timestamp: result.timestamp,
-    apiCallsUsed: result.apiCallsUsed,
     creditsUsed: result.creditsUsed,
-    sectors: result.sectors,
     narratives: result.narratives.map(toHtmlNarrative),
     rotations: result.rotations.map(toHtmlRotation),
     subNarratives: result.subNarratives?.map(toHtmlSubNarrative),
@@ -140,29 +135,29 @@ function generateHtml(data: HtmlReportData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Narrative Pulse — Smart Money Rotation Report</title>
+  <title>Narrative Pulse — Smart Money Narrative Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <style>
     :root {
-      --bg-primary: #1a1a2e;
-      --bg-card: #16213e;
-      --bg-card-alt: #1a2744;
-      --text-primary: #e0e0e0;
-      --text-secondary: #a0a0b0;
-      --color-hot: #2ecc71;
-      --color-watch: #f39c12;
-      --color-avoid: #e74c3c;
-      --color-inflow: rgba(46, 204, 113, 0.5);
-      --color-outflow: rgba(231, 76, 60, 0.5);
-      --border-color: #2a2a4a;
-      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+      --bg-primary: #0f1117;
+      --bg-card: #181b25;
+      --bg-card-alt: #1e2230;
+      --bg-card-hover: #252a3a;
+      --text-primary: #e8e9ed;
+      --text-secondary: #8b8fa3;
+      --text-muted: #5a5e72;
+      --color-hot: #34d399;
+      --color-watch: #fbbf24;
+      --color-avoid: #f87171;
+      --color-inflow: rgba(52, 211, 153, 0.5);
+      --color-outflow: rgba(248, 113, 113, 0.5);
+      --color-accent: #818cf8;
+      --border-color: #2a2d3a;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      --radius: 12px;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -173,7 +168,7 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 0 24px 48px;
     }
@@ -182,54 +177,82 @@ function generateHtml(data: HtmlReportData): string {
 
     .header {
       text-align: center;
-      padding: 48px 24px 32px;
+      padding: 48px 24px 36px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 32px;
     }
 
     .header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
       color: #ffffff;
     }
 
-    .header .subtitle {
+    .header .tagline {
       font-size: 0.95rem;
       color: var(--text-secondary);
-      margin-bottom: 20px;
+      margin-bottom: 8px;
     }
 
-    .header .stats {
+    .header .date {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .header .hero-metric {
+      display: inline-block;
+      padding: 8px 24px;
+      border-radius: 8px;
+      background: rgba(129, 140, 248, 0.1);
+      border: 1px solid rgba(129, 140, 248, 0.25);
+      margin-bottom: 24px;
+    }
+
+    .hero-metric .hero-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    .hero-metric .hero-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .stats-row {
       display: flex;
       justify-content: center;
-      gap: 32px;
+      gap: 40px;
       flex-wrap: wrap;
     }
 
-    .header .stat {
+    .stat {
       text-align: center;
     }
 
-    .header .stat-value {
+    .stat-value {
       font-size: 1.5rem;
       font-weight: 700;
       color: #ffffff;
     }
 
-    .header .stat-label {
-      font-size: 0.8rem;
+    .stat-label {
+      font-size: 0.75rem;
       color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
     }
 
     /* ── Cards ──────────────────────────────────────────── */
 
     .card {
       background: var(--bg-card);
-      border-radius: 12px;
+      border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 24px;
       margin-bottom: 24px;
@@ -237,7 +260,7 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .card-title {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       font-weight: 600;
       margin-bottom: 16px;
       color: #ffffff;
@@ -250,18 +273,75 @@ function generateHtml(data: HtmlReportData): string {
 
     #sankey-chart {
       width: 100%;
-      height: 500px;
-      min-height: 400px;
+      height: 600px;
     }
 
     .sankey-card {
       margin-bottom: 32px;
     }
 
-    /* ── Narrative Tables ───────────────────────────────── */
+    .sankey-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: center;
+    }
 
-    .narrative-section {
-      margin-bottom: 24px;
+    /* ── Section Headers ────────────────────────────────── */
+
+    .section-hot {
+      margin-bottom: 32px;
+    }
+
+    .section-cold {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      padding: 14px 20px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      margin-bottom: 0;
+    }
+
+    .hot-title {
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(52, 211, 153, 0.04));
+      color: var(--color-hot);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      border-bottom: none;
+    }
+
+    .cold-title {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.10), rgba(96, 165, 250, 0.03));
+      color: #60a5fa;
+      border: 1px solid rgba(96, 165, 250, 0.15);
+      border-bottom: none;
+    }
+
+    .section-body {
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 16px;
+    }
+
+    .empty-section {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Narrative Cards ────────────────────────────────── */
+
+    .narrative-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border-color);
+      scroll-margin-top: 24px;
     }
 
     .narrative-header {
@@ -269,7 +349,7 @@ function generateHtml(data: HtmlReportData): string {
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border-color);
@@ -277,68 +357,66 @@ function generateHtml(data: HtmlReportData): string {
 
     .narrative-name {
       font-size: 1.15rem;
-      font-weight: 600;
+      font-weight: 700;
       color: #ffffff;
     }
 
-    .narrative-stats {
+    .narrative-metrics {
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
+      align-items: center;
     }
 
-    .narrative-stat {
+    .metric {
       font-size: 0.85rem;
       color: var(--text-secondary);
     }
 
-    .narrative-stat strong {
-      color: var(--text-primary);
+    .metric strong {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     }
 
     .netflow-positive { color: var(--color-hot) !important; }
     .netflow-negative { color: var(--color-avoid) !important; }
 
-    /* ── Category Badges ────────────────────────────────── */
+    /* ── Token Groups & Badges ──────────────────────────── */
 
-    .category-section {
+    .token-group {
       margin-bottom: 16px;
     }
 
-    .category-badge {
+    .token-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .group-badge {
       display: inline-block;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 600;
+      padding: 3px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       margin-bottom: 10px;
     }
 
     .badge-hot {
-      background: rgba(46, 204, 113, 0.15);
+      background: rgba(52, 211, 153, 0.12);
       color: var(--color-hot);
-      border: 1px solid rgba(46, 204, 113, 0.3);
+      border: 1px solid rgba(52, 211, 153, 0.25);
     }
 
     .badge-watch {
-      background: rgba(243, 156, 18, 0.15);
+      background: rgba(251, 191, 36, 0.12);
       color: var(--color-watch);
-      border: 1px solid rgba(243, 156, 18, 0.3);
+      border: 1px solid rgba(251, 191, 36, 0.25);
     }
 
     .badge-avoid {
-      background: rgba(231, 76, 60, 0.15);
+      background: rgba(248, 113, 113, 0.12);
       color: var(--color-avoid);
-      border: 1px solid rgba(231, 76, 60, 0.3);
-    }
-
-    .empty-category {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      padding-left: 8px;
-      font-style: italic;
+      border: 1px solid rgba(248, 113, 113, 0.25);
     }
 
     /* ── Tables ─────────────────────────────────────────── */
@@ -346,16 +424,16 @@ function generateHtml(data: HtmlReportData): string {
     .token-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
 
     .token-table thead th {
       text-align: left;
       padding: 10px 12px;
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       color: var(--text-secondary);
       border-bottom: 1px solid var(--border-color);
       background: var(--bg-card-alt);
@@ -363,16 +441,24 @@ function generateHtml(data: HtmlReportData): string {
 
     .token-table tbody td {
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(42, 42, 74, 0.5);
+      border-bottom: 1px solid rgba(42, 45, 58, 0.5);
       color: var(--text-primary);
     }
 
+    .token-table tbody tr {
+      transition: background 0.15s ease;
+    }
+
     .token-table tbody tr:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: var(--bg-card-hover);
     }
 
     .token-table tbody tr:last-child td {
       border-bottom: none;
+    }
+
+    .token-table .mono {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     }
 
     /* ── Sub-narratives ─────────────────────────────────── */
@@ -385,17 +471,9 @@ function generateHtml(data: HtmlReportData): string {
       border-left: 3px solid var(--text-secondary);
     }
 
-    .sub-narrative-card.conviction-high {
-      border-left-color: var(--color-hot);
-    }
-
-    .sub-narrative-card.conviction-medium {
-      border-left-color: var(--color-watch);
-    }
-
-    .sub-narrative-card.conviction-low {
-      border-left-color: var(--color-avoid);
-    }
+    .sub-narrative-card.conviction-high { border-left-color: var(--color-hot); }
+    .sub-narrative-card.conviction-medium { border-left-color: var(--color-watch); }
+    .sub-narrative-card.conviction-low { border-left-color: var(--color-avoid); }
 
     .sub-narrative-name {
       font-weight: 600;
@@ -419,7 +497,7 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .conviction-tag {
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
       font-size: 0.75rem;
       letter-spacing: 0.05em;
@@ -429,71 +507,28 @@ function generateHtml(data: HtmlReportData): string {
     .conviction-tag.medium { color: var(--color-watch); }
     .conviction-tag.low { color: var(--color-avoid); }
 
-    /* ── Rotations List ─────────────────────────────────── */
-
-    .rotation-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(42, 42, 74, 0.5);
-      font-size: 0.9rem;
-    }
-
-    .rotation-item:last-child {
-      border-bottom: none;
-    }
-
-    .rotation-arrow {
-      color: var(--text-secondary);
-      font-size: 1.1rem;
-    }
-
-    .rotation-value {
-      margin-left: auto;
-      font-weight: 600;
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    }
-
     /* ── Footer ─────────────────────────────────────────── */
 
     .footer {
       text-align: center;
       padding: 24px;
       font-size: 0.8rem;
-      color: var(--text-secondary);
+      color: var(--text-muted);
       border-top: 1px solid var(--border-color);
       margin-top: 32px;
     }
 
     /* ── Responsive ─────────────────────────────────────── */
 
-    .sector-tags {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 16px;
-    }
-
-    .sector-tag {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 16px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      background: rgba(108, 92, 231, 0.15);
-      color: #a29bfe;
-      border: 1px solid rgba(108, 92, 231, 0.3);
-    }
-
     @media (max-width: 768px) {
       .header h1 { font-size: 1.5rem; }
-      .header .stats { gap: 16px; }
+      .stats-row { gap: 20px; }
+      .hero-metric .hero-value { font-size: 1.2rem; }
       .card { padding: 16px; }
-      #sankey-chart { height: 400px; min-height: 300px; }
+      .narrative-card { padding: 14px 16px; }
+      #sankey-chart { height: 400px; }
       .narrative-header { flex-direction: column; align-items: flex-start; }
-      .token-table { font-size: 0.8rem; }
+      .token-table { font-size: 0.78rem; }
       .token-table thead th,
       .token-table tbody td { padding: 8px 6px; }
     }
@@ -504,21 +539,32 @@ function generateHtml(data: HtmlReportData): string {
     <!-- Header -->
     <header class="header" id="report-header">
       <h1>Narrative Pulse</h1>
-      <p class="subtitle" id="header-subtitle">Smart Money Rotation Report</p>
-      <div class="stats" id="header-stats"></div>
-      <div class="sector-tags" id="sector-tags"></div>
+      <p class="tagline">Smart Money Narrative Tracker</p>
+      <p class="date" id="header-date"></p>
+      <div id="hero-metric"></div>
+      <div class="stats-row" id="header-stats"></div>
     </header>
 
     <!-- Sankey Chart -->
-    <div class="card sankey-card">
-      <div class="card-title">&#x1F30A; Narrative Rotation Map</div>
+    <div class="card sankey-card" id="sankey-section">
+      <div class="card-title">Narrative Rotation Map</div>
       <div id="sankey-chart"></div>
+      <div class="sankey-hint">Click a narrative node to jump to its detail section</div>
     </div>
 
-    <!-- Narrative Tables -->
-    <div id="narrative-tables"></div>
+    <!-- Hot Narratives -->
+    <section class="section-hot" id="section-hot">
+      <h2 class="section-title hot-title">Hot Narratives</h2>
+      <div class="section-body" id="hot-narratives"></div>
+    </section>
 
-    <!-- Sub-narratives -->
+    <!-- Cold Narratives -->
+    <section class="section-cold" id="section-cold">
+      <h2 class="section-title cold-title">Cold Narratives</h2>
+      <div class="section-body" id="cold-narratives"></div>
+    </section>
+
+    <!-- Sub-narratives (only rendered if data exists) -->
     <div id="sub-narratives"></div>
 
     <!-- Footer -->
@@ -529,7 +575,10 @@ function generateHtml(data: HtmlReportData): string {
 
   <script>
     // ── Embedded Scan Data ──────────────────────────────────
-    const SCAN_DATA = ${jsonData};
+    var SCAN_DATA = ${jsonData};
+
+    // ── Constants ───────────────────────────────────────────
+    var MIN_NETFLOW = 100; // $100 minimum — filter out noise
 
     // ── Utility Functions ───────────────────────────────────
 
@@ -539,15 +588,23 @@ function generateHtml(data: HtmlReportData): string {
       if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(1) + 'B';
       if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(1) + 'M';
       if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
-      return sign + '$' + abs.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      return sign + '$' + Math.round(abs).toLocaleString('en-US');
+    }
+
+    function formatUsdAbs(value) {
+      var abs = Math.abs(value);
+      if (abs >= 1e9) return '$' + (abs / 1e9).toFixed(1) + 'B';
+      if (abs >= 1e6) return '$' + (abs / 1e6).toFixed(1) + 'M';
+      if (abs >= 1e3) return '$' + (abs / 1e3).toFixed(1) + 'K';
+      return '$' + Math.round(abs).toLocaleString('en-US');
     }
 
     function formatMcap(value) {
-      if (value <= 0) return '\u2014';
+      if (value <= 0) return '\\u2014';
       if (value >= 1e9) return '$' + (value / 1e9).toFixed(1) + 'B';
       if (value >= 1e6) return '$' + (value / 1e6).toFixed(1) + 'M';
       if (value >= 1e3) return '$' + (value / 1e3).toFixed(1) + 'K';
-      return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      return '$' + Math.round(value).toLocaleString('en-US');
     }
 
     function formatPercent(value) {
@@ -561,11 +618,37 @@ function generateHtml(data: HtmlReportData): string {
       return div.innerHTML;
     }
 
-    function truncateName(name, maxLen) {
-      maxLen = maxLen || 20;
-      if (name.length <= maxLen) return name;
-      return name.slice(0, maxLen - 1) + '\\u2026';
+    function slugify(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
+
+    /** Check if a token has meaningful netflow (above noise threshold). */
+    function isActionable(token) {
+      return Math.abs(token.netflow24hUsd) >= MIN_NETFLOW;
+    }
+
+    // ── Data Preprocessing ──────────────────────────────────
+    // Filter tokens below noise threshold and split narratives
+
+    var processedNarratives = SCAN_DATA.narratives.map(function(n) {
+      // Filter tokens: only keep actionable ones
+      var filteredTokens = n.topTokens.filter(isActionable);
+
+      return {
+        displayName: n.displayName,
+        totalNetflow24h: n.totalNetflow24h,
+        totalNetflow7d: n.totalNetflow7d,
+        tokenCount: n.tokenCount,
+        isHot: n.totalNetflow24h > 0,
+        topTokens: filteredTokens,
+        hasMeaningfulData: filteredTokens.length > 0 || Math.abs(n.totalNetflow24h) >= MIN_NETFLOW
+      };
+    }).filter(function(n) {
+      return n.hasMeaningfulData;
+    });
+
+    var hotNarratives = processedNarratives.filter(function(n) { return n.isHot; });
+    var coldNarratives = processedNarratives.filter(function(n) { return !n.isHot; });
 
     // ── Header Rendering ────────────────────────────────────
 
@@ -573,115 +656,130 @@ function generateHtml(data: HtmlReportData): string {
       var dateStr = SCAN_DATA.timestamp
         ? new Date(SCAN_DATA.timestamp).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
         : 'N/A';
+      document.getElementById('header-date').textContent = dateStr;
 
-      var subtitle = document.getElementById('header-subtitle');
-      subtitle.textContent = 'Smart Money Rotation Report \u2014 ' + dateStr;
+      // Hero metric: Total SM Netflow 24h
+      var totalNetflow = processedNarratives.reduce(function(sum, n) {
+        return sum + n.totalNetflow24h;
+      }, 0);
 
-      var totalTokens = SCAN_DATA.narratives.reduce(function(sum, n) { return sum + n.tokenCount; }, 0);
-      var hotCount = SCAN_DATA.narratives.filter(function(n) { return n.isHot; }).length;
+      var heroEl = document.getElementById('hero-metric');
+      var heroClass = totalNetflow >= 0 ? 'netflow-positive' : 'netflow-negative';
+      heroEl.innerHTML =
+        '<div class="hero-metric">' +
+          '<div class="hero-label">Total Smart Money Netflow (24h)</div>' +
+          '<div class="hero-value ' + heroClass + '">' + formatUsd(totalNetflow) + '</div>' +
+        '</div>';
+
+      // Stats
+      var totalTokens = processedNarratives.reduce(function(sum, n) { return sum + n.topTokens.length; }, 0);
 
       document.getElementById('header-stats').innerHTML =
-        '<div class="stat"><div class="stat-value">' + SCAN_DATA.narratives.length + '</div><div class="stat-label">Narratives</div></div>' +
-        '<div class="stat"><div class="stat-value">' + hotCount + '</div><div class="stat-label">Hot</div></div>' +
-        '<div class="stat"><div class="stat-value">' + totalTokens + '</div><div class="stat-label">Tokens</div></div>' +
-        '<div class="stat"><div class="stat-value">' + SCAN_DATA.rotations.length + '</div><div class="stat-label">Rotations</div></div>' +
-        '<div class="stat"><div class="stat-value">' + SCAN_DATA.apiCallsUsed + '</div><div class="stat-label">API Calls</div></div>';
-
-      // Render sector tags
-      if (SCAN_DATA.sectors && SCAN_DATA.sectors.length > 0) {
-        var sectorHtml = SCAN_DATA.sectors.slice(0, 20).map(function(s) {
-          return '<span class="sector-tag">' + escapeHtml(s) + '</span>';
-        }).join('');
-        document.getElementById('sector-tags').innerHTML = sectorHtml;
-      }
+        '<div class="stat"><div class="stat-value">' + processedNarratives.length + '</div><div class="stat-label">Narratives</div></div>' +
+        '<div class="stat"><div class="stat-value">' + hotNarratives.length + '</div><div class="stat-label">Hot Narratives</div></div>' +
+        '<div class="stat"><div class="stat-value">' + totalTokens + '</div><div class="stat-label">Tokens Scanned</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (SCAN_DATA.creditsUsed || 0) + '</div><div class="stat-label">Credits Used</div></div>';
     })();
 
     // ── Sankey Chart ────────────────────────────────────────
 
     (function renderSankey() {
-      if (SCAN_DATA.narratives.length === 0) return;
+      if (processedNarratives.length === 0) {
+        document.getElementById('sankey-section').style.display = 'none';
+        return;
+      }
 
       var chartDom = document.getElementById('sankey-chart');
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
 
-      // Decide mode: rotation (inter-narrative flows) or allocation (Smart Money → Narratives)
-      var hasRotations = SCAN_DATA.rotations && SCAN_DATA.rotations.length > 5;
+      // Build Sankey data: Smart Money -> Narratives (allocation mode)
+      // Only show narratives with meaningful netflow
+      var sankeyNarratives = processedNarratives.slice(0, 15);
 
-      var nodes, links;
+      var nodes = [{ name: 'Smart Money', itemStyle: { color: '#818cf8' } }];
+      var links = [];
 
-      if (hasRotations) {
-        // Rotation mode: flows between narratives
-
-        // Build name resolution map
-        var nameMap = {};
-        SCAN_DATA.narratives.forEach(function(n) {
-          nameMap[n.displayName] = n.displayName;
+      sankeyNarratives.forEach(function(n) {
+        var isPositive = n.totalNetflow24h >= 0;
+        nodes.push({
+          name: n.displayName,
+          itemStyle: { color: isPositive ? '#34d399' : '#f87171' }
         });
 
-        function resolveName(key) {
-          return nameMap[key] || key.replace(/\\+/g, ' ');
-        }
+        var rawValue = Math.abs(n.totalNetflow24h) || 1;
+        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
 
-        nodes = SCAN_DATA.narratives.map(function(n) {
-          return {
-            name: truncateName(n.displayName),
-            itemStyle: { color: n.isHot ? '#2ecc71' : '#e74c3c' }
-          };
+        links.push({
+          source: 'Smart Money',
+          target: n.displayName,
+          value: displayValue,
+          _rawValue: rawValue,
+          _realNetflow: n.totalNetflow24h,
+          lineStyle: {
+            color: isPositive
+              ? 'rgba(52, 211, 153, 0.45)'
+              : 'rgba(248, 113, 113, 0.45)'
+          }
+        });
+      });
+
+      // Rotation mode: if we have enough rotations, show inter-narrative flows
+      var hasRotations = SCAN_DATA.rotations && SCAN_DATA.rotations.length > 5;
+
+      if (hasRotations) {
+        // Build rotation nodes and links instead
+        nodes = [];
+        links = [];
+        var nameSet = {};
+
+        SCAN_DATA.rotations.forEach(function(r) {
+          var src = r.from.replace(/\\+/g, ' ');
+          var tgt = r.to.replace(/\\+/g, ' ');
+          nameSet[src] = true;
+          nameSet[tgt] = true;
+        });
+
+        var narrativeByName = {};
+        processedNarratives.forEach(function(n) {
+          narrativeByName[n.displayName] = n;
+        });
+
+        Object.keys(nameSet).forEach(function(name) {
+          var narr = narrativeByName[name];
+          var isPositive = narr ? narr.totalNetflow24h >= 0 : false;
+          nodes.push({
+            name: name,
+            itemStyle: { color: isPositive ? '#34d399' : '#f87171' }
+          });
         });
 
         // Deduplicate cycles: keep only the larger flow per pair
         var pairMap = {};
         SCAN_DATA.rotations.forEach(function(r) {
-          var src = resolveName(r.from);
-          var tgt = resolveName(r.to);
+          var src = r.from.replace(/\\+/g, ' ');
+          var tgt = r.to.replace(/\\+/g, ' ');
           var pairKey = [src, tgt].sort().join('||');
           if (!pairMap[pairKey] || Math.abs(r.valueUsd) > Math.abs(pairMap[pairKey].valueUsd)) {
-            pairMap[pairKey] = r;
+            pairMap[pairKey] = { from: src, to: tgt, valueUsd: r.valueUsd, direction: r.direction };
           }
         });
 
-        links = Object.values(pairMap).map(function(r) {
+        Object.keys(pairMap).forEach(function(key) {
+          var r = pairMap[key];
           var rawValue = Math.abs(r.valueUsd) || 1;
           var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
-          return {
-            source: truncateName(resolveName(r.from)),
-            target: truncateName(resolveName(r.to)),
+          links.push({
+            source: r.from,
+            target: r.to,
             value: displayValue,
             _rawValue: rawValue,
+            _realNetflow: r.valueUsd,
             lineStyle: {
               color: r.direction === 'inflow'
-                ? 'rgba(46, 204, 113, 0.5)'
-                : 'rgba(231, 76, 60, 0.5)'
+                ? 'rgba(52, 211, 153, 0.45)'
+                : 'rgba(248, 113, 113, 0.45)'
             }
-          };
-        });
-      } else {
-        // Allocation mode: Smart Money → Narratives
-        var topNarratives = SCAN_DATA.narratives.slice(0, 12);
-
-        nodes = topNarratives.map(function(n) {
-          return {
-            name: truncateName(n.displayName),
-            itemStyle: { color: n.totalNetflow24h >= 0 ? '#2ecc71' : '#e74c3c' }
-          };
-        });
-        // Add source node at beginning
-        nodes.unshift({ name: 'Smart Money', itemStyle: { color: '#6c5ce7' } });
-
-        links = topNarratives.map(function(n) {
-          var rawValue = Math.abs(n.totalNetflow24h) || 1;
-          var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
-          return {
-            source: 'Smart Money',
-            target: truncateName(n.displayName),
-            value: displayValue,
-            _rawValue: rawValue,
-            lineStyle: {
-              color: n.totalNetflow24h >= 0
-                ? 'rgba(46, 204, 113, 0.5)'
-                : 'rgba(231, 76, 60, 0.5)'
-            }
-          };
+          });
         });
       }
 
@@ -689,7 +787,7 @@ function generateHtml(data: HtmlReportData): string {
         title: {
           text: hasRotations ? 'Capital Flows Between Narratives' : 'Smart Money Capital Allocation',
           left: 'center',
-          textStyle: { fontSize: 16, color: '#e0e0e0' }
+          textStyle: { fontSize: 15, color: '#e8e9ed', fontWeight: 600 }
         },
         tooltip: {
           trigger: 'item',
@@ -697,9 +795,10 @@ function generateHtml(data: HtmlReportData): string {
           formatter: function(params) {
             if (params.dataType === 'edge') {
               var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
-              return params.data.source + ' \u2192 ' + params.data.target + '<br/>Flow: ' + formatUsd(realValue);
+              return params.data.source + ' \\u2192 ' + params.data.target +
+                '<br/>Flow: ' + formatUsdAbs(realValue);
             }
-            return params.name;
+            return '<strong>' + params.name + '</strong>';
           }
         },
         series: [{
@@ -708,92 +807,150 @@ function generateHtml(data: HtmlReportData): string {
           emphasis: { focus: 'adjacency' },
           nodeAlign: 'justify',
           nodeGap: 20,
-          nodeWidth: 30,
+          nodeWidth: 28,
           layoutIterations: 32,
           top: 60,
           bottom: 40,
-          left: 40,
-          right: 200,
-          label: { fontSize: 13, color: '#e0e0e0' },
-          lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.4 },
+          left: 50,
+          right: '30%',
+          label: {
+            position: 'right',
+            fontSize: 14,
+            color: '#e8e9ed',
+            fontWeight: 500
+          },
+          lineStyle: {
+            color: 'gradient',
+            curveness: 0.5,
+            opacity: 0.35
+          },
           data: nodes,
           links: links
         }]
       });
 
+      // Click handler: scroll to narrative section
+      chart.on('click', function(params) {
+        if (params.dataType === 'node' && params.name !== 'Smart Money') {
+          var slug = slugify(params.name);
+          var el = document.getElementById('narrative-' + slug);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      });
+
       window.addEventListener('resize', function() { chart.resize(); });
     })();
 
-    // ── Narrative Tables ────────────────────────────────────
+    // ── Narrative Card Rendering ────────────────────────────
 
-    (function renderNarrativeTables() {
-      var container = document.getElementById('narrative-tables');
+    function renderNarrativeCard(narrative) {
+      var slug = slugify(narrative.displayName);
+      var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
+      var netflow7dClass = narrative.totalNetflow7d >= 0 ? 'netflow-positive' : 'netflow-negative';
+      var icon = narrative.isHot ? '\\uD83D\\uDD25 ' : '\\u2744\\uFE0F ';
+
+      var html = '<div class="narrative-card" id="narrative-' + slug + '">';
+      html += '<div class="narrative-header">';
+      html += '<span class="narrative-name">' + icon + escapeHtml(narrative.displayName) + '</span>';
+      html += '<div class="narrative-metrics">';
+      html += '<span class="metric">24h: <strong class="' + netflowClass + '">' + formatUsd(narrative.totalNetflow24h) + '</strong></span>';
+      html += '<span class="metric">7d: <strong class="' + netflow7dClass + '">' + formatUsd(narrative.totalNetflow7d) + '</strong></span>';
+      html += '<span class="metric">' + narrative.topTokens.length + ' tokens</span>';
+      html += '</div></div>';
+
+      if (narrative.topTokens.length > 0) {
+        // Group tokens by category
+        var grouped = { hot: [], watch: [], avoid: [] };
+        narrative.topTokens.forEach(function(t) {
+          if (grouped[t.category]) {
+            grouped[t.category].push(t);
+          }
+        });
+
+        // Sort each group by netflow DESC
+        ['hot', 'watch', 'avoid'].forEach(function(cat) {
+          grouped[cat].sort(function(a, b) { return b.netflow24hUsd - a.netflow24hUsd; });
+        });
+
+        var categoryLabels = { hot: 'Hot', watch: 'Watch', avoid: 'Avoid' };
+        var categoryIcons = { hot: '\\uD83D\\uDD25', watch: '\\uD83D\\uDC40', avoid: '\\u26D4' };
+
+        // Only render categories that have tokens
+        ['hot', 'watch', 'avoid'].forEach(function(cat) {
+          var tokens = grouped[cat];
+          if (tokens.length === 0) return; // Skip empty categories
+
+          html += '<div class="token-group">';
+          html += '<span class="group-badge badge-' + cat + '">' + categoryIcons[cat] + ' ' + categoryLabels[cat] + '</span>';
+          html += '<table class="token-table">';
+          html += '<thead><tr>';
+          html += '<th>Token</th><th>Netflow 24h</th><th>7d Netflow</th><th>Price \\u0394</th><th>Market Cap</th>';
+          html += '</tr></thead><tbody>';
+
+          tokens.forEach(function(t) {
+            var tNetflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+            var tNetflow7dCls = t.netflow7dUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+            var priceCls = t.priceChange >= 0 ? 'netflow-positive' : 'netflow-negative';
+
+            html += '<tr>';
+            html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
+            html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
+            html += '<td class="mono ' + tNetflow7dCls + '">' + formatUsd(t.netflow7dUsd) + '</td>';
+            html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange) + '</td>';
+            html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
+            html += '</tr>';
+          });
+
+          html += '</tbody></table>';
+          html += '</div>';
+        });
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // ── Hot Narratives Section ──────────────────────────────
+
+    (function renderHotNarratives() {
+      var container = document.getElementById('hot-narratives');
+      var section = document.getElementById('section-hot');
+
+      if (hotNarratives.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // Sort: highest netflow first
+      hotNarratives.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
+
       var html = '';
-
-      var categories = ['hot', 'watch', 'avoid'];
-      var categoryLabels = { hot: 'Hot', watch: 'Watch', avoid: 'Avoid' };
-      var categoryIcons = { hot: '\uD83D\uDD25', watch: '\uD83D\uDC40', avoid: '\u26D4' };
-
-      SCAN_DATA.narratives.forEach(function(narrative) {
-        var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
-
-        html += '<div class="card narrative-section">';
-        html += '<div class="narrative-header">';
-        html += '<span class="narrative-name">' + (narrative.isHot ? '\uD83D\uDD25 ' : '') + escapeHtml(narrative.displayName) + '</span>';
-        html += '<div class="narrative-stats">';
-        html += '<span class="narrative-stat">Tokens: <strong>' + narrative.tokenCount + '</strong></span>';
-        html += '<span class="narrative-stat">Traders: <strong>' + narrative.traderCount + '</strong></span>';
-        html += '<span class="narrative-stat">24h Netflow: <strong class="' + netflowClass + '">' + formatUsd(narrative.totalNetflow24h) + '</strong></span>';
-        html += '<span class="narrative-stat">7d Netflow: <strong class="' + (narrative.totalNetflow7d >= 0 ? 'netflow-positive' : 'netflow-negative') + '">' + formatUsd(narrative.totalNetflow7d) + '</strong></span>';
-        html += '</div></div>';
-
-        if (narrative.topTokens.length === 0) {
-          html += '<div class="empty-category" style="padding: 12px 8px;">No classified tokens in this scan</div>';
-        } else {
-          // Group tokens by category
-          var grouped = { hot: [], watch: [], avoid: [] };
-          narrative.topTokens.forEach(function(t) {
-            if (grouped[t.category]) {
-              grouped[t.category].push(t);
-            }
-          });
-
-          categories.forEach(function(cat) {
-            html += '<div class="category-section">';
-            html += '<span class="category-badge badge-' + cat + '">' + categoryIcons[cat] + ' ' + categoryLabels[cat] + '</span>';
-
-            var tokens = grouped[cat];
-            if (tokens.length === 0) {
-              html += '<div class="empty-category">No tokens in this category</div>';
-            } else {
-              html += '<table class="token-table">';
-              html += '<thead><tr>';
-              html += '<th>Token</th><th>Netflow 24h</th><th>Price \u0394</th><th>Traders</th><th>Market Cap</th>';
-              html += '</tr></thead><tbody>';
-
-              tokens.forEach(function(t) {
-                var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
-                var priceCls = t.priceChange >= 0 ? 'netflow-positive' : 'netflow-negative';
-
-                html += '<tr>';
-                html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
-                html += '<td class="' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
-                html += '<td class="' + priceCls + '">' + formatPercent(t.priceChange) + '</td>';
-                html += '<td>' + t.traderCount + '</td>';
-                html += '<td>' + formatMcap(t.marketCapUsd) + '</td>';
-                html += '</tr>';
-              });
-
-              html += '</tbody></table>';
-            }
-
-            html += '</div>';
-          });
-        }
-
-        html += '</div>';
+      hotNarratives.forEach(function(n) {
+        html += renderNarrativeCard(n);
       });
+      container.innerHTML = html;
+    })();
 
+    // ── Cold Narratives Section ─────────────────────────────
+
+    (function renderColdNarratives() {
+      var container = document.getElementById('cold-narratives');
+      var section = document.getElementById('section-cold');
+
+      if (coldNarratives.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // Sort: least negative first (closest to zero)
+      coldNarratives.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
+
+      var html = '';
+      coldNarratives.forEach(function(n) {
+        html += renderNarrativeCard(n);
+      });
       container.innerHTML = html;
     })();
 
@@ -806,7 +963,7 @@ function generateHtml(data: HtmlReportData): string {
       var narrativeName = SCAN_DATA.topNarrativeKey || 'Top';
 
       var html = '<div class="card">';
-      html += '<div class="card-title">\uD83E\uDD16 ' + escapeHtml(narrativeName) + ' Sub-narratives</div>';
+      html += '<div class="card-title">Sub-narratives: ' + escapeHtml(narrativeName) + '</div>';
 
       SCAN_DATA.subNarratives.forEach(function(sub) {
         var netflowCls = sub.totalNetflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';

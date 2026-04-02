@@ -18,7 +18,7 @@ import type { NarrativeSummary, NarrativeRotation } from "../types.js";
 // Constants
 // ============================================================
 
-const CHART_WIDTH = 1600;
+const CHART_WIDTH = 2000;
 const CHART_HEIGHT = 800;
 const MAX_NARRATIVES = 12;
 
@@ -70,24 +70,15 @@ function log(message: string): void {
 }
 
 /**
- * Truncate long narrative names so labels don't overflow the chart.
- * Full name is preserved for tooltips.
- */
-function truncateName(name: string, maxLen = 28): string {
-  if (name.length <= maxLen) return name;
-  return name.slice(0, maxLen - 1) + "…";
-}
-
-/**
- * Format USD value for tooltip display.
+ * Format USD value for display (tooltips, labels).
  */
 function formatUsd(value: number): string {
-  const sign = value >= 0 ? "+" : "-";
   const abs = Math.abs(value);
-  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
-  return `${sign}$${abs.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const prefix = value < 0 ? "-" : "";
+  if (abs >= 1e9) return `${prefix}$${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${prefix}$${(abs / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${prefix}$${(abs / 1e3).toFixed(1)}K`;
+  return `${prefix}$${abs.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 /**
@@ -141,7 +132,7 @@ function buildAllocationData(narratives: NarrativeSummary[]): SankeyData {
   };
 
   const narrativeNodes: SankeyNode[] = top.map((n) => ({
-    name: truncateName(n.displayName),
+    name: n.displayName,
     itemStyle: {
       color: n.totalNetflow24h >= 0 ? COLOR_INFLOW : COLOR_OUTFLOW,
     },
@@ -154,7 +145,7 @@ function buildAllocationData(narratives: NarrativeSummary[]): SankeyData {
     const displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
     return {
       source: "Smart Money",
-      target: truncateName(n.displayName),
+      target: n.displayName,
       value: displayValue,
       _rawValue: rawValue,
       lineStyle: {
@@ -228,15 +219,17 @@ function buildRotationData(
         ? COLOR_INFLOW
         : COLOR_OUTFLOW
       : TEXT_SECONDARY;
-    return { name: truncateName(name), itemStyle: { color } };
+    return { name, itemStyle: { color } };
   });
 
   const links: SankeyLink[] = deduped.map((r) => {
     const rawValue = Math.abs(r.valueUsd) || 1;
     const displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
+    const srcName = resolveName(r.from, nameMap);
+    const tgtName = resolveName(r.to, nameMap);
     return {
-      source: truncateName(resolveName(r.from, nameMap)),
-      target: truncateName(resolveName(r.to, nameMap)),
+      source: srcName,
+      target: tgtName,
       value: displayValue,
       _rawValue: rawValue,
       lineStyle: {
@@ -286,9 +279,12 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
           const { source, target } = p.data;
           const realValue = p.data._rawValue ?? p.data.value ?? 0;
           const formatted = formatUsd(realValue);
-          return `${source} → ${target}<br/>Flow: ${formatted}`;
+          return `<strong>${source} → ${target}</strong><br/>Flow: <strong>${formatted}</strong>`;
         }
-        return p.name ?? "";
+        if (p.name) {
+          return `<strong>${p.name}</strong>`;
+        }
+        return "";
       },
     },
     series: [
@@ -302,9 +298,10 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
         top: 60,
         bottom: 40,
         left: 40,
-        right: 350,
+        right: "35%",
         label: {
-          fontSize: 13,
+          position: "right",
+          fontSize: 12,
           color: TEXT_LABEL,
           fontWeight: 500,
         },

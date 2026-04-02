@@ -71,6 +71,7 @@ export interface ClassifiedToken {
   chain: string;
   category: TokenCategory;
   netflow24hUsd: number;
+  netflow7dUsd?: number;
   priceChange: number;
   buyVolume: number;
   sellVolume: number;
