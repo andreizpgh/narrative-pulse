@@ -18,8 +18,13 @@ import type { NarrativeSummary, NarrativeRotation } from "../types.js";
 // Constants
 // ============================================================
 
-const CHART_WIDTH = 2000;
-const CHART_HEIGHT = 800;
+// Render SVG at wide dimensions so labels have room beyond the Sankey graph.
+// ECharts SSR clips text at the SVG viewBox boundary, so we need extra width.
+const SVG_RENDER_WIDTH = 3500;
+const SVG_RENDER_HEIGHT = 800;
+// Final PNG output dimensions (sharp scales the wide SVG down)
+const PNG_OUTPUT_WIDTH = 1600;
+const PNG_OUTPUT_HEIGHT = 800;
 const MAX_NARRATIVES = 12;
 
 // Dark theme palette (matches HTML report)
@@ -298,7 +303,7 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
         top: 60,
         bottom: 40,
         left: 40,
-        right: "35%",
+        right: "40%",
         label: {
           position: "right",
           fontSize: 12,
@@ -356,32 +361,27 @@ export async function renderSankey(
   const mode = useRotationMode ? "rotation" : "allocation";
   log(`Mode: ${mode} (${data.nodes.length} nodes, ${data.links.length} links)`);
 
-  // Initialize ECharts in SSR mode
+  // Initialize ECharts in SSR mode at wide SVG dimensions.
+  // The extra width gives labels room to extend beyond the Sankey graph
+  // without being clipped by the SVG viewBox boundary.
   const chart = echarts.init(null, null, {
     renderer: "svg",
     ssr: true,
-    width: CHART_WIDTH,
-    height: CHART_HEIGHT,
+    width: SVG_RENDER_WIDTH,
+    height: SVG_RENDER_HEIGHT,
   });
 
   try {
     const option = buildEchartsOption(data);
     chart.setOption(option);
 
-    // Render SVG string
+    // Render SVG string (viewBox = SVG_RENDER_WIDTH × SVG_RENDER_HEIGHT)
     const svgStr = chart.renderToSVGString({ useViewBox: true });
 
-    // Convert SVG → PNG via sharp, compositing on dark background
-    // (ECharts SVG may not include a rect for backgroundColor in SSR mode)
-    const pngBuffer = await sharp({
-      create: {
-        width: CHART_WIDTH,
-        height: CHART_HEIGHT,
-        channels: 4,
-        background: { r: 26, g: 26, b: 46, alpha: 1 }, // #1a1a2e
-      },
-    })
-      .composite([{ input: Buffer.from(svgStr), blend: "over" }])
+    // Convert wide SVG → PNG with sharp resize to final dimensions.
+    // sharp scales the entire SVG (including overflow labels) proportionally.
+    const pngBuffer = await sharp(Buffer.from(svgStr))
+      .resize(PNG_OUTPUT_WIDTH, PNG_OUTPUT_HEIGHT, { fit: "fill" })
       .png()
       .toBuffer();
 
@@ -394,7 +394,7 @@ export async function renderSankey(
     const outputPath = join("output", `${prefix}-${timestamp}.png`);
 
     await writeFile(outputPath, pngBuffer);
-    log(`Saved ${mode} map to ${outputPath} (${CHART_WIDTH}x${CHART_HEIGHT})`);
+    log(`Saved ${mode} map to ${outputPath} (${PNG_OUTPUT_WIDTH}x${PNG_OUTPUT_HEIGHT})`);
 
     return outputPath;
   } finally {

@@ -2,12 +2,12 @@ import type { Config } from "./types.js";
 
 export const config: Config = {
   chains: ["ethereum", "solana", "base", "bnb", "arbitrum"],
-  minMarketCapUsd: 100_000,
-  minTraderCount: 3,
+  minMarketCapUsd: 10_000,
+  minTraderCount: 1,
   netflowThresholds: {
-    hot: { minNetflowUsd: 1_000, minPriceChange: 0.1 },
-    watch: { minNetflowUsd: 500 },
-    avoid: { maxNetflowUsd: -500 },
+    hot: { minNetflowUsd: 500, minPriceChange: 0.1 },
+    watch: { minNetflowUsd: 100 },
+    avoid: { maxNetflowUsd: -100 },
   },
   apiPageSize: 50,
   cronSchedule: "0 */4 * * *", // Every 4 hours

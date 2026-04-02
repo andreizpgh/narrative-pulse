@@ -21,8 +21,8 @@ export function toNarrativeKey(sectors: string[]): string {
  * and computes aggregate statistics for each narrative.
  *
  * Simplification: tokens with 3+ sectors are collapsed to their first sector.
- * After grouping, narratives with fewer than 2 tokens AND less than $500
- * absolute netflow are filtered out (noise reduction).
+ * After grouping, narratives with at least 1 token are kept
+ * (any SM activity is considered useful signal).
  *
  * Results are sorted by |totalNetflow24h| descending.
  */
@@ -64,9 +64,9 @@ export function aggregateByNarrative(
       0
     );
 
-    // Filter: keep narratives with 2+ tokens OR |netflow| > $500
+    // Filter: keep narratives with at least 1 token (any SM activity is signal)
     const isSignificant =
-      group.length >= 2 || Math.abs(totalNetflow24h) > 500;
+      group.length >= 1 || Math.abs(totalNetflow24h) > 50;
     if (!isSignificant) continue;
 
     summaries.push({

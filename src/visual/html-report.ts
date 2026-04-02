@@ -273,7 +273,7 @@ function generateHtml(data: HtmlReportData): string {
 
     #sankey-chart {
       width: 100%;
-      height: 600px;
+      height: 500px;
     }
 
     .sankey-card {
@@ -518,6 +518,54 @@ function generateHtml(data: HtmlReportData): string {
       margin-top: 32px;
     }
 
+    /* ── Narrative Border Accents ───────────────────────── */
+
+    .narrative-card.hot-border {
+      border-left: 4px solid var(--color-hot);
+    }
+
+    .narrative-card.cold-border {
+      border-left: 4px solid #60a5fa;
+    }
+
+    /* ── Signal Bar ─────────────────────────────────────── */
+
+    .signal-bar-container {
+      width: 60px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .signal-bar {
+      height: 100%;
+      border-radius: 4px;
+      min-width: 2px;
+    }
+
+    .signal-bar.positive { background: var(--color-hot); }
+    .signal-bar.negative { background: var(--color-avoid); }
+
+    /* ── Toggle Button ──────────────────────────────────── */
+
+    .toggle-tokens-btn {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 16px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--color-accent);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .toggle-tokens-btn:hover {
+      background: var(--bg-card-hover);
+    }
+
     /* ── Responsive ─────────────────────────────────────── */
 
     @media (max-width: 768px) {
@@ -577,9 +625,6 @@ function generateHtml(data: HtmlReportData): string {
     // ── Embedded Scan Data ──────────────────────────────────
     var SCAN_DATA = ${jsonData};
 
-    // ── Constants ───────────────────────────────────────────
-    var MIN_NETFLOW = 100; // $100 minimum — filter out noise
-
     // ── Utility Functions ───────────────────────────────────
 
     function formatUsd(value) {
@@ -622,29 +667,20 @@ function generateHtml(data: HtmlReportData): string {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
 
-    /** Check if a token has meaningful netflow (above noise threshold). */
-    function isActionable(token) {
-      return Math.abs(token.netflow24hUsd) >= MIN_NETFLOW;
-    }
-
     // ── Data Preprocessing ──────────────────────────────────
-    // Filter tokens below noise threshold and split narratives
+    // Show ALL classified tokens — no minimum netflow filter
 
     var processedNarratives = SCAN_DATA.narratives.map(function(n) {
-      // Filter tokens: only keep actionable ones
-      var filteredTokens = n.topTokens.filter(isActionable);
-
       return {
         displayName: n.displayName,
         totalNetflow24h: n.totalNetflow24h,
         totalNetflow7d: n.totalNetflow7d,
         tokenCount: n.tokenCount,
         isHot: n.totalNetflow24h > 0,
-        topTokens: filteredTokens,
-        hasMeaningfulData: filteredTokens.length > 0 || Math.abs(n.totalNetflow24h) >= MIN_NETFLOW
+        topTokens: n.topTokens
       };
     }).filter(function(n) {
-      return n.hasMeaningfulData;
+      return n.topTokens.length > 0 || Math.abs(n.totalNetflow24h) > 0;
     });
 
     var hotNarratives = processedNarratives.filter(function(n) { return n.isHot; });
@@ -658,27 +694,32 @@ function generateHtml(data: HtmlReportData): string {
         : 'N/A';
       document.getElementById('header-date').textContent = dateStr;
 
-      // Hero metric: Total SM Netflow 24h
-      var totalNetflow = processedNarratives.reduce(function(sum, n) {
-        return sum + n.totalNetflow24h;
-      }, 0);
-
-      var heroEl = document.getElementById('hero-metric');
-      var heroClass = totalNetflow >= 0 ? 'netflow-positive' : 'netflow-negative';
-      heroEl.innerHTML =
-        '<div class="hero-metric">' +
-          '<div class="hero-label">Total Smart Money Netflow (24h)</div>' +
-          '<div class="hero-value ' + heroClass + '">' + formatUsd(totalNetflow) + '</div>' +
-        '</div>';
-
-      // Stats
+      // Compute stats
       var totalTokens = processedNarratives.reduce(function(sum, n) { return sum + n.topTokens.length; }, 0);
+      var totalNarratives = processedNarratives.length;
 
-      document.getElementById('header-stats').innerHTML =
-        '<div class="stat"><div class="stat-value">' + processedNarratives.length + '</div><div class="stat-label">Narratives</div></div>' +
-        '<div class="stat"><div class="stat-value">' + hotNarratives.length + '</div><div class="stat-label">Hot Narratives</div></div>' +
-        '<div class="stat"><div class="stat-value">' + totalTokens + '</div><div class="stat-label">Tokens Scanned</div></div>' +
-        '<div class="stat"><div class="stat-value">' + (SCAN_DATA.creditsUsed || 0) + '</div><div class="stat-label">Credits Used</div></div>';
+      // Strongest signal: narrative with highest absolute netflow
+      var strongest = null;
+      processedNarratives.forEach(function(n) {
+        if (!strongest || Math.abs(n.totalNetflow24h) > Math.abs(strongest.totalNetflow24h)) {
+          strongest = n;
+        }
+      });
+
+      // 3 meaningful metrics instead of "Total SM Netflow"
+      var heroEl = document.getElementById('hero-metric');
+      var html = '<div class="stats-row">';
+      html += '<div class="stat"><div class="stat-value">' + totalTokens + ' tokens across ' + totalNarratives + ' narratives</div><div class="stat-label">Scanned</div></div>';
+      if (strongest) {
+        var sCls = strongest.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
+        html += '<div class="stat"><div class="stat-value">\\uD83D\\uDD25 Strongest Signal: ' + escapeHtml(strongest.displayName) + ' (<strong class="' + sCls + '">' + formatUsd(strongest.totalNetflow24h) + '</strong>)</div><div class="stat-label">Focus Here</div></div>';
+      }
+      html += '<div class="stat"><div class="stat-value">' + (SCAN_DATA.creditsUsed || 0) + '</div><div class="stat-label">Credits Used</div></div>';
+      html += '</div>';
+      heroEl.innerHTML = html;
+
+      // Hide old stats row — metrics are now in hero-metric
+      document.getElementById('header-stats').innerHTML = '';
     })();
 
     // ── Sankey Chart ────────────────────────────────────────
@@ -812,12 +853,13 @@ function generateHtml(data: HtmlReportData): string {
           top: 60,
           bottom: 40,
           left: 50,
-          right: '30%',
+          right: '40%',
           label: {
             position: 'right',
             fontSize: 14,
             color: '#e8e9ed',
-            fontWeight: 500
+            fontWeight: 500,
+            overflow: 'none'
           },
           lineStyle: {
             color: 'gradient',
@@ -849,11 +891,11 @@ function generateHtml(data: HtmlReportData): string {
       var slug = slugify(narrative.displayName);
       var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
       var netflow7dClass = narrative.totalNetflow7d >= 0 ? 'netflow-positive' : 'netflow-negative';
-      var icon = narrative.isHot ? '\\uD83D\\uDD25 ' : '\\u2744\\uFE0F ';
+      var borderClass = narrative.isHot ? 'hot-border' : 'cold-border';
 
-      var html = '<div class="narrative-card" id="narrative-' + slug + '">';
+      var html = '<div class="narrative-card ' + borderClass + '" id="narrative-' + slug + '">';
       html += '<div class="narrative-header">';
-      html += '<span class="narrative-name">' + icon + escapeHtml(narrative.displayName) + '</span>';
+      html += '<span class="narrative-name">' + escapeHtml(narrative.displayName) + '</span>';
       html += '<div class="narrative-metrics">';
       html += '<span class="metric">24h: <strong class="' + netflowClass + '">' + formatUsd(narrative.totalNetflow24h) + '</strong></span>';
       html += '<span class="metric">7d: <strong class="' + netflow7dClass + '">' + formatUsd(narrative.totalNetflow7d) + '</strong></span>';
@@ -869,36 +911,56 @@ function generateHtml(data: HtmlReportData): string {
           }
         });
 
-        // Sort each group by netflow DESC
+        // Sort each group by |netflow| DESC
         ['hot', 'watch', 'avoid'].forEach(function(cat) {
-          grouped[cat].sort(function(a, b) { return b.netflow24hUsd - a.netflow24hUsd; });
+          grouped[cat].sort(function(a, b) { return Math.abs(b.netflow24hUsd) - Math.abs(a.netflow24hUsd); });
         });
 
-        var categoryLabels = { hot: 'Hot', watch: 'Watch', avoid: 'Avoid' };
-        var categoryIcons = { hot: '\\uD83D\\uDD25', watch: '\\uD83D\\uDC40', avoid: '\\u26D4' };
+        var categoryLabels = { hot: 'ACCUMULATING', watch: 'EARLY SIGNAL', avoid: 'DISTRIBUTING' };
+
+        // Calculate max netflow for signal bars
+        var maxNetflow = 0;
+        narrative.topTokens.forEach(function(t) {
+          var absVal = Math.abs(t.netflow24hUsd);
+          if (absVal > maxNetflow) maxNetflow = absVal;
+        });
+
+        // Track global token index for "show all" toggle
+        var globalTokenIndex = 0;
+        var MAX_VISIBLE = 10;
+        var totalTokensInNarrative = grouped.hot.length + grouped.watch.length + grouped.avoid.length;
+        var hasToggle = totalTokensInNarrative > MAX_VISIBLE;
 
         // Only render categories that have tokens
         ['hot', 'watch', 'avoid'].forEach(function(cat) {
           var tokens = grouped[cat];
-          if (tokens.length === 0) return; // Skip empty categories
+          if (tokens.length === 0) return;
 
           html += '<div class="token-group">';
-          html += '<span class="group-badge badge-' + cat + '">' + categoryIcons[cat] + ' ' + categoryLabels[cat] + '</span>';
+          html += '<span class="group-badge badge-' + cat + '">' + categoryLabels[cat] + '</span>';
           html += '<table class="token-table">';
           html += '<thead><tr>';
-          html += '<th>Token</th><th>Netflow 24h</th><th>7d Netflow</th><th>Price \\u0394</th><th>Market Cap</th>';
+          html += '<th>Token</th><th>Signal</th><th>Netflow 24h</th><th>7d Netflow</th><th>Price \\u0394</th><th>Market Cap</th>';
           html += '</tr></thead><tbody>';
 
           tokens.forEach(function(t) {
+            var isHidden = hasToggle && globalTokenIndex >= MAX_VISIBLE;
+            globalTokenIndex++;
+
             var tNetflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
             var tNetflow7dCls = t.netflow7dUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
-            var priceCls = t.priceChange >= 0 ? 'netflow-positive' : 'netflow-negative';
+            var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
+            var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
 
-            html += '<tr>';
+            var signalWidth = maxNetflow > 0 ? Math.round(Math.abs(t.netflow24hUsd) / maxNetflow * 100) : 0;
+            var signalColor = t.netflow24hUsd >= 0 ? 'positive' : 'negative';
+
+            html += '<tr' + (isHidden ? ' data-hidden="true" style="display:none"' : '') + '>';
             html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
+            html += '<td><div class="signal-bar-container"><div class="signal-bar ' + signalColor + '" style="width:' + signalWidth + '%"></div></div></td>';
             html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
             html += '<td class="mono ' + tNetflow7dCls + '">' + formatUsd(t.netflow7dUsd) + '</td>';
-            html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange) + '</td>';
+            html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
             html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
             html += '</tr>';
           });
@@ -906,6 +968,10 @@ function generateHtml(data: HtmlReportData): string {
           html += '</tbody></table>';
           html += '</div>';
         });
+
+        if (hasToggle) {
+          html += '<button class="toggle-tokens-btn" onclick="var rows=this.parentElement.querySelectorAll(\\'tr[data-hidden]\\');for(var i=0;i<rows.length;i++){rows[i].style.display=\\'table-row\\';rows[i].removeAttribute(\\'data-hidden\\');}this.style.display=\\'none\\';">Show all ' + totalTokensInNarrative + ' tokens</button>';
+        }
       }
 
       html += '</div>';

@@ -13,7 +13,7 @@ import { config } from "../config.js";
 // ============================================================
 
 const ENDPOINT = "/smart-money/netflow";
-const MAX_PAGES = 5;
+const MAX_PAGES = 10;
 
 // ============================================================
 // Helpers
