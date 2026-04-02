@@ -61,15 +61,33 @@ function assignTopTokens(
     narrativeIndex.set(narratives[i].key, i);
   }
 
+  let unmatchedCount = 0;
   for (const token of classified) {
     const narrativeKey = tokenNarrativeMap.get(token.token_address);
-    if (narrativeKey === undefined) continue;
+    if (narrativeKey === undefined) { unmatchedCount++; continue; }
 
-    const idx = narrativeIndex.get(narrativeKey);
-    if (idx === undefined) continue;
+    let idx = narrativeIndex.get(narrativeKey);
 
+    // If exact key not found (narrative was filtered out),
+    // try to find a parent/child narrative that partially matches
+    if (idx === undefined) {
+      for (const [nKey, nIdx] of narrativeIndex) {
+        if (
+          narrativeKey.startsWith(nKey + "+") ||
+          nKey.startsWith(narrativeKey + "+")
+        ) {
+          idx = nIdx;
+          break;
+        }
+      }
+    }
+
+    if (idx === undefined) { unmatchedCount++; continue; }
     narratives[idx].topTokens.push(token);
   }
+
+  const totalAssigned = narratives.reduce((sum, n) => sum + n.topTokens.length, 0);
+  log(`Assigned ${totalAssigned} classified tokens to narratives (${unmatchedCount} unmatched)`);
 }
 
 // ============================================================
@@ -196,7 +214,8 @@ async function stepSubNarratives(
  * Steps 1 and 2 are critical — if they fail, an error is thrown.
  * Step 6 is optional — failures are swallowed gracefully.
  */
-export async function runScan(): Promise<ScanResult> {
+export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanResult> {
+  const skipAgent = options?.skipAgent ?? true;
   // Step 1: Fetch netflows (critical)
   const netflowEntries = await stepFetchNetflows();
 
@@ -223,9 +242,11 @@ export async function runScan(): Promise<ScanResult> {
   // Step 5.5: Compute rotations (needs previous snapshot)
   const rotations = await stepRotations(narratives);
 
-  // Step 6: Sub-narratives for top narrative
+  // Step 6: Sub-narratives for top narrative (OPTIONAL — costs 2000 credits)
   const topNarrative = narratives.length > 0 ? narratives[0] : undefined;
-  const subNarratives = await stepSubNarratives(topNarrative, netflowEntries);
+  const subNarratives = skipAgent
+    ? (log("Step 6/6: Agent API skipped (use --deep to enable, costs 2000 credits)"), undefined)
+    : await stepSubNarratives(topNarrative, netflowEntries);
 
   // Build result
   const stats = getAndResetStats();

@@ -68,20 +68,28 @@ export function classifyTokens(
 
   for (const netflow of netflows) {
     // Try normalized address match first, then fallback to symbol+chain
-    let screener = screenerNormalized.get(normalizeAddress(netflow.token_address));
-    if (!screener) {
-      const fallbackKey = `${netflow.token_symbol.toLowerCase()}:${netflow.chain}`;
-      screener = screenerBySymbolChain.get(fallbackKey);
-    }
+    const normalizedAddr = normalizeAddress(netflow.token_address);
+    const symbolChainKey = `${netflow.token_symbol.toLowerCase()}:${netflow.chain}`;
+    const screener = screenerNormalized.get(normalizedAddr) 
+      ?? screenerBySymbolChain.get(symbolChainKey);
 
-    // Cannot classify without price/volume data
-    if (!screener) {
+    let category: TokenCategory | null = null;
+
+    if (screener) {
+      // Full classification with price/volume data
+      matchCount++;
+      category = determineCategory(netflow, screener, thresholds);
+    } else {
+      // Netflow-only classification (no screener data available)
       missCount++;
-      continue;
+      if (netflow.net_flow_24h_usd > thresholds.hot.minNetflowUsd) {
+        category = "hot"; // Strong SM accumulation even without price data
+      } else if (netflow.net_flow_24h_usd > thresholds.watch.minNetflowUsd) {
+        category = "watch";
+      } else if (netflow.net_flow_24h_usd < thresholds.avoid.maxNetflowUsd) {
+        category = "avoid";
+      }
     }
-
-    matchCount++;
-    const category = determineCategory(netflow, screener, thresholds);
 
     // Neutral tokens are excluded from the result
     if (category === null) {
@@ -94,16 +102,16 @@ export function classifyTokens(
       chain: netflow.chain,
       category,
       netflow24hUsd: netflow.net_flow_24h_usd,
-      priceChange: screener.price_change,
-      buyVolume: screener.buy_volume,
-      sellVolume: screener.sell_volume,
+      priceChange: screener?.price_change ?? 0,
+      buyVolume: screener?.buy_volume ?? 0,
+      sellVolume: screener?.sell_volume ?? 0,
       traderCount: netflow.trader_count,
       marketCapUsd: netflow.market_cap_usd ?? 0,
     });
   }
 
   console.log(
-    `[Classifier] Screener match: ${matchCount}/${netflows.length} tokens (${missCount} unmatched)`
+    `[Classifier] Screener match: ${matchCount}/${netflows.length} tokens (${missCount} unmatched, classified via netflow-only)`
   );
 
   classified.sort((a, b) => {

@@ -25,9 +25,10 @@ program
   .description("Run a one-time narrative scan across all chains")
   .option("--no-sankey", "Skip Sankey diagram generation")
   .option("--no-html", "Skip HTML report generation")
-  .action(async (options: { sankey: boolean; html: boolean }) => {
+  .option("--deep", "Include Agent API deep analysis (costs 2000 extra credits)")
+  .action(async (options: { sankey: boolean; html: boolean; deep: boolean }) => {
     try {
-      const result = await runScan();
+      const result = await runScan({ skipAgent: !options.deep });
       renderTerminalReport(result);
 
       if (options.sankey) {

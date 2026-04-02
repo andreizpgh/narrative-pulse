@@ -18,7 +18,7 @@ import type { NarrativeSummary, NarrativeRotation } from "../types.js";
 // Constants
 // ============================================================
 
-const CHART_WIDTH = 1200;
+const CHART_WIDTH = 1600;
 const CHART_HEIGHT = 800;
 const MAX_NARRATIVES = 12;
 
@@ -73,7 +73,7 @@ function log(message: string): void {
  * Truncate long narrative names so labels don't overflow the chart.
  * Full name is preserved for tooltips.
  */
-function truncateName(name: string, maxLen = 20): string {
+function truncateName(name: string, maxLen = 28): string {
   if (name.length <= maxLen) return name;
   return name.slice(0, maxLen - 1) + "…";
 }
@@ -302,7 +302,7 @@ function buildEchartsOption(data: SankeyData): echarts.EChartsOption {
         top: 60,
         bottom: 40,
         left: 40,
-        right: 200,
+        right: 350,
         label: {
           fontSize: 13,
           color: TEXT_LABEL,
