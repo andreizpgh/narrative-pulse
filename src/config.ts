@@ -2,8 +2,8 @@ import type { Config } from "./types.js";
 
 export const config: Config = {
   chains: ["ethereum", "solana", "base", "bnb", "arbitrum"],
-  minMarketCapUsd: 50_000,      // $50K — filter out true microcap garbage
-  minTraderCount: 3,            // 1 trader is noise, need 3+ for signal
+  minMarketCapUsd: 10_000,      // $10K — lower threshold for richer data capture
+  minTraderCount: 1,            // capture all SM activity, even single-trader signals
   netflowThresholds: {
     hot: { minNetflowUsd: 2_000, minPriceChange: 0.1 },   // $2K+ AND price up
     watch: { minNetflowUsd: 500 },                          // $500+ SM accumulation
