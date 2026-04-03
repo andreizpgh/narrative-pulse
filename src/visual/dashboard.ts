@@ -52,40 +52,82 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      text-align: center;
-      padding: 36px 24px 28px;
+      padding: 24px 24px 20px;
       border-bottom: 1px solid var(--border-color);
-      margin-bottom: 28px;
+      margin-bottom: 24px;
+      text-align: left;
     }
 
-    .header h1 {
-      font-size: 2.2rem;
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .header-brand {
+      font-size: 1.4rem;
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 4px;
       color: #ffffff;
     }
 
-    .header .subtitle {
-      font-size: 0.95rem;
-      color: var(--text-secondary);
-      margin-bottom: 20px;
+    .header-date {
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
 
-    /* ── Stats Bar ──────────────────────────────── */
+    .header-highlights {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
 
-    .stats-bar {
+    .highlight-card {
+      padding: 18px 22px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-alt));
+      border: 1px solid var(--border-color);
+      transition: border-color 0.2s ease;
+    }
+
+    .highlight-card:hover {
+      border-color: rgba(139, 143, 163, 0.3);
+    }
+
+    .highlight-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .highlight-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .highlight-sub {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ── Stats Row ──────────────────────────────── */
+
+    .stats-row {
       display: flex;
       justify-content: center;
-      align-items: center;
       gap: 32px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
     }
 
     .stat { text-align: center; }
-    .stat-value { font-size: 1.3rem; font-weight: 700; color: #ffffff; }
-    .stat-label { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: #ffffff; }
+    .stat-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
     .status-bar {
       display: flex;
@@ -143,81 +185,19 @@ export function renderDashboardHtml(): string {
       cursor: not-allowed;
     }
 
-    /* ── Hero Section ───────────────────────────── */
+    /* ── Sankey Chart ────────────────────────────── */
 
-    .highlight-card {
-      padding: 14px 18px;
-      border-radius: 10px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-    }
-
-    .highlight-label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-secondary);
-      margin-bottom: 4px;
-    }
-
-    .highlight-value {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: #ffffff;
-    }
-
-    .highlight-sub {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 2px;
-    }
-
-    /* ── Bar Chart ──────────────────────────────── */
-
-    #bar-chart {
+    #sankey-chart {
       width: 100%;
-      height: 420px;
+      height: 450px;
     }
 
-    /* ── Early Signals ──────────────────────────── */
+    .sankey-card { margin-bottom: 32px; }
+    .sankey-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; text-align: center; }
 
-    .early-signals-section {
-      margin-bottom: 28px;
-      background: var(--bg-card);
-      border-radius: var(--radius);
-      border: 1px solid rgba(52, 211, 153, 0.2);
-      border-left: 4px solid var(--color-positive);
-      overflow: hidden;
-    }
+    /* ── Section Headers ────────────────────────── */
 
-    .early-signals-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-      color: var(--color-positive);
-      padding: 16px 20px;
-      background: rgba(52, 211, 153, 0.06);
-      border-bottom: 1px solid rgba(52, 211, 153, 0.15);
-    }
-
-    .early-signal-badge {
-      display: inline-block;
-      font-size: 0.68rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(52, 211, 153, 0.15);
-      color: var(--color-positive);
-      margin-left: 8px;
-      letter-spacing: 0.04em;
-    }
-
-    .early-signals-body {
-      padding: 16px 20px;
-    }
-
-    /* ── Sections ───────────────────────────────── */
-
-    .section { margin-bottom: 28px; }
+    .section { margin-bottom: 32px; }
 
     .section-title {
       font-size: 1.3rem;
@@ -227,17 +207,10 @@ export function renderDashboardHtml(): string {
       margin-bottom: 0;
     }
 
-    .section-title.accumulating {
-      background: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(52, 211, 153, 0.04));
-      color: var(--color-positive);
-      border: 1px solid rgba(52, 211, 153, 0.2);
-      border-bottom: none;
-    }
-
-    .section-title.distributing {
-      background: linear-gradient(135deg, rgba(248, 113, 113, 0.10), rgba(248, 113, 113, 0.03));
-      color: var(--color-negative);
-      border: 1px solid rgba(248, 113, 113, 0.15);
+    .section-title.narratives-title {
+      background: linear-gradient(135deg, rgba(129, 140, 248, 0.12), rgba(129, 140, 248, 0.04));
+      color: #a5b4fc;
+      border: 1px solid rgba(129, 140, 248, 0.2);
       border-bottom: none;
     }
 
@@ -257,6 +230,7 @@ export function renderDashboardHtml(): string {
       margin-bottom: 16px;
       border: 1px solid var(--border-color);
       border-left: 4px solid var(--border-color);
+      scroll-margin-top: 24px;
     }
 
     .narrative-card.border-positive { border-left-color: var(--color-positive); }
@@ -323,6 +297,125 @@ export function renderDashboardHtml(): string {
     .token-table tbody tr:last-child td { border-bottom: none; }
 
     .token-table .mono { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
+
+    /* ── Expandable Rows ────────────────────────── */
+
+    .token-table tbody tr.expandable-row { cursor: pointer; }
+    .token-table tbody tr.expandable-row:hover { background: var(--bg-card-hover); }
+
+    .expand-arrow {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+      vertical-align: middle;
+      transition: transform 0.2s ease;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .expand-arrow.open { transform: rotate(90deg); }
+
+    .expanded-detail {
+      display: none;
+      background: var(--bg-card-alt);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .expanded-detail.visible { display: table-row; }
+
+    .expanded-detail td {
+      padding: 12px 16px !important;
+      font-size: 0.82rem;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px 20px;
+    }
+
+    .detail-item-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .detail-item-value {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.88rem;
+      color: var(--text-primary);
+    }
+
+    .detail-link {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(139, 143, 163, 0.1);
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      text-decoration: none;
+      border: 1px solid var(--border-color);
+      transition: all 0.15s ease;
+    }
+
+    .detail-link:hover {
+      background: rgba(139, 143, 163, 0.2);
+      color: var(--text-primary);
+    }
+
+    /* ── Sortable Headers ───────────────────────── */
+
+    .token-table thead th.sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 18px;
+    }
+
+    .token-table thead th.sortable:hover {
+      color: var(--text-primary);
+    }
+
+    .token-table thead th.sortable::after {
+      content: '\\2195';
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .token-table thead th.sortable.sort-asc::after {
+      content: '\\2191';
+      opacity: 1;
+      color: var(--color-positive);
+    }
+
+    .token-table thead th.sortable.sort-desc::after {
+      content: '\\2193';
+      opacity: 1;
+      color: var(--color-positive);
+    }
+
+    /* ── Early Badge ────────────────────────────── */
+
+    .early-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--color-positive);
+      margin-left: 6px;
+      vertical-align: middle;
+    }
 
     /* ── Sub-narratives ─────────────────────────── */
 
@@ -456,6 +549,11 @@ export function renderDashboardHtml(): string {
       color: var(--color-negative);
     }
 
+    .screener-badge.mixed {
+      background: rgba(139, 143, 163, 0.15);
+      color: var(--text-secondary);
+    }
+
     .chain-badge {
       display: inline-block;
       font-size: 0.6rem;
@@ -491,11 +589,11 @@ export function renderDashboardHtml(): string {
     /* ── Responsive ─────────────────────────────── */
 
     @media (max-width: 768px) {
-      .header h1 { font-size: 1.5rem; }
-      .stats-bar { gap: 16px; }
+      .header-highlights { grid-template-columns: 1fr; }
+      .stats-row { gap: 20px; }
       .card { padding: 16px; }
       .narrative-card { padding: 14px 16px; }
-      #bar-chart { height: 320px; }
+      #sankey-chart { height: 350px; }
       .narrative-header { flex-direction: column; align-items: flex-start; }
       .token-table { font-size: 0.78rem; }
       .token-table thead th,
@@ -506,24 +604,14 @@ export function renderDashboardHtml(): string {
 <body>
   <div class="container">
     <!-- Header -->
-    <header class="header">
-      <h1>Narrative Pulse</h1>
-      <p class="subtitle">Smart Money Narrative Tracker</p>
-      <div class="stats-bar" id="stats-bar">
-        <div class="stat">
-          <div class="stat-value" id="stat-narratives">&mdash;</div>
-          <div class="stat-label">Narratives</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="stat-tokens">&mdash;</div>
-          <div class="stat-label">Tokens Scanned</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="stat-credits">&mdash</div>
-          <div class="stat-label">Credits</div>
-        </div>
+    <header class="header" id="report-header">
+      <div class="header-top">
+        <div class="header-brand">Narrative Pulse</div>
+        <div class="header-date" id="header-date"></div>
       </div>
-      <div class="status-bar">
+      <div class="header-highlights" id="header-highlights"></div>
+      <div class="stats-row" id="header-stats"></div>
+      <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:12px">
         <span class="status-text" id="last-updated">Loading...</span>
         <span class="scan-indicator" id="scan-indicator" style="display:none">
           <span class="dot"></span> Scanning...
@@ -586,15 +674,19 @@ export function renderDashboardHtml(): string {
       return sign + Math.abs(value).toFixed(1) + '%';
     }
 
-    function formatPressure(ratio) {
-      if (!ratio || ratio <= 0) return '\\u2014';
-      return ratio.toFixed(1) + 'x';
+    function formatVolume(value) {
+      if (!value || value <= 0) return '\\u2014';
+      return formatUsdAbs(value);
     }
 
     function escapeHtml(str) {
       var div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    function slugify(name) {
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     }
 
     function minutesAgo(dateStr) {
@@ -631,6 +723,82 @@ export function renderDashboardHtml(): string {
 
     function dexLink(chain, address, symbolHtml) {
       return '<a href="' + dexScreenerUrl(chain, address || '') + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--text-muted)">' + symbolHtml + '</a>';
+    }
+
+    // Sort state tracker per table
+    var sortStates = {};
+
+    function sortTable(tableId, colIndex, type) {
+      var table = document.getElementById(tableId);
+      if (!table) return;
+      var tbody = table.querySelector('tbody');
+      if (!tbody) return;
+
+      // Toggle sort direction
+      var key = tableId + '-' + colIndex;
+      if (sortStates[key] === 'asc') {
+        sortStates[key] = 'desc';
+      } else {
+        sortStates[key] = 'asc';
+      }
+      var dir = sortStates[key];
+
+      // Update header classes
+      var headers = table.querySelectorAll('thead th.sortable');
+      headers.forEach(function(th) { th.classList.remove('sort-asc', 'sort-desc'); });
+      var activeTh = table.querySelectorAll('thead th')[colIndex];
+      if (activeTh) {
+        activeTh.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+
+      // Collect rows (skip expanded-detail rows)
+      var rows = [];
+      var allRows = tbody.querySelectorAll('tr');
+      for (var i = 0; i < allRows.length; i++) {
+        if (!allRows[i].classList.contains('expanded-detail')) {
+          rows.push(allRows[i]);
+        }
+      }
+
+      // Sort
+      rows.sort(function(a, b) {
+        var aVal = a.getAttribute('data-sort-' + colIndex);
+        var bVal = b.getAttribute('data-sort-' + colIndex);
+        if (type === 'number') {
+          aVal = parseFloat(aVal) || 0;
+          bVal = parseFloat(bVal) || 0;
+        } else {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+        if (aVal < bVal) return dir === 'asc' ? -1 : 1;
+        if (aVal > bVal) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // Re-insert in sorted order, keeping detail rows paired
+      rows.forEach(function(row) {
+        var detail = row.nextElementSibling;
+        if (detail && detail.classList.contains('expanded-detail')) {
+          tbody.appendChild(row);
+          tbody.appendChild(detail);
+        } else {
+          tbody.appendChild(row);
+        }
+      });
+    }
+
+    function toggleExpand(row, detailId) {
+      var detail = document.getElementById(detailId);
+      var arrow = row.querySelector('.expand-arrow');
+      if (!detail) return;
+      if (detail.classList.contains('visible')) {
+        detail.classList.remove('visible');
+        if (arrow) arrow.classList.remove('open');
+      } else {
+        detail.classList.add('visible');
+        if (arrow) arrow.classList.add('open');
+      }
     }
 
     // ── Data Fetching ──────────────────────────────────────
@@ -699,26 +867,10 @@ export function renderDashboardHtml(): string {
         return Math.abs(b.totalNetflow24h) - Math.abs(a.totalNetflow24h);
       });
 
-      var accumulating = narratives.filter(function(n) { return n.isHot; })
-        .sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
-      var distributing = narratives.filter(function(n) { return !n.isHot; })
-        .sort(function(a, b) { return a.totalNetflow24h - b.totalNetflow24h; });
-
-      // Hero: biggest absolute netflow
-      var hero = narratives.length > 0 ? narratives[0] : null;
-
-      // Total classified tokens
-      var totalTokens = 0;
-      narratives.forEach(function(n) { totalTokens += n.topTokens.length; });
-
       return {
         timestamp: scan.timestamp,
         creditsUsed: scan.creditsUsed || 0,
         narratives: narratives,
-        accumulating: accumulating,
-        distributing: distributing,
-        hero: hero,
-        totalTokens: totalTokens,
         narrativeCount: narratives.length,
         earlySignals: scan.earlySignals || [],
         screenerHighlights: scan.screenerHighlights || [],
@@ -747,67 +899,92 @@ export function renderDashboardHtml(): string {
       renderDashboard(data);
     }
 
+    // ── Header Rendering ───────────────────────────────────
+
+    function renderHeader(data) {
+      // Date
+      var dateStr = data.timestamp
+        ? new Date(data.timestamp).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+        : 'N/A';
+      document.getElementById('header-date').textContent = dateStr;
+
+      // Highlight cards
+      var highlightsEl = document.getElementById('header-highlights');
+      var highlightHtml = '';
+
+      // Card 1: Top SM Activity
+      var topScreener = (data.screenerHighlights && data.screenerHighlights.length > 0)
+        ? data.screenerHighlights[0] : null;
+      if (topScreener) {
+        var screenerCls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        highlightHtml += '<div class="highlight-card">';
+        highlightHtml += '<div class="highlight-label">Top SM Activity</div>';
+        highlightHtml += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
+        var totalTraders = (topScreener.nofBuyers || 0) + (topScreener.nofSellers || 0);
+        var traderText = totalTraders > 0 ? totalTraders + ' SM traders' : 'Active';
+        highlightHtml += '<div class="highlight-sub">' + traderText + ' \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
+        highlightHtml += '</div>';
+      } else {
+        highlightHtml += '<div class="highlight-card"><div class="highlight-label">Top SM Activity</div><div class="highlight-value" style="color:var(--text-muted)">No data</div></div>';
+      }
+
+      // Card 2: Top Narrative Inflow
+      var strongest = data.narratives && data.narratives.length > 0 ? data.narratives[0] : null;
+      if (strongest) {
+        var narCls = strongest.totalNetflow24h >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        var direction = strongest.totalNetflow24h >= 0 ? 'into' : 'out of';
+        highlightHtml += '<div class="highlight-card">';
+        highlightHtml += '<div class="highlight-label">Top Narrative Signal</div>';
+        highlightHtml += '<div class="highlight-value">SM flowing ' + direction + ' <span style="color:' + narCls + '">' + escapeHtml(strongest.displayName) + '</span></div>';
+        highlightHtml += '<div class="highlight-sub">' + formatUsd(strongest.totalNetflow24h) + ' 24h \\u00B7 ' + strongest.topTokens.length + ' classified tokens</div>';
+        highlightHtml += '</div>';
+      } else {
+        highlightHtml += '<div class="highlight-card"><div class="highlight-label">Top Narrative Signal</div><div class="highlight-value" style="color:var(--text-muted)">No data</div></div>';
+      }
+
+      highlightsEl.innerHTML = highlightHtml;
+
+      // Stats row
+      var classifiedTokens = 0;
+      data.narratives.forEach(function(n) { classifiedTokens += n.topTokens.length; });
+
+      var statsEl = document.getElementById('header-stats');
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-value">' + data.narrativeCount + '</div><div class="stat-label">Active Narratives</div></div>' +
+        '<div class="stat"><div class="stat-value">' + classifiedTokens + '</div><div class="stat-label">Classified Tokens</div></div>' +
+        '<div class="stat"><div class="stat-value">' + (data.screenerHighlights ? data.screenerHighlights.length : 0) + '</div><div class="stat-label">SM Active Tokens</div></div>' +
+        '<div class="stat"><div class="stat-value">' + data.creditsUsed + '</div><div class="stat-label">Credits Used</div></div>';
+    }
+
+    // ── Main Dashboard Rendering ───────────────────────────
+
     function renderDashboard(data) {
+      renderHeader(data);
+      updateAgoText();
+
       var main = document.getElementById('main-content');
       var html = '';
 
-      // Stats
-      document.getElementById('stat-narratives').textContent = data.narrativeCount;
-      document.getElementById('stat-tokens').textContent = data.totalTokens;
-      document.getElementById('stat-credits').textContent = data.creditsUsed;
-      updateAgoText();
-
-      // Update stats bar with screener highlights count
-      var statsBar = document.getElementById('stats-bar');
-      if (statsBar && !document.getElementById('stat-screener')) {
-        var screenerStat = document.createElement('div');
-        screenerStat.className = 'stat';
-        screenerStat.id = 'stat-screener';
-        screenerStat.innerHTML = '<div class="stat-value" id="stat-screener-val">&mdash;</div><div class="stat-label">SM Active Tokens</div>';
-        statsBar.appendChild(screenerStat);
-      }
-      var screenerValEl = document.getElementById('stat-screener-val');
-      if (screenerValEl) screenerValEl.textContent = data.screenerHighlights ? data.screenerHighlights.length : 0;
-
-      // Hero Section
-      html += renderHero(data.hero, data.screenerHighlights);
-
-      // Bar Chart
-      html += '<div class="card" style="margin-bottom:28px">';
-      html += '<div class="card-title">Narrative Netflows (24h)</div>';
-      html += '<div id="bar-chart"></div>';
-      html += '</div>';
-
-      // Screener Highlights (HERO section)
+      // Screener Highlights (HERO section — always rich data)
       if (data.screenerHighlights && data.screenerHighlights.length > 0) {
         html += renderScreenerHighlights(data.screenerHighlights);
       }
 
-      // Early Signals
-      if (data.earlySignals && data.earlySignals.length > 0) {
-        html += renderEarlySignals(data.earlySignals);
-      }
+      // Capital Flow Map (Sankey)
+      html += '<div class="card sankey-card" id="sankey-section">';
+      html += '<div class="card-title">Capital Flow Map</div>';
+      html += '<div id="sankey-chart" style="width:100%;height:450px"></div>';
+      html += '<div class="sankey-hint">Outflows \\u2192 Smart Money \\u2192 Inflows</div>';
+      html += '</div>';
 
-      // Hot Narrative Deep Dive
-      if (data.hero && data.hero.topTokens.length > 0) {
-        html += renderDeepDive(data.hero);
-      }
-
-      // Accumulating
-      if (data.accumulating.length > 0) {
-        html += '<section class="section">';
-        html += '<h2 class="section-title accumulating">Smart Money is ACCUMULATING</h2>';
-        html += '<div class="section-body">';
-        data.accumulating.forEach(function(n) { html += renderNarrativeCard(n); });
-        html += '</div></section>';
-      }
-
-      // Distributing
-      if (data.distributing.length > 0) {
-        html += '<section class="section">';
-        html += '<h2 class="section-title distributing">Smart Money is DISTRIBUTING</h2>';
-        html += '<div class="section-body">';
-        data.distributing.forEach(function(n) { html += renderNarrativeCard(n); });
+      // Narrative Breakdown (unified)
+      if (data.narratives && data.narratives.length > 0) {
+        html += '<section class="section" id="section-narratives">';
+        html += '<h2 class="section-title narratives-title">Narrative Breakdown</h2>';
+        html += '<div class="section-body" id="narratives-container">';
+        data.narratives.forEach(function(n, idx) {
+          html += renderNarrativeCard(n, idx);
+        });
         html += '</div></section>';
       }
 
@@ -816,134 +993,177 @@ export function renderDashboardHtml(): string {
         html += renderSubNarratives(data.subNarratives, data.topNarrativeKey);
       }
 
+      // Early Signals
+      if (data.earlySignals && data.earlySignals.length > 0) {
+        html += renderEarlySignals(data.earlySignals);
+      }
+
       main.innerHTML = html;
 
-      // Initialize ECharts bar chart after DOM update
-      setTimeout(function() { renderBarChart(data.narratives); }, 50);
+      // Initialize Sankey chart after DOM update
+      setTimeout(function() { renderSankeyChart(data.narratives); }, 50);
     }
 
-    function renderHero(hero, screenerHighlights) {
-      var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+    // ── Sankey Chart ───────────────────────────────────────
 
-      // Card 1: Top SM Activity
-      var topScreener = (screenerHighlights && screenerHighlights.length > 0) ? screenerHighlights[0] : null;
-      if (topScreener) {
-        var cls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
-        html += '<div class="highlight-card">';
-        html += '<div class="highlight-label">Top SM Activity</div>';
-        html += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + cls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
-        html += '<div class="highlight-sub">' + topScreener.nofBuyers + ' buyers \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
-        html += '</div>';
-      } else {
-        html += '<div class="highlight-card"><div class="highlight-label">Top SM Activity</div><div class="highlight-value" style="color:var(--text-muted)">\\u2014</div></div>';
+    function renderSankeyChart(narratives) {
+      if (!narratives || narratives.length === 0) {
+        var sankeySection = document.getElementById('sankey-section');
+        if (sankeySection) sankeySection.style.display = 'none';
+        return;
       }
 
-      // Card 2: Top Narrative
-      if (hero) {
-        var narCls = hero.totalNetflow24h >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
-        var dir = hero.totalNetflow24h >= 0 ? 'into' : 'out of';
-        html += '<div class="highlight-card">';
-        html += '<div class="highlight-label">Top Narrative Signal</div>';
-        html += '<div class="highlight-value">SM flowing ' + dir + ' <span style="color:' + narCls + '">' + escapeHtml(hero.displayName) + '</span></div>';
-        html += '<div class="highlight-sub">' + formatUsd(hero.totalNetflow24h) + ' 24h \\u00B7 ' + hero.topTokens.length + ' tokens</div>';
-        html += '</div>';
-      } else {
-        html += '<div class="highlight-card"><div class="highlight-label">Top Narrative Signal</div><div class="highlight-value" style="color:var(--text-muted)">\\u2014</div></div>';
+      var chartDom = document.getElementById('sankey-chart');
+      if (!chartDom) return;
+      var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
+
+      var outflows = narratives.filter(function(n) { return n.totalNetflow24h < -100; });
+      var inflows = narratives.filter(function(n) { return n.totalNetflow24h > 100; });
+
+      // Update hint text
+      var hintEl = document.querySelector('#sankey-section .sankey-hint');
+      if (hintEl) {
+        if (outflows.length === 0) {
+          hintEl.textContent = 'Smart Money is flowing into narratives. Click a node to jump to details.';
+        } else if (inflows.length === 0) {
+          hintEl.textContent = 'Smart Money is exiting these narratives. Click a node to jump to details.';
+        } else {
+          hintEl.textContent = 'Outflows \\u2192 Smart Money \\u2192 Inflows. Click a node to jump to details.';
+        }
       }
 
-      html += '</div>';
-      return html;
-    }
+      if (outflows.length === 0 && inflows.length === 0) {
+        var sankeySection = document.getElementById('sankey-section');
+        if (sankeySection) sankeySection.style.display = 'none';
+        return;
+      }
 
-    function renderEarlySignals(signals) {
-      var html = '<div class="early-signals-section">';
-      html += '<div class="early-signals-title">Early Signal Tokens \\u2014 Smart Money Accumulating Before Price Move</div>';
-      html += '<div class="early-signals-body">';
-      html += '<table class="token-table">';
-      html += '<thead><tr>';
-      html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Volume 24h</th><th>Buy Pressure</th><th>Market Cap</th>';
-      html += '</tr></thead><tbody>';
+      var nodeAlign = outflows.length === 0 ? 'left' : 'justify';
 
-      signals.forEach(function(t) {
-        var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
-        var priceCls = t.priceChange24h > 0 ? 'netflow-positive' : (t.priceChange24h < 0 ? 'netflow-negative' : '');
-        html += '<tr>';
-        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-signal-badge" title="SM accumulating before significant price move">\\uD83D\\uDFE1 EARLY SIGNAL</span></td>';
-        html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
-        html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
-        html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
-        html += '<td class="mono">' + formatPressure(t.buyPressure) + '</td>';
-        html += '<td class="mono">' + formatMcap(t.marketCap) + '</td>';
-        html += '</tr>';
+      var nodes = [];
+      var links = [];
+
+      nodes.push({ name: 'Smart Money', itemStyle: { color: '#818cf8' } });
+
+      outflows.forEach(function(n) {
+        nodes.push({ name: n.displayName, itemStyle: { color: '#f87171' } });
+        var rawValue = Math.abs(n.totalNetflow24h);
+        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
+        links.push({
+          source: n.displayName, target: 'Smart Money', value: displayValue,
+          _rawValue: rawValue,
+          lineStyle: { color: 'rgba(248, 113, 113, 0.5)' }
+        });
       });
 
-      html += '</tbody></table>';
-      html += '</div></div>';
-      return html;
-    }
-
-    function renderDeepDive(narrative) {
-      var netflowCls = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
-      var html = '<div class="card" style="margin-bottom:28px">';
-      html += '<div class="card-title">Hot Narrative Deep Dive: ' + escapeHtml(narrative.displayName) +
-        ' <span class="mono ' + netflowCls + '" style="font-size:0.95rem">' + formatUsd(narrative.totalNetflow24h) + '</span></div>';
-
-      html += '<table class="token-table">';
-      html += '<thead><tr>';
-      html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Volume 24h</th><th>Market Cap</th>';
-      html += '</tr></thead><tbody>';
-
-      narrative.topTokens.forEach(function(t) {
-        var tNetflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
-        var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
-        var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
-        var vol = t.volume24h || 0;
-
-        html += '<tr>';
-        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '</td>';
-        html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';        html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
-        html += '<td class="mono">' + formatMcap(vol) + '</td>';
-        html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-        html += '</tr>';
+      inflows.forEach(function(n) {
+        nodes.push({ name: n.displayName, itemStyle: { color: '#34d399' } });
+        var rawValue = Math.abs(n.totalNetflow24h);
+        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
+        links.push({
+          source: 'Smart Money', target: n.displayName, value: displayValue,
+          _rawValue: rawValue,
+          lineStyle: { color: 'rgba(52, 211, 153, 0.5)' }
+        });
       });
 
-      html += '</tbody></table>';
-      html += '</div>';
-      return html;
+      chart.setOption({
+        tooltip: {
+          trigger: 'item',
+          triggerOn: 'mousemove',
+          formatter: function(params) {
+            if (params.dataType === 'edge') {
+              var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
+              var direction = params.data.source === 'Smart Money' ? 'Inflow' : 'Outflow';
+              return params.data.source + ' \\u2192 ' + params.data.target +
+                '<br/>' + direction + ': <strong>' + formatUsdAbs(realValue) + '</strong>';
+            }
+            return '<strong>' + params.name + '</strong>';
+          }
+        },
+        series: [{
+          type: 'sankey',
+          layout: 'none',
+          emphasis: { focus: 'adjacency' },
+          nodeAlign: nodeAlign,
+          nodeGap: 20,
+          nodeWidth: 24,
+          layoutIterations: 32,
+          top: 55,
+          bottom: 30,
+          left: 80,
+          right: 120,
+          label: { fontSize: 13, color: '#e8e9ed', fontWeight: 500, overflow: 'none', position: 'right' },
+          lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.4 },
+          data: nodes,
+          links: links
+        }]
+      });
+
+      chart.on('click', function(params) {
+        if (params.dataType === 'node' && params.name !== 'Smart Money') {
+          var slug = slugify(params.name);
+          var el = document.getElementById('narrative-' + slug);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+
+      window.addEventListener('resize', function() { chart.resize(); });
     }
+
+    // ── Screener Highlights ────────────────────────────────
 
     function renderScreenerHighlights(highlights) {
+      var tableId = 'screener-table';
       var html = '<div class="screener-highlights-card">';
-      html += '<div class="screener-title">🔥 Smart Money Active Tokens</div>';
-      html += '<div class="screener-subtitle">Top tokens by Smart Money buy/sell ratio and netflow — always fresh data from 500+ tokens</div>';
+      html += '<div class="screener-title">\\uD83D\\uDD25 Smart Money Active Tokens</div>';
+      html += '<div class="screener-subtitle">Top tokens by Smart Money buy/sell ratio and netflow \\u2014 always fresh data from 500+ tokens</div>';
 
-      html += '<table class="token-table">';
+      html += '<table class="token-table" id="' + tableId + '">';
       html += '<thead><tr>';
-      html += '<th>Token</th><th>Netflow 24h</th><th>Buy / Sell</th><th>Ratio</th><th>Price \\u0394</th><th>Market Cap</th><th>Signal</th>';
+      html += '<th title="Token symbol and chain">Token</th>';
+      html += '<th class="sortable" title="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 1, \\'number\\')">Netflow 24h</th>';
+      html += '<th title="Visual ratio of buy volume (green) vs sell volume (red)">Buy / Sell</th>';
+      html += '<th class="sortable" title="Buy volume divided by sell volume \\u2014 higher means more buying pressure" onclick="sortTable(\\'' + tableId + '\\', 3, \\'number\\')">Ratio</th>';
+      html += '<th class="sortable" title="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Price \\u0394</th>';
+      html += '<th class="sortable" title="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Market Cap</th>';
+      html += '<th class="sortable" title="Signal classification based on buy/sell ratio and netflow direction" onclick="sortTable(\\'' + tableId + '\\', 6, \\'text\\')">Signal</th>';
       html += '</tr></thead><tbody>';
 
-      highlights.forEach(function(t) {
+      highlights.forEach(function(t, idx) {
         var netflowCls = t.netflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
         var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
         var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
 
-        // Buy/sell bar
         var totalVol = Math.abs(t.buyVolume) + Math.abs(t.sellVolume);
         var buyPct = totalVol > 0 ? (Math.abs(t.buyVolume) / totalVol * 100) : 50;
         var sellPct = 100 - buyPct;
-
         var ratioText = t.buySellRatio >= 99 ? '99x+' : t.buySellRatio.toFixed(1) + 'x';
 
-        // Classification badge
         var badgeClass = t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
-                         t.classification === 'accumulating' ? 'accumulating' : 'distributing';
+                         t.classification === 'accumulating' ? 'accumulating' :
+                         t.classification === 'mixed' ? 'mixed' : 'distributing';
         var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
-                        t.classification === 'accumulating' ? 'ACCUM' : 'DIST';
+                        t.classification === 'accumulating' ? 'ACCUM' :
+                        t.classification === 'mixed' ? 'MIXED' : 'DIST';
         var badgeTooltip = t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
-                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' : 'Buy/sell ratio < 1.5: Smart Money is selling';
+                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
+                           t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
 
-        html += '<tr>';
-        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+        var signalSortOrder = t.classification === 'heavy_accumulation' ? 0 :
+                              t.classification === 'accumulating' ? 1 :
+                              t.classification === 'mixed' ? 2 : 3;
+
+        var detailId = 'screener-detail-' + idx;
+
+        html += '<tr class="expandable-row" onclick="toggleExpand(this, \\'' + detailId + '\\')"';
+        html += ' data-sort-1="' + t.netflowUsd + '"';
+        html += ' data-sort-3="' + t.buySellRatio + '"';
+        html += ' data-sort-4="' + t.priceChange + '"';
+        html += ' data-sort-5="' + (t.marketCapUsd || 0) + '"';
+        html += ' data-sort-6="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+        html += '>';
+        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
@@ -951,6 +1171,19 @@ export function renderDashboardHtml(): string {
         html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
         html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
         html += '</tr>';
+
+        // Expanded detail row
+        html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="7">';
+        html += '<div class="detail-grid">';
+        html += '<div><div class="detail-item-label">Current Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
+        html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
+        html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
+        html += '<div><div class="detail-item-label">SM Buyers</div><div class="detail-item-value">' + t.nofBuyers + '</div></div>';
+        html += '<div><div class="detail-item-label">SM Sellers</div><div class="detail-item-value">' + t.nofSellers + '</div></div>';
+        html += '<div><div class="detail-item-label">Total Volume</div><div class="detail-item-value">' + formatVolume(t.volume) + '</div></div>';
+        html += '</div>';
+        html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
+        html += '</td></tr>';
       });
 
       html += '</tbody></table>';
@@ -958,25 +1191,33 @@ export function renderDashboardHtml(): string {
       return html;
     }
 
-    function renderNarrativeCard(narrative) {
+    // ── Narrative Card Rendering ────────────────────────────
+
+    function renderNarrativeCard(narrative, cardIndex) {
+      var slug = slugify(narrative.displayName);
       var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
       var borderClass = narrative.isHot ? 'border-positive' : 'border-negative';
+      var tableId = 'narrative-table-' + cardIndex;
 
-      var html = '<div class="narrative-card ' + borderClass + '">';
+      var html = '<div class="narrative-card ' + borderClass + '" id="narrative-' + slug + '">';
       html += '<div class="narrative-header">';
       html += '<span class="narrative-name">' + escapeHtml(narrative.displayName) + '</span>';
       html += '<div class="narrative-metrics">';
-      html += '<span class="metric">24h: <strong class="' + netflowClass + '">' + formatUsd(narrative.totalNetflow24h) + '</strong></span>';
-      html += '<span class="metric">' + narrative.topTokens.length + ' tokens</span>';
+      html += '<span class="metric">24h Netflow: <strong class="' + netflowClass + '">' + formatUsd(narrative.totalNetflow24h) + '</strong></span>';
+      html += '<span class="metric">' + narrative.topTokens.length + ' classified tokens</span>';
       html += '</div></div>';
 
       if (narrative.topTokens.length > 0) {
-        html += '<table class="token-table">';
+        html += '<table class="token-table" id="' + tableId + '">';
         html += '<thead><tr>';
-        html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Market Cap</th><th>Category</th>';
+        html += '<th title="Token symbol and chain">Token</th>';
+        html += '<th class="sortable" title="Smart Money net capital flow over 24 hours" onclick="sortTable(\\'' + tableId + '\\', 1, \\'number\\')">Netflow 24h</th>';
+        html += '<th class="sortable" title="Price change over 24 hours" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Price \\u0394</th>';
+        html += '<th class="sortable" title="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 3, \\'number\\')">Market Cap</th>';
+        html += '<th class="sortable" title="Classification: HOT = strong SM accumulation + rising price, WATCH = SM accumulating, price flat, AVOID = SM distributing" onclick="sortTable(\\'' + tableId + '\\', 4, \\'text\\')">Category</th>';
         html += '</tr></thead><tbody>';
 
-        narrative.topTokens.forEach(function(t) {
+        narrative.topTokens.forEach(function(t, tidx) {
           var tNetflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
           var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
           var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
@@ -987,25 +1228,51 @@ export function renderDashboardHtml(): string {
                              t.category === 'watch' ? 'WATCH' : 'AVOID';
           var catTooltip = t.category === 'hot' ? 'Strong SM accumulation + rising price' :
                            t.category === 'watch' ? 'SM accumulating, price hasn\\'t moved yet' : 'SM distributing, consider reducing exposure';
+          var catSortOrder = t.category === 'hot' ? 0 : t.category === 'watch' ? 1 : 2;
 
-          html += '<tr>';
-          html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+          var detailId = 'narrative-detail-' + cardIndex + '-' + tidx;
+
+          html += '<tr class="expandable-row" onclick="toggleExpand(this, \\'' + detailId + '\\')"';
+          html += ' data-sort-1="' + t.netflow24hUsd + '"';
+          html += ' data-sort-2="' + t.priceChange + '"';
+          html += ' data-sort-3="' + (t.marketCapUsd || 0) + '"';
+          html += ' data-sort-4="' + catSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+          html += '>';
+
+          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
           html += '<td><span class="' + catBadgeCls + '" title="' + catTooltip + '">' + catBadgeText + '</span></td>';
           html += '</tr>';
+
+          // Expanded detail row
+          html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="5">';
+          html += '<div class="detail-grid">';
+          html += '<div><div class="detail-item-label">Current Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
+          html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
+          html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
+          html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + t.traderCount + '</div></div>';
+          html += '<div><div class="detail-item-label">Volume 24h</div><div class="detail-item-value">' + formatVolume(t.volume24h) + '</div></div>';
+          html += '<div><div class="detail-item-label">Liquidity</div><div class="detail-item-value">' + formatMcap(t.liquidity) + '</div></div>';
+          html += '</div>';
+          html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
+          html += '</td></tr>';
         });
 
         html += '</tbody></table>';
       } else {
-        html += '<p style="color:var(--text-muted);font-size:0.9rem;">' +
-          narrative.tokenCount + ' tokens tracked.</p>';
+        html += '<p style="color: var(--text-muted); font-size: 0.9rem;">' +
+          narrative.tokenCount + ' tokens tracked. Strong SM ' +
+          (narrative.totalNetflow24h >= 0 ? 'accumulation' : 'distribution') +
+          ' signal.</p>';
       }
 
       html += '</div>';
       return html;
     }
+
+    // ── Sub-narratives ─────────────────────────────────────
 
     function renderSubNarratives(subs, topKey) {
       var html = '<div class="card">';
@@ -1027,81 +1294,50 @@ export function renderDashboardHtml(): string {
       return html;
     }
 
+    // ── Early Signals ──────────────────────────────────────
+
+    function renderEarlySignals(signals) {
+      var html = '<div class="early-signals-section">';
+      html += '<div class="early-signals-title">Early Signal Tokens \\u2014 Smart Money Accumulating Before Price Move</div>';
+      html += '<div class="early-signals-body">';
+      html += '<table class="token-table">';
+      html += '<thead><tr>';
+      html += '<th title="Token symbol">Token</th>';
+      html += '<th title="Smart Money net capital flow over 24 hours">Netflow 24h</th>';
+      html += '<th title="Price change over 24 hours">Price \\u0394</th>';
+      html += '<th title="Total trading volume over 24 hours">Volume 24h</th>';
+      html += '<th title="Buy/sell ratio \\u2014 higher means more buying pressure">Buy Pressure</th>';
+      html += '<th title="Current market capitalization">Market Cap</th>';
+      html += '</tr></thead><tbody>';
+
+      signals.forEach(function(t) {
+        var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+        var priceCls = t.priceChange24h > 0 ? 'netflow-positive' : (t.priceChange24h < 0 ? 'netflow-negative' : '');
+        var pressureText = !t.buyPressure || t.buyPressure <= 0 ? '\\u2014' : t.buyPressure.toFixed(1) + 'x';
+
+        html += '<tr>';
+        html += '<td>' + dexLink(t.chain || '', t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
+        html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
+        html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
+        html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
+        html += '<td class="mono">' + pressureText + '</td>';
+        html += '<td class="mono">' + formatMcap(t.marketCap) + '</td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      html += '</div></div>';
+      return html;
+    }
+
+    // ── Empty State ────────────────────────────────────────
+
     function renderEmpty() {
       var main = document.getElementById('main-content');
       main.innerHTML = '<div class="empty-state">' +
         '<p style="font-size:1.2rem;margin-bottom:12px;">No data yet</p>' +
         '<p>Click "Run Scan" to fetch the latest Smart Money data.</p>' +
         '</div>';
-    }
-
-    // ── ECharts Bar Chart ──────────────────────────────────
-
-    function renderBarChart(narratives) {
-      var chartDom = document.getElementById('bar-chart');
-      if (!chartDom) return;
-
-      var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
-
-      // Take top 15 by |netflow|
-      var top = narratives.slice(0, 15);
-
-      // Reverse for display (top = highest |netflow| at bottom of chart)
-      var reversed = top.slice().reverse();
-
-      var names = reversed.map(function(n) { return n.displayName; });
-      var values = reversed.map(function(n) { return n.totalNetflow24h; });
-      var colors = reversed.map(function(n) {
-        return n.totalNetflow24h >= 0 ? '#34d399' : '#f87171';
-      });
-
-      chart.setOption({
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          formatter: function(params) {
-            var p = params[0];
-            return p.name + '<br/>Netflow: <strong>' + formatUsd(p.value) + '</strong>';
-          }
-        },
-        grid: {
-          top: 16,
-          right: 40,
-          bottom: 60,
-          left: 120,
-          containLabel: false
-        },
-        xAxis: {
-          type: 'value',
-          axisLabel: {
-            color: '#8b8fa3',
-            formatter: function(v) {
-              if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(0) + 'M';
-              if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(0) + 'K';
-              return v;
-            }
-          },
-          splitLine: { lineStyle: { color: '#2a2d3a' } }
-        },
-        yAxis: {
-          type: 'category',
-          data: names,
-          axisLabel: { color: '#e8e9ed', fontSize: 13, fontWeight: 500 },
-          axisLine: { lineStyle: { color: '#2a2d3a' } }
-        },
-        series: [{
-          type: 'bar',
-          data: values.map(function(v, i) {
-            return {
-              value: v,
-              itemStyle: { color: colors[i], borderRadius: v >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4] }
-            };
-          }),
-          barWidth: '60%'
-        }]
-      });
-
-      window.addEventListener('resize', function() { chart.resize(); });
     }
 
     // ── Auto-Refresh ───────────────────────────────────────
