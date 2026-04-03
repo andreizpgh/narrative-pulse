@@ -145,41 +145,31 @@ export function renderDashboardHtml(): string {
 
     /* ── Hero Section ───────────────────────────── */
 
-    .hero-section {
-      text-align: center;
-      padding: 32px 24px;
-      margin-bottom: 28px;
-      border-radius: var(--radius);
+    .highlight-card {
+      padding: 14px 18px;
+      border-radius: 10px;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
     }
 
-    .hero-label {
-      font-size: 1rem;
+    .highlight-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
       color: var(--text-secondary);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
-    .hero-narrative {
-      font-size: 2rem;
-      font-weight: 800;
+    .highlight-value {
+      font-size: 1.15rem;
+      font-weight: 700;
       color: #ffffff;
-      margin-bottom: 8px;
     }
 
-    .hero-netflow {
-      font-size: 2.8rem;
-      font-weight: 800;
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    }
-
-    .hero-netflow.positive { color: var(--color-positive); }
-    .hero-netflow.negative { color: var(--color-negative); }
-
-    .hero-subtitle {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-top: 6px;
+    .highlight-sub {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
     }
 
     /* ── Bar Chart ──────────────────────────────── */
@@ -502,8 +492,6 @@ export function renderDashboardHtml(): string {
 
     @media (max-width: 768px) {
       .header h1 { font-size: 1.5rem; }
-      .hero-narrative { font-size: 1.4rem; }
-      .hero-netflow { font-size: 2rem; }
       .stats-bar { gap: 16px; }
       .card { padding: 16px; }
       .narrative-card { padding: 14px 16px; }
@@ -633,6 +621,16 @@ export function renderDashboardHtml(): string {
       var cls = 'chain-badge chain-' + chain;
       var labels = { ethereum: 'ETH', solana: 'SOL', base: 'BASE', bnb: 'BNB', arbitrum: 'ARB' };
       return '<span class="' + cls + '">' + (labels[chain] || chain) + '</span>';
+    }
+
+    function dexScreenerUrl(chain, address) {
+      var chainMap = { ethereum: 'ethereum', solana: 'solana', base: 'base', bnb: 'bsc', arbitrum: 'arbitrum' };
+      var c = chainMap[chain] || chain;
+      return 'https://dexscreener.com/' + c + '/' + address;
+    }
+
+    function dexLink(chain, address, symbolHtml) {
+      return '<a href="' + dexScreenerUrl(chain, address || '') + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--text-muted)">' + symbolHtml + '</a>';
     }
 
     // ── Data Fetching ──────────────────────────────────────
@@ -772,7 +770,7 @@ export function renderDashboardHtml(): string {
       if (screenerValEl) screenerValEl.textContent = data.screenerHighlights ? data.screenerHighlights.length : 0;
 
       // Hero Section
-      html += renderHero(data.hero);
+      html += renderHero(data.hero, data.screenerHighlights);
 
       // Bar Chart
       html += '<div class="card" style="margin-bottom:28px">';
@@ -824,16 +822,37 @@ export function renderDashboardHtml(): string {
       setTimeout(function() { renderBarChart(data.narratives); }, 50);
     }
 
-    function renderHero(hero) {
-      if (!hero) return '';
-      var cls = hero.totalNetflow24h >= 0 ? 'positive' : 'negative';
-      var direction = hero.totalNetflow24h >= 0 ? 'flowing into' : 'exiting';
-      return '<div class="hero-section">' +
-        '<div class="hero-label">Smart Money is ' + direction + '</div>' +
-        '<div class="hero-narrative">' + escapeHtml(hero.displayName) + '</div>' +
-        '<div class="hero-netflow ' + cls + '">' + formatUsd(hero.totalNetflow24h) + '</div>' +
-        '<div class="hero-subtitle">in the last 24h</div>' +
-        '</div>';
+    function renderHero(hero, screenerHighlights) {
+      var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">';
+
+      // Card 1: Top SM Activity
+      var topScreener = (screenerHighlights && screenerHighlights.length > 0) ? screenerHighlights[0] : null;
+      if (topScreener) {
+        var cls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        html += '<div class="highlight-card">';
+        html += '<div class="highlight-label">Top SM Activity</div>';
+        html += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + cls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
+        html += '<div class="highlight-sub">' + topScreener.nofBuyers + ' buyers \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
+        html += '</div>';
+      } else {
+        html += '<div class="highlight-card"><div class="highlight-label">Top SM Activity</div><div class="highlight-value" style="color:var(--text-muted)">\\u2014</div></div>';
+      }
+
+      // Card 2: Top Narrative
+      if (hero) {
+        var narCls = hero.totalNetflow24h >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        var dir = hero.totalNetflow24h >= 0 ? 'into' : 'out of';
+        html += '<div class="highlight-card">';
+        html += '<div class="highlight-label">Top Narrative Signal</div>';
+        html += '<div class="highlight-value">SM flowing ' + dir + ' <span style="color:' + narCls + '">' + escapeHtml(hero.displayName) + '</span></div>';
+        html += '<div class="highlight-sub">' + formatUsd(hero.totalNetflow24h) + ' 24h \\u00B7 ' + hero.topTokens.length + ' tokens</div>';
+        html += '</div>';
+      } else {
+        html += '<div class="highlight-card"><div class="highlight-label">Top Narrative Signal</div><div class="highlight-value" style="color:var(--text-muted)">\\u2014</div></div>';
+      }
+
+      html += '</div>';
+      return html;
     }
 
     function renderEarlySignals(signals) {
@@ -849,7 +868,7 @@ export function renderDashboardHtml(): string {
         var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
         var priceCls = t.priceChange24h > 0 ? 'netflow-positive' : (t.priceChange24h < 0 ? 'netflow-negative' : '');
         html += '<tr>';
-        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong><span class="early-signal-badge">\\uD83D\\uDFE1 EARLY SIGNAL</span></td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-signal-badge" title="SM accumulating before significant price move">\\uD83D\\uDFE1 EARLY SIGNAL</span></td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
         html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
         html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
@@ -881,9 +900,8 @@ export function renderDashboardHtml(): string {
         var vol = t.volume24h || 0;
 
         html += '<tr>';
-        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
-        html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
-        html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '</td>';
+        html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';        html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
         html += '<td class="mono">' + formatMcap(vol) + '</td>';
         html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
         html += '</tr>';
@@ -921,15 +939,17 @@ export function renderDashboardHtml(): string {
                          t.classification === 'accumulating' ? 'accumulating' : 'distributing';
         var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
                         t.classification === 'accumulating' ? 'ACCUM' : 'DIST';
+        var badgeTooltip = t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
+                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' : 'Buy/sell ratio < 1.5: Smart Money is selling';
 
         html += '<tr>';
-        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
         html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
         html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-        html += '<td><span class="screener-badge ' + badgeClass + '">' + badgeText + '</span></td>';
+        html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
         html += '</tr>';
       });
 
@@ -965,13 +985,15 @@ export function renderDashboardHtml(): string {
                             t.category === 'watch' ? 'screener-badge accumulating' : 'screener-badge distributing';
           var catBadgeText = t.category === 'hot' ? 'HOT' :
                              t.category === 'watch' ? 'WATCH' : 'AVOID';
+          var catTooltip = t.category === 'hot' ? 'Strong SM accumulation + rising price' :
+                           t.category === 'watch' ? 'SM accumulating, price hasn\\'t moved yet' : 'SM distributing, consider reducing exposure';
 
           html += '<tr>';
-          html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
+          html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-          html += '<td><span class="' + catBadgeCls + '">' + catBadgeText + '</span></td>';
+          html += '<td><span class="' + catBadgeCls + '" title="' + catTooltip + '">' + catBadgeText + '</span></td>';
           html += '</tr>';
         });
 

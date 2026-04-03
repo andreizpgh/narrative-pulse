@@ -23,6 +23,7 @@ import type {
 
 interface HtmlReportToken {
   token_symbol: string;
+  token_address: string;
   category: string;
   chain: string;
   netflow24hUsd: number;
@@ -55,6 +56,7 @@ interface HtmlReportSubNarrative {
 
 interface HtmlReportEarlySignal {
   token_symbol: string;
+  token_address: string;
   netflow24hUsd: number;
   priceChange24h: number;
   volume24h: number;
@@ -65,6 +67,7 @@ interface HtmlReportEarlySignal {
 
 interface HtmlReportScreenerHighlight {
   token_symbol: string;
+  token_address: string;
   chain: string;
   netflowUsd: number;
   buyVolume: number;
@@ -100,6 +103,7 @@ function log(message: string): void {
 function toHtmlToken(t: ClassifiedToken): HtmlReportToken {
   return {
     token_symbol: t.token_symbol,
+    token_address: t.token_address,
     category: t.category,
     chain: t.chain,
     netflow24hUsd: t.netflow24hUsd,
@@ -140,6 +144,7 @@ function toHtmlSubNarrative(s: SubNarrative): HtmlReportSubNarrative {
 function toHtmlEarlySignal(t: EarlySignalToken): HtmlReportEarlySignal {
   return {
     token_symbol: t.token_symbol,
+    token_address: t.token_address,
     netflow24hUsd: t.netflow24hUsd,
     priceChange24h: t.priceChange24h,
     volume24h: t.volume24h,
@@ -152,6 +157,7 @@ function toHtmlEarlySignal(t: EarlySignalToken): HtmlReportEarlySignal {
 function toHtmlScreenerHighlight(h: ScreenerHighlight): HtmlReportScreenerHighlight {
   return {
     token_symbol: h.token_symbol,
+    token_address: h.token_address,
     chain: h.chain,
     netflowUsd: h.netflowUsd,
     buyVolume: h.buyVolume,
@@ -232,55 +238,74 @@ function generateHtml(data: HtmlReportData): string {
     /* Header */
 
     .header {
-      text-align: center;
-      padding: 48px 24px 36px;
+      padding: 24px 24px 20px;
       border-bottom: 1px solid var(--border-color);
-      margin-bottom: 32px;
-    }
-
-    .header h1 {
-      font-size: 2.2rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      margin-bottom: 4px;
-      color: #ffffff;
-    }
-
-    .header .date {
-      font-size: 0.85rem;
-      color: var(--text-muted);
       margin-bottom: 24px;
     }
 
-    .hero-metric {
-      display: inline-block;
-      padding: 10px 28px;
-      border-radius: 8px;
-      background: rgba(52, 211, 153, 0.08);
-      border: 1px solid rgba(52, 211, 153, 0.2);
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 16px;
-      font-size: 1.1rem;
-      color: var(--text-primary);
     }
 
-    .hero-metric strong {
+    .header-brand {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+    }
+
+    .header-date {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-highlights {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .highlight-card {
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+    }
+
+    .highlight-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .highlight-value {
+      font-size: 1.15rem;
       font-weight: 700;
+      color: #ffffff;
     }
 
-    .hero-metric.positive { border-color: rgba(52, 211, 153, 0.3); background: rgba(52, 211, 153, 0.08); }
-    .hero-metric.negative { border-color: rgba(248, 113, 113, 0.3); background: rgba(248, 113, 113, 0.08); }
+    .highlight-sub {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
 
     .stats-row {
       display: flex;
       justify-content: center;
-      gap: 40px;
+      gap: 32px;
       flex-wrap: wrap;
-      margin-top: 16px;
     }
 
     .stat { text-align: center; }
-    .stat-value { font-size: 1.3rem; font-weight: 700; color: #ffffff; }
-    .stat-label { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .stat-value { font-size: 1.2rem; font-weight: 700; color: #ffffff; }
+    .stat-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
     /* Sankey Chart */
 
@@ -576,7 +601,7 @@ function generateHtml(data: HtmlReportData): string {
     /* Responsive */
 
     @media (max-width: 768px) {
-      .header h1 { font-size: 1.5rem; }
+      .header-highlights { grid-template-columns: 1fr; }
       .stats-row { gap: 20px; }
       .card { padding: 16px; }
       .narrative-card { padding: 14px 16px; }
@@ -592,21 +617,23 @@ function generateHtml(data: HtmlReportData): string {
   <div class="container">
     <!-- Header -->
     <header class="header" id="report-header">
-      <h1>Narrative Pulse</h1>
-      <p class="date" id="header-date"></p>
-      <div id="hero-metric"></div>
+      <div class="header-top">
+        <div class="header-brand">Narrative Pulse</div>
+        <div class="header-date" id="header-date"></div>
+      </div>
+      <div class="header-highlights" id="header-highlights"></div>
       <div class="stats-row" id="header-stats"></div>
     </header>
 
-    <!-- Sankey Chart (interactive, labels can wrap) -->
+    <!-- Screener Highlights (HERO section — always rich data) -->
+    <div id="screener-highlights"></div>
+
+    <!-- Capital Flow Map (interactive Sankey) -->
     <div class="card sankey-card" id="sankey-section">
       <div class="card-title">Capital Flow Map</div>
       <div id="sankey-chart"></div>
       <div class="sankey-hint">Outflows &rarr; Smart Money &rarr; Inflows. Click a narrative to jump to details.</div>
     </div>
-
-    <!-- Screener Highlights (HERO section — always rich data) -->
-    <div id="screener-highlights"></div>
 
     <!-- Accumulating Narratives -->
     <section class="section" id="section-accumulating">
@@ -685,6 +712,16 @@ function generateHtml(data: HtmlReportData): string {
       return '<span class="' + cls + '">' + (labels[chain] || chain) + '</span>';
     }
 
+    function dexScreenerUrl(chain, address) {
+      var chainMap = { ethereum: 'ethereum', solana: 'solana', base: 'base', bnb: 'bsc', arbitrum: 'arbitrum' };
+      var c = chainMap[chain] || chain;
+      return 'https://dexscreener.com/' + c + '/' + address;
+    }
+
+    function dexLink(chain, address, symbolHtml) {
+      return '<a href="' + dexScreenerUrl(chain, address || '') + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--text-muted)">' + symbolHtml + '</a>';
+    }
+
     // ── Data Preprocessing ──────────────────────────────────
     // Filter: only narratives with non-zero netflow
     // Filter: only classified tokens with |netflow| > $1000
@@ -715,36 +752,52 @@ function generateHtml(data: HtmlReportData): string {
         : 'N/A';
       document.getElementById('header-date').textContent = dateStr;
 
-      // Count classified tokens (those with |netflow| >= $1000)
       var classifiedTokens = 0;
       processedNarratives.forEach(function(n) { classifiedTokens += n.topTokens.length; });
-      var narrativeCount = processedNarratives.length;
 
-      // Strongest signal: narrative with highest absolute netflow
+      // Two highlight cards
+      var highlightsEl = document.getElementById('header-highlights');
+      var highlightHtml = '';
+
+      // Card 1: Top SM Activity
+      var topScreener = (SCAN_DATA.screenerHighlights && SCAN_DATA.screenerHighlights.length > 0)
+        ? SCAN_DATA.screenerHighlights[0] : null;
+      if (topScreener) {
+        var screenerCls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        highlightHtml += '<div class="highlight-card">';
+        highlightHtml += '<div class="highlight-label">Top SM Activity</div>';
+        highlightHtml += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
+        highlightHtml += '<div class="highlight-sub">' + topScreener.nofBuyers + ' buyers \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
+        highlightHtml += '</div>';
+      } else {
+        highlightHtml += '<div class="highlight-card"><div class="highlight-label">Top SM Activity</div><div class="highlight-value" style="color:var(--text-muted)">No data</div></div>';
+      }
+
+      // Card 2: Top Narrative Inflow
       var strongest = null;
       processedNarratives.forEach(function(n) {
         if (!strongest || Math.abs(n.totalNetflow24h) > Math.abs(strongest.totalNetflow24h)) {
           strongest = n;
         }
       });
-
-      // Hero metric
-      var heroEl = document.getElementById('hero-metric');
       if (strongest) {
-        var cls = strongest.totalNetflow24h >= 0 ? 'positive' : 'negative';
+        var narCls = strongest.totalNetflow24h >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
         var direction = strongest.totalNetflow24h >= 0 ? 'into' : 'out of';
-        var netflowCls = strongest.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
-        heroEl.className = 'hero-metric ' + cls;
-        heroEl.innerHTML = 'Strongest signal: Smart Money is flowing <strong>' +
-          (strongest.totalNetflow24h >= 0 ? 'into' : 'out of') +
-          '</strong> <strong>' + escapeHtml(strongest.displayName) + '</strong>' +
-          ' (<strong class="' + netflowCls + '">' + formatUsd(strongest.totalNetflow24h) + '</strong> in 24h)';
+        highlightHtml += '<div class="highlight-card">';
+        highlightHtml += '<div class="highlight-label">Top Narrative Signal</div>';
+        highlightHtml += '<div class="highlight-value">SM flowing ' + direction + ' <span style="color:' + narCls + '">' + escapeHtml(strongest.displayName) + '</span></div>';
+        highlightHtml += '<div class="highlight-sub">' + formatUsd(strongest.totalNetflow24h) + ' 24h \\u00B7 ' + strongest.topTokens.length + ' classified tokens</div>';
+        highlightHtml += '</div>';
+      } else {
+        highlightHtml += '<div class="highlight-card"><div class="highlight-label">Top Narrative Signal</div><div class="highlight-value" style="color:var(--text-muted)">No data</div></div>';
       }
+
+      highlightsEl.innerHTML = highlightHtml;
 
       // Stats
       var statsEl = document.getElementById('header-stats');
       statsEl.innerHTML =
-        '<div class="stat"><div class="stat-value">' + narrativeCount + '</div><div class="stat-label">Active Narratives</div></div>' +
+        '<div class="stat"><div class="stat-value">' + processedNarratives.length + '</div><div class="stat-label">Active Narratives</div></div>' +
         '<div class="stat"><div class="stat-value">' + classifiedTokens + '</div><div class="stat-label">Classified Tokens</div></div>' +
         '<div class="stat"><div class="stat-value">' + (SCAN_DATA.screenerHighlights ? SCAN_DATA.screenerHighlights.length : 0) + '</div><div class="stat-label">SM Active Tokens</div></div>' +
         '<div class="stat"><div class="stat-value">' + (SCAN_DATA.creditsUsed || 0) + '</div><div class="stat-label">Credits Used</div></div>';
@@ -908,13 +961,15 @@ function generateHtml(data: HtmlReportData): string {
                             t.category === 'watch' ? 'screener-badge accumulating' : 'screener-badge distributing';
           var catBadgeText = t.category === 'hot' ? 'HOT' :
                              t.category === 'watch' ? 'WATCH' : 'AVOID';
+          var catTooltip = t.category === 'hot' ? 'Strong SM accumulation + rising price' :
+                           t.category === 'watch' ? 'SM accumulating, price hasn\\'t moved yet' : 'SM distributing, consider reducing exposure';
 
           html += '<tr>';
-          html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
+          html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-          html += '<td><span class="' + catBadgeCls + '">' + catBadgeText + '</span></td>';
+          html += '<td><span class="' + catBadgeCls + '" title="' + catTooltip + '">' + catBadgeText + '</span></td>';
           html += '</tr>';
         });
 
@@ -1017,7 +1072,7 @@ function generateHtml(data: HtmlReportData): string {
         var pressureText = !t.buyPressure || t.buyPressure <= 0 ? '\\u2014' : t.buyPressure.toFixed(1) + 'x';
 
         html += '<tr>';
-        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong><span class="early-badge">EARLY SIGNAL</span></td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
         html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
         html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
@@ -1064,15 +1119,17 @@ function generateHtml(data: HtmlReportData): string {
                          t.classification === 'accumulating' ? 'accumulating' : 'distributing';
         var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
                         t.classification === 'accumulating' ? 'ACCUM' : 'DIST';
+        var badgeTooltip = t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
+                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' : 'Buy/sell ratio < 1.5: Smart Money is selling';
 
         html += '<tr>';
-        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
         html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
         html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-        html += '<td><span class="screener-badge ' + badgeClass + '">' + badgeText + '</span></td>';
+        html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
         html += '</tr>';
       });
 
