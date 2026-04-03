@@ -12,6 +12,7 @@ import type {
   ClassifiedToken,
   SubNarrative,
   NarrativeRotation,
+  TokenCategory,
 } from "../types.js";
 
 // ============================================================
@@ -82,6 +83,21 @@ function formatMcap(value: number): string {
     return `$${(value / 1_000).toFixed(1)}K`;
   }
   return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+// ============================================================
+// Category Formatting
+// ============================================================
+
+function formatCategory(category: TokenCategory): string {
+  switch (category) {
+    case "hot":
+      return chalk.green("🔥 Hot");
+    case "watch":
+      return chalk.yellow("👀 Watch");
+    case "avoid":
+      return chalk.red("⚠️ Avoid");
+  }
 }
 
 // ============================================================
@@ -165,17 +181,19 @@ function buildTokenTable(tokens: ClassifiedToken[]): Table.Table {
   const table = new Table({
     head: [
       chalk.white("Token"),
+      chalk.white("Category"),
       chalk.white("Netflow 24h"),
       chalk.white("Price Δ"),
       chalk.white("MarketCap"),
     ],
-    colWidths: [12, 16, 12, 14],
+    colWidths: [12, 14, 16, 12, 14],
     style: { head: [], border: ["gray"] },
   });
 
   for (const t of tokens) {
     table.push([
       t.token_symbol,
+      formatCategory(t.category),
       formatUsdColored(t.netflow24hUsd),
       formatPercentColored(t.priceChange),
       formatMcap(t.marketCapUsd),

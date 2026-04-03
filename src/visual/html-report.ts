@@ -555,7 +555,7 @@ function generateHtml(data: HtmlReportData): string {
     // Filter: only narratives with non-zero netflow
     // Filter: only classified tokens with |netflow| > $1000
 
-    var MIN_TOKEN_NETFLOW = 1000;
+    // Show all classified tokens (no minimum netflow filter)
 
     var processedNarratives = SCAN_DATA.narratives.filter(function(n) {
       return Math.abs(n.totalNetflow24h) > 0;
@@ -566,9 +566,7 @@ function generateHtml(data: HtmlReportData): string {
         totalNetflow7d: n.totalNetflow7d,
         tokenCount: n.tokenCount,
         isHot: n.totalNetflow24h > 0,
-        topTokens: n.topTokens.filter(function(t) {
-          return Math.abs(t.netflow24hUsd) >= MIN_TOKEN_NETFLOW;
-        })
+        topTokens: n.topTokens
       };
     });
 
@@ -688,7 +686,7 @@ function generateHtml(data: HtmlReportData): string {
           top: 60,
           bottom: 40,
           left: 50,
-          right: '40%',
+          right: '20%',
           label: {
             position: 'right',
             fontSize: 14,

@@ -585,7 +585,6 @@ export function renderDashboardHtml(): string {
     // ── Data Processing ────────────────────────────────────
 
     var MIN_NARRATIVE_NETFLOW = 500;
-    var MIN_TOKEN_NETFLOW = 1000;
 
     function processData(apiResponse) {
       if (!apiResponse || !apiResponse.scan) return null;
@@ -603,9 +602,7 @@ export function renderDashboardHtml(): string {
           totalNetflow7d: n.totalNetflow7d,
           tokenCount: n.tokenCount,
           isHot: n.totalNetflow24h > 0,
-          topTokens: (n.topTokens || []).filter(function(t) {
-            return Math.abs(t.netflow24hUsd) >= MIN_TOKEN_NETFLOW;
-          }).sort(function(a, b) {
+          topTokens: (n.topTokens || []).sort(function(a, b) {
             return Math.abs(b.netflow24hUsd) - Math.abs(a.netflow24hUsd);
           })
         };
