@@ -600,9 +600,9 @@ function generateHtml(data: HtmlReportData): string {
 
     <!-- Sankey Chart (interactive, labels can wrap) -->
     <div class="card sankey-card" id="sankey-section">
-      <div class="card-title">Smart Money Capital Allocation</div>
+      <div class="card-title">Capital Flow Map</div>
       <div id="sankey-chart"></div>
-      <div class="sankey-hint">Click a narrative node to jump to its detail section</div>
+      <div class="sankey-hint">Outflows &rarr; Smart Money &rarr; Inflows. Click a narrative to jump to details.</div>
     </div>
 
     <!-- Screener Highlights (HERO section — always rich data) -->
@@ -761,40 +761,61 @@ function generateHtml(data: HtmlReportData): string {
       var chartDom = document.getElementById('sankey-chart');
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
 
-      // Only include narratives with |netflow| > $500
-      var sankeyNarratives = processedNarratives.filter(function(n) {
-        return Math.abs(n.totalNetflow24h) > 500;
-      }).slice(0, 15);
+      // Separate into outflows (SM exiting) and inflows (SM entering)
+      var outflows = processedNarratives.filter(function(n) { return n.totalNetflow24h < -100; });
+      var inflows = processedNarratives.filter(function(n) { return n.totalNetflow24h > 100; });
 
-      var nodes = [{ name: 'Smart Money', itemStyle: { color: '#818cf8' } }];
+      if (outflows.length === 0 && inflows.length === 0) {
+        document.getElementById('sankey-section').style.display = 'none';
+        return;
+      }
+
+      var nodes = [];
       var links = [];
 
-      sankeyNarratives.forEach(function(n) {
-        var isPositive = n.totalNetflow24h >= 0;
+      // Center node: Smart Money
+      nodes.push({
+        name: 'Smart Money',
+        itemStyle: { color: '#818cf8' }
+      });
+
+      // Left column: Outflow narratives (SM is selling)
+      outflows.forEach(function(n) {
         nodes.push({
           name: n.displayName,
-          itemStyle: { color: isPositive ? '#34d399' : '#f87171' }
+          itemStyle: { color: '#f87171' }
         });
-
-        var rawValue = Math.abs(n.totalNetflow24h) || 1;
+        var rawValue = Math.abs(n.totalNetflow24h);
         var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
+        links.push({
+          source: n.displayName,
+          target: 'Smart Money',
+          value: displayValue,
+          _rawValue: rawValue,
+          lineStyle: { color: 'rgba(248, 113, 113, 0.5)' }
+        });
+      });
 
+      // Right column: Inflow narratives (SM is buying)
+      inflows.forEach(function(n) {
+        nodes.push({
+          name: n.displayName,
+          itemStyle: { color: '#34d399' }
+        });
+        var rawValue = Math.abs(n.totalNetflow24h);
+        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
         links.push({
           source: 'Smart Money',
           target: n.displayName,
           value: displayValue,
           _rawValue: rawValue,
-          lineStyle: {
-            color: isPositive
-              ? 'rgba(52, 211, 153, 0.45)'
-              : 'rgba(248, 113, 113, 0.45)'
-          }
+          lineStyle: { color: 'rgba(52, 211, 153, 0.5)' }
         });
       });
 
       chart.setOption({
         title: {
-          text: 'Smart Money Capital Allocation',
+          text: 'Capital Flow Map',
           left: 'center',
           textStyle: { fontSize: 15, color: '#e8e9ed', fontWeight: 600 }
         },
@@ -804,8 +825,9 @@ function generateHtml(data: HtmlReportData): string {
           formatter: function(params) {
             if (params.dataType === 'edge') {
               var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
+              var direction = params.data.source === 'Smart Money' ? 'Inflow' : 'Outflow';
               return params.data.source + ' \\u2192 ' + params.data.target +
-                '<br/>Flow: <strong>' + formatUsdAbs(realValue) + '</strong>';
+                '<br/>' + direction + ': <strong>' + formatUsdAbs(realValue) + '</strong>';
             }
             return '<strong>' + params.name + '</strong>';
           }
@@ -816,23 +838,23 @@ function generateHtml(data: HtmlReportData): string {
           emphasis: { focus: 'adjacency' },
           nodeAlign: 'justify',
           nodeGap: 20,
-          nodeWidth: 28,
+          nodeWidth: 24,
           layoutIterations: 32,
-          top: 60,
-          bottom: 40,
-          left: 50,
-          right: '20%',
+          top: 55,
+          bottom: 30,
+          left: 60,
+          right: 60,
           label: {
-            position: 'right',
-            fontSize: 14,
+            fontSize: 13,
             color: '#e8e9ed',
             fontWeight: 500,
-            overflow: 'none'
+            overflow: 'none',
+            position: 'right'
           },
           lineStyle: {
             color: 'gradient',
             curveness: 0.5,
-            opacity: 0.35
+            opacity: 0.4
           },
           data: nodes,
           links: links
