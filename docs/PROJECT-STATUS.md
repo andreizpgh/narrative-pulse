@@ -64,16 +64,18 @@ Data Layer → Processing Engine → Visual Layer
 Data:     Nansen APIs (netflow, screener, agent, holdings)
           DexScreener (free, cached, batched)
                     ↓
-Engine:   9-step pipeline:
+Engine:   11-step pipeline:
           1. Fetch netflows (5 chains)
           2. Fetch screener
-          3. Enrich with DexScreener
-          4. Discover sectors
-          5. Aggregate by narrative
-          6. Classify tokens (Hot/Watch/Avoid)
-          7. Detect early signals
-          8. Track rotations
-          9. Generate sub-narratives (optional)
+          3. Fetch Smart Money holdings
+          4. Enrich with DexScreener
+          5. Discover sectors
+          6. Aggregate by narrative
+          7. Classify tokens (Hot/Watch/Avoid)
+          8. Extract screener highlights (top-30 SM active tokens)
+          9. Detect early signals
+          10. Track rotations
+          11. Generate sub-narratives (optional)
                     ↓
 Output:   Terminal report
           Static HTML report
@@ -87,7 +89,7 @@ Output:   Terminal report
 
 ## 3. V2 — What Was Actually Implemented
 
-All planned features were implemented across 11 new commits (33 total). The codebase grew from 13 to 25 source files, ~5,970 lines of TypeScript.
+All planned features were implemented across 11 new commits (33 total). The codebase grew from 13 to 26 source files, ~7,000 lines of TypeScript.
 
 ### Phase 1: Data Enrichment (3 commits)
 
@@ -97,10 +99,10 @@ All planned features were implemented across 11 new commits (33 total). The code
 | `src/api/holdings.ts` | **NEW** | Nansen `smart-money/holdings` endpoint wrapper. Paginated fetch with dedup by address. 5 credits/page. |
 | `src/engine/enricher.ts` | **NEW** | Core enrichment module. Two exported functions: `enrichTokenData()` merges Nansen + DexScreener (DexScreener primary, screener fallback, 0 as last resort); `detectEarlySignals()` finds tokens with SM accumulation before price move. |
 | `src/utils/normalize.ts` | **NEW** | Shared `normalizeAddress()` — EVM addresses lowercased, Solana kept as-is. Extracted from 4 duplicated copies. |
-| `src/types.ts` | Modified | Added: `DexScreenerPair`, `DexScreenerResponse`, `EnrichedTokenData`, `EarlySignalToken`, `HoldingsEntry`. Updated `Config` with `external` and `earlySignal` sections. Updated `ClassifiedToken` with enriched fields. Updated `ScanResult` with `earlySignals` and `enrichedTokens`. |
-| `src/config.ts` | Modified | Added `external.dexscreener` config (baseUrl, cache TTL, timeout, retries, batch size) and `earlySignal` thresholds. |
+| `src/types.ts` | Modified | Added: `DexScreenerPair`, `DexScreenerResponse`, `EnrichedTokenData`, `EarlySignalToken`, `HoldingsEntry`, `ScreenerHighlight`. Updated `Config` with `external` and `earlySignal` sections. Updated `ClassifiedToken` with enriched fields. Updated `ScanResult` with `earlySignals`, `screenerHighlights`, `enrichedTokens`, `holdingsCount`. |
+| `src/config.ts` | Modified | Added `external.dexscreener` config (baseUrl, cache TTL, timeout, retries, batch size) and `earlySignal` thresholds. Lowered thresholds: minMarketCap $10K, minTraderCount 1, hot $2K, watch $500, avoid -$500. |
 | `src/engine/classifier.ts` | Modified | Accepts optional `enrichedData` parameter. Uses DexScreener price/volume as primary source when available, falls back to screener, then defaults to 0. |
-| `src/engine/scanner.ts` | Modified | Pipeline expanded from 6 to 9 steps. Added: DexScreener enrichment (step 3), early signal detection (step 7). Enrichment failure wrapped in try/catch — pipeline always continues. |
+| `src/engine/scanner.ts` | Modified | Pipeline expanded from 6 to 11 steps. Added: DexScreener enrichment (step 4), holdings fetch (step 3), screener highlights (step 8). Enrichment failure wrapped in try/catch — pipeline always continues. |
 
 **Early Signal Detection Criteria** (configured in `config.earlySignal`):
 - Smart Money netflow > $1,000 (24h) — SM is accumulating
@@ -131,14 +133,30 @@ All planned features were implemented across 11 new commits (33 total). The code
 
 | File | Status | Description |
 |------|--------|-------------|
-| `README.md` | Rewritten | 421 lines. V1→V2 comparison table, ASCII architecture diagram, 9-step pipeline, CLI reference (5 commands), dashboard docs, MCP integration guide, API usage table, configuration reference, project structure. |
-| `AGENTS.md` | Rewritten | Updated architecture tree to match actual 25-file codebase. Added pipeline, CLI commands, MCP tools sections. |
+| `README.md` | Rewritten | 421 lines. V1→V2 comparison table, ASCII architecture diagram, 11-step pipeline, CLI reference (5 commands), dashboard docs, MCP integration guide, API usage table, configuration reference, project structure. |
+| `AGENTS.md` | Rewritten | Updated architecture tree to match actual 26-file codebase. Added pipeline, CLI commands, MCP tools sections. |
+
+### Phase 6: Data Quality & Richness Fixes (7 commits)
+
+| File | Status | Description |
+|------|--------|-------------|
+| `src/api/dexscreener.ts` | Fixed | Response parsing: DexScreener returns flat array, not `{pairs}`. Was returning 0 enriched tokens. |
+| `src/engine/aggregator.ts` | Fixed | `toNarrativeKey()` uses primary sector only → broader narrative groups. Lowered significance filter to $500. |
+| `src/engine/classifier.ts` | Fixed | Removed dead code, lowered thresholds (hot $2K, watch $500, avoid -$500). |
+| `src/config.ts` | Fixed | Lowered capture thresholds: minMarketCap $10K (was $50K), minTraderCount 1 (was 3). |
+| `src/engine/screener-highlights.ts` | **NEW** | HERO section: top-30 SM active tokens from 500 screener entries. Composite scoring (ratio × netflow). Classification: heavy_accumulation, accumulating, distributing. |
+| `src/engine/scanner.ts` | Modified | Pipeline 9→11 steps. Added holdings fetch (step 3) and screener highlights (step 8). |
+| `src/visual/html-report.ts` | Modified | Added "🔥 Smart Money Active Tokens" section with buy/sell bars. Chain badges. Category badges. Removed MIN_TOKEN_NETFLOW filter. Fixed Sankey right margin 40%→20%. |
+| `src/visual/dashboard.ts` | Modified | Same changes as html-report.ts. |
+| `src/visual/terminal-report.ts` | Modified | Added screener highlights (top-10). Added category column to token tables. |
+| `src/index.ts` | Modified | Removed PNG bar chart from scan output. |
+| `src/types.ts` | Modified | Added `ScreenerHighlight` interface. Added `screenerHighlights` and `holdingsCount` to `ScanResult`. |
 
 ---
 
 ## 4. Current Project State
 
-### Source Files (25 TypeScript files, ~5,970 LOC)
+### Source Files (26 TypeScript files, ~7,000 LOC)
 
 ```
 src/
@@ -151,19 +169,20 @@ src/
 │   ├── token-screener.ts # token-screener enrichment
 │   ├── agent.ts          # agent/fast (SSE, sub-narratives — 2000 credits)
 │   ├── dexscreener.ts    # DexScreener price/volume (free, 5-min cache, batch 30)
-│   └── holdings.ts       # smart-money/holdings (5 credits/page)
+│   └── holdings.ts       # smart-money/holdings (wired into pipeline, 5 credits/page)
 ├── engine/
 │   ├── discovery.ts      # Sector discovery from netflow data
 │   ├── aggregator.ts     # Narrative aggregation by sector
 │   ├── classifier.ts     # Hot/Watch/Avoid (uses enriched data when available)
 │   ├── enricher.ts       # Merge Nansen + DexScreener + early signal detection
+│   ├── screener-highlights.ts # Top-30 SM active tokens (composite scoring)
 │   ├── sub-narratives.ts # Agent API sub-narrative analysis
 │   ├── rotations.ts      # Narrative rotation tracking (delta between scans)
-│   └── scanner.ts        # 9-step pipeline orchestrator
+│   └── scanner.ts        # 11-step pipeline orchestrator
 ├── visual/
-│   ├── sankey.ts         # Horizontal bar chart PNG (ECharts SSR + sharp)
-│   ├── html-report.ts    # Static HTML report with ECharts CDN + tables + early signals
-│   ├── terminal-report.ts # CLI output (chalk + cli-table3)
+│   ├── sankey.ts         # (unused — PNG bar chart removed from output)
+│   ├── html-report.ts    # Static HTML report with ECharts CDN + tables + early signals + chain badges
+│   ├── terminal-report.ts # CLI output (chalk + cli-table3) + screener highlights + category badges
 │   ├── dashboard.ts      # Dynamic HTML dashboard (JSON API polling, auto-refresh)
 │   └── research-card.ts  # Shareable PNG card (1200×675, Twitter card size)
 ├── server/
@@ -180,8 +199,8 @@ src/
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `scan` | One-time scan across all chains | `--no-sankey`, `--no-html`, `--deep` |
-| `watch` | 24/7 cron mode | `--schedule`, `--no-sankey`, `--no-html` |
+| `scan` | One-time scan across all chains | `--no-html`, `--deep` |
+| `watch` | 24/7 cron mode | `--schedule`, `--no-html` |
 | `sectors` | List all discovered sectors | — |
 | `serve` | Live dashboard server | `--port` (default 3000), `--deep` |
 | `mcp` | MCP server for AI agents (stdio) | — |
@@ -206,7 +225,7 @@ src/
 |----------|---------|-------|
 | `smart-money/netflow` | 50/page | Core data, 5 chains, paginated |
 | `token-screener` | 10/page | Price/volume enrichment |
-| `smart-money/holdings` | 5/page | SM holdings data |
+| `smart-money/holdings` | 5/page | SM holdings data (wired into pipeline, step 3) |
 | `agent/fast` | 2000 | Sub-narratives (opt-in via `--deep`) |
 
 **External API:** DexScreener (free, no auth, 300 req/min, batched)
@@ -215,12 +234,22 @@ src/
 
 | Scenario | Credits |
 |----------|---------|
-| Standard scan | ~30 |
-| With `--deep` (Agent API) | ~2,030 |
+| Standard scan | ~250 |
+| With `--deep` (Agent API) | ~2,250 |
 
-### Git History (33 commits)
+### Git History (40 commits)
 
 ```
+20cd387 feat: add Smart Money Active Tokens section to terminal output
+4b6eabb feat: add Smart Money Active Tokens section to HTML reports
+9546fa1 fix: remove aggressive token filter and add category badges
+6c42753 feat: integrate smart-money/holdings into scanner pipeline
+851eb93 feat: screener highlights — top 30 Smart Money active tokens
+75adcd8 fix: lower netflow capture thresholds for richer data
+c10c7e7 refactor: remove PNG bar chart from scan output
+1747868 docs: fix API credits, reorder endpoints, soften DexScreener framing
+68bbde1 fix: DexScreener response parsing, narrative grouping, and classification thresholds
+b08e2fa docs: replace planning docs with comprehensive project status
 f592d29 docs: comprehensive V2 README with architecture, CLI reference, and MCP docs
 24c5059 feat: shareable research cards and MCP server for AI agents
 4c061be fix: ECharts bar chart color mismatch and totalNetflow24h typo
@@ -239,18 +268,18 @@ edfbd91 feat: DexScreener API wrapper with cache and batch support
 |--------|-------|
 | TypeScript compilation | ✅ Clean (0 errors) |
 | `any` types | 0 |
-| Source files | 25 |
-| Lines of code | ~5,970 |
-| Exported functions | 28 |
-| Commit style | Conventional (`feat:`, `fix:`, `docs:`) |
-| QA cycles passed | 4 (1 per phase, all PASS after fixes) |
+| Source files | 26 |
+| Lines of code | ~7,000 |
+| Exported functions | 30+ |
+| Commit style | Conventional (`feat:`, `fix:`, `docs:`, `refactor:`) |
+| QA cycles passed | 5 (1 per phase, all PASS after fixes) |
 
 ### Known Limitations
 
 1. **DexScreener SSR rendering** — ECharts `graphic` elements may render emojis inconsistently across platforms. The research card uses Unicode directly; rendering depends on the server's font availability.
 2. **Dashboard ECharts memory** — Each auto-refresh creates a new ECharts instance. After 24h of continuous running (1440 refreshes), memory accumulates. Mitigated by the fact the dashboard page would typically be reloaded periodically.
 3. **MCP cache is in-memory** — The 5-minute scan cache resets on process restart. Not an issue for stdio-based MCP (short-lived processes).
-4. **Holdings endpoint** — `src/api/holdings.ts` is implemented and exported but not yet wired into the scanner pipeline. Ready for future use.
+4. **sankey.ts unused** — `src/visual/sankey.ts` still exists in the codebase but the PNG bar chart is no longer generated during scans. File retained for potential future use.
 
 ### Configuration
 

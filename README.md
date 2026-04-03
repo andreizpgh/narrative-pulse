@@ -46,7 +46,8 @@ Nobody gives you that signal — until now.
 | Web dashboard | Static HTML only | **Live auto-refresh dashboard** at localhost:3000 |
 | Social sharing | None | **Research Cards** — 1200×675 PNG for Twitter |
 | AI integration | None | **MCP Server** — 3 tools for AI agent workflows |
-| Holdings data | None | **Smart Money Holdings** — 5 credits/page enrichment |
+| Holdings data | None | **Smart Money Holdings** — wired into pipeline, SM portfolio enrichment |
+| Screener highlights | None | **Top-30 SM Active Tokens** — buy/sell ratio × netflow scoring |
 
 ---
 
@@ -59,7 +60,7 @@ Nobody gives you that signal — until now.
                           └─────────────────┬───────────────────────────┘
                                             │
                           ┌─────────────────▼───────────────────────────┐
-                          │         Pipeline Orchestrator (9 steps)     │
+                          │         Pipeline Orchestrator (11 steps)    │
                           └─────────────────┬───────────────────────────┘
                                             │
           ┌─────────────────────────────────┼─────────────────────────────────┐
@@ -68,32 +69,34 @@ Nobody gives you that signal — until now.
    │  Data Layer  │              │    Processing Engine   │          │    Visual Layer    │
    └──────┬──────┘              └───────────┬───────────┘          └─────────┬─────────┘
           │                                  │                                │
-  ┌───────┴───────┐            ┌────────────┼────────────┐          ┌────────┴────────┐
-  │ Nansen APIs   │            │            │            │          │                 │
-  │ · netflows    │──► Discovery  Aggregation  Classification    Terminal Report    │
-  │ · screener    │            │            │            │          │ HTML Report      │
-  │ · agent/fast  │            │            │            │          │ Sankey Diagram   │
-  │ · holdings    │            │            │            │          │ Research Card    │
-  └───────┬───────┘            │            │            │          │ Web Dashboard    │
-          │                    │            │            │          └────────┬────────┘
-  ┌───────▼───────┐            │            │            │                   │
-  │ DexScreener   │──► Enrichment  Early Signals  Rotations         Shareable PNG
-  │ (free, no auth)│           │            │            │            HTML + JSON API
-  └───────────────┘            └────────────┴────────────┘
+   ┌───────┴───────┐            ┌────────────┼────────────┐          ┌────────┴────────┐
+   │ Nansen APIs   │            │            │            │          │                 │
+   │ · netflows    │──► Discovery  Aggregation  Classification    Terminal Report    │
+   │ · screener    │            │            │            │          │ HTML Report      │
+   │ · holdings    │            │            │            │          │ Sankey Diagram   │
+   │ · agent/fast  │            │            │            │          │ Research Card    │
+   └───────┬───────┘            │            │            │          │ Web Dashboard    │
+           │                    │            │            │          └────────┬────────┘
+   ┌───────▼───────┐            │            │            │                   │
+   │ DexScreener   │──► Enrichment  Early Signals  Rotations         Shareable PNG
+   │ (free, no auth)│     Screener Highlights                       HTML + JSON API
+   └───────────────┘            └────────────┴────────────┘
 ```
 
-### The 9-Step Pipeline
+### The 11-Step Pipeline
 
 ```
-  1. Fetch Smart Money Netflows     ← Nansen (5 chains, paginated)
-  2. Fetch Token Screener Data      ← Nansen (price, volume, buys/sells)
-  3. Enrich with DexScreener        ← Free API (real-time price/volume for all tokens)
-  4. Discover Sectors               ← Extract unique sectors from token_sectors
-  5. Aggregate by Narrative         ← Group tokens → narratives, sum netflows
-  6. Classify Tokens                ← 🔥 Hot / 👀 Watch / ⛔ Avoid
-  7. Detect Early Signals           ← SM accumulating before price moves
-  8. Compute Narrative Rotations    ← Compare vs previous scan snapshot
-  9. Generate Sub-Narratives        ← Agent API deep-dive on #1 narrative (optional)
+   1. Fetch Smart Money Netflows     ← Nansen (5 chains, paginated)
+   2. Fetch Token Screener Data      ← Nansen (price, volume, buys/sells)
+   3. Fetch Smart Money Holdings     ← Nansen (SM portfolio data, 5 credits/page)
+   4. Enrich with DexScreener        ← Free API (real-time price/volume for all tokens)
+   5. Discover Sectors               ← Extract unique sectors from token_sectors
+   6. Aggregate by Narrative         ← Group tokens → narratives, sum netflows
+   7. Classify Tokens                ← 🔥 Hot / 👀 Watch / ⛔ Avoid
+   8. Extract Screener Highlights    ← Top-30 active tokens (buy/sell ratio × netflow)
+   9. Detect Early Signals           ← SM accumulating before price moves
+  10. Compute Narrative Rotations    ← Compare vs previous scan snapshot
+  11. Generate Sub-Narratives        ← Agent API deep-dive on #1 narrative (optional)
 ```
 
 ---
@@ -123,11 +126,10 @@ That's it. You'll see a full terminal report with narratives, classified tokens,
 
 ### `narrative-pulse scan` — One-Time Scan
 
-Runs the full 9-step pipeline and outputs results to the terminal, Sankey diagram, and HTML report.
+Runs the full 11-step pipeline and outputs results to the terminal and HTML report.
 
 ```bash
-narrative-pulse scan                  # Full scan (terminal + sankey + html)
-narrative-pulse scan --no-sankey      # Skip Sankey diagram generation
+narrative-pulse scan                  # Full scan (terminal + html)
 narrative-pulse scan --no-html        # Skip HTML report generation
 narrative-pulse scan --deep           # Include Agent API sub-narratives (+2000 credits)
 ```
@@ -139,7 +141,6 @@ Runs scans on a cron schedule with graceful shutdown and error recovery.
 ```bash
 narrative-pulse watch                          # Every 4 hours (default)
 narrative-pulse watch --schedule "0 */2 * * *" # Custom: every 2 hours
-narrative-pulse watch --no-sankey              # Skip Sankey in watch mode
 narrative-pulse watch --no-html                # Skip HTML in watch mode
 ```
 
@@ -248,6 +249,23 @@ These tokens surface in the terminal output, HTML report, and via the MCP `get_e
 
 ---
 
+## 🔥 Smart Money Active Tokens
+
+The **Screener Highlights** section always surfaces the most actionable data — even during low-activity periods. It analyzes all 500+ tokens from the token-screener to find the top-30 by Smart Money conviction.
+
+**Scoring**: Composite of buy/sell ratio (capped at 10x) × netflow magnitude.
+
+**Classification:**
+| Signal | Buy/Sell Ratio | What it means |
+|--------|---------------|---------------|
+| 🔥 **HEAVY ACCUM** | > 3x | Multiple Smart Money wallets aggressively buying |
+| 👀 **ACCUMULATING** | > 1.5x | Smart Money is accumulating — moderate conviction |
+| ⚠️ **DISTRIBUTING** | < 1.5x | Smart Money is selling — caution advised |
+
+This section appears in the terminal output (top-10), HTML report, and live dashboard (top-30) — and is **always populated** regardless of market conditions.
+
+---
+
 ## 🏷 Token Classification
 
 | Category | Logic | What it means |
@@ -266,9 +284,10 @@ These tokens surface in the terminal output, HTML report, and via the MCP `get_e
 |------|----------|---------|:-------:|
 | 1 | `smart-money/netflows` | SM netflows across 5 chains (paginated) | 50/page × ~2 pages ≈ 100 |
 | 2 | `token-screener` | Price, volume, buy/sell breakdown | 10/page × ~10 pages ≈ 100 |
-| 3 | `smart-money/holdings` | Holdings enrichment (not used in pipeline yet) | 5/page |
-| 4 | `agent/fast` | Sub-narrative AI analysis (optional, `--deep` only) | 2000 |
-| | | **Total (standard scan)** | **~200** |
+| 3 | `smart-money/holdings` | SM portfolio data, wired into pipeline | 5/page × ~10 pages ≈ 50 |
+| 11 | `agent/fast` | Sub-narrative AI analysis (optional, `--deep` only) | 2000 |
+| | | **Total (standard scan)** | **~250** |
+| | | **Total (with `--deep`)** | **~2,250** |
 
 ### External APIs
 
@@ -305,12 +324,12 @@ All thresholds are configured in `src/config.ts`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `minMarketCapUsd` | $50,000 | Filter out microcap noise |
-| `minTraderCount` | 3 | Minimum SM traders for signal |
-| `hot.minNetflowUsd` | $5,000 | Minimum netflow for Hot |
+| `minMarketCapUsd` | $10,000 | Filter out microcap noise |
+| `minTraderCount` | 1 | Minimum SM traders for signal |
+| `hot.minNetflowUsd` | $2,000 | Minimum netflow for Hot |
 | `hot.minPriceChange` | 0.1% | Minimum price change for Hot |
-| `watch.minNetflowUsd` | $1,000 | Minimum netflow for Watch |
-| `avoid.maxNetflowUsd` | -$1,000 | Distribution threshold |
+| `watch.minNetflowUsd` | $500 | Minimum netflow for Watch |
+| `avoid.maxNetflowUsd` | -$500 | Distribution threshold |
 | `earlySignal.minBuySellRatio` | 1.5x | Buy pressure for early signals |
 | `cronSchedule` | `0 */4 * * *` | Default watch interval (4h) |
 
@@ -333,17 +352,18 @@ src/
 │   ├── token-screener.ts # token-screener enrichment
 │   ├── agent.ts          # agent/fast (SSE, sub-narratives)
 │   ├── dexscreener.ts    # DexScreener price/volume (free, cached, batched)
-│   └── holdings.ts       # smart-money/holdings
+│   └── holdings.ts       # smart-money/holdings (wired into pipeline)
 ├── engine/
 │   ├── discovery.ts      # Sector discovery from netflow data
 │   ├── aggregator.ts     # Narrative aggregation by sector
 │   ├── classifier.ts     # Hot/Watch/Avoid + early signal detection
 │   ├── enricher.ts       # Merge Nansen + DexScreener + early signals
+│   ├── screener-highlights.ts # Top-30 SM active tokens (composite scoring)
 │   ├── sub-narratives.ts # Agent API sub-narrative analysis
 │   ├── rotations.ts      # Narrative rotation tracking between scans
-│   └── scanner.ts        # Pipeline orchestrator (9 steps)
+│   └── scanner.ts        # Pipeline orchestrator (11 steps)
 ├── visual/
-│   ├── sankey.ts         # Bar chart PNG (ECharts SSR + sharp)
+│   ├── sankey.ts         # (unused — PNG bar chart removed)
 │   ├── html-report.ts    # Static HTML report with Sankey + tables
 │   ├── terminal-report.ts # CLI terminal output (chalk + cli-table3)
 │   ├── dashboard.ts      # Dynamic HTML dashboard (auto-refresh via JSON API)
@@ -403,7 +423,7 @@ Provides price change, volume, and buy/sell breakdown — essential for Hot/Watc
 AI-powered analysis that breaks down the top narrative into sub-narratives with conviction ratings. Optional (`--deep` flag), costs 2000 credits.
 
 ### 4. Smart Money Holdings (`smart-money/holdings`)
-Portfolio-level Smart Money data — what they're holding, not just what's flowing. 5 credits per page.
+Portfolio-level Smart Money data — what they're holding, not just what's flowing. Wired into the pipeline as step 3. 5 credits per page, ~50 credits total for standard pages.
 
 ### 5. DexScreener (External, Free)
 Fills coverage gaps where token-screener has no data. Free, no auth, 300 req/min. Batch up to 30 addresses per request. Provides real-time price, volume, liquidity for ALL tokens.

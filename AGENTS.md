@@ -6,7 +6,7 @@
 
 **Contest**: Nansen CLI Build Challenge, Week 3. **Deadline**: April 5, 2026. **Goal**: 1st place.
 
-## 2. Architecture (V2 — 25 source files)
+## 2. Architecture (V2 — 26 source files)
 
 ```
 src/
@@ -19,19 +19,20 @@ src/
 │   ├── token-screener.ts # token-screener enrichment
 │   ├── agent.ts          # agent/fast (SSE, sub-narratives — 2000 credits)
 │   ├── dexscreener.ts    # DexScreener price/volume (free, 5-min cache, batch 30)
-│   └── holdings.ts       # smart-money/holdings (5 credits/page)
+│   └── holdings.ts       # smart-money/holdings (wired into pipeline, 5 credits/page)
 ├── engine/
 │   ├── discovery.ts      # Sector discovery from netflow data
 │   ├── aggregator.ts     # Narrative aggregation by sector
 │   ├── classifier.ts     # Hot/Watch/Avoid (uses enriched data when available)
 │   ├── enricher.ts       # Merge Nansen + DexScreener + early signal detection
+│   ├── screener-highlights.ts # Top-30 SM active tokens (composite scoring)
 │   ├── sub-narratives.ts # Agent API sub-narrative analysis
 │   ├── rotations.ts      # Narrative rotation tracking (delta between scans)
-│   └── scanner.ts        # 9-step pipeline orchestrator
+│   └── scanner.ts        # 11-step pipeline orchestrator
 ├── visual/
-│   ├── sankey.ts         # Horizontal bar chart PNG (ECharts SSR + sharp)
+│   ├── sankey.ts         # (unused — PNG bar chart removed from output)
 │   ├── html-report.ts    # Static HTML report with ECharts Sankey + tables + early signals
-│   ├── terminal-report.ts # CLI output (chalk + cli-table3)
+│   ├── terminal-report.ts # CLI output (chalk + cli-table3) + screener highlights
 │   ├── dashboard.ts      # Dynamic HTML dashboard (JSON API polling, auto-refresh)
 │   └── research-card.ts  # Shareable PNG card (1200×675, Twitter card size)
 ├── server/
@@ -44,24 +45,26 @@ src/
     └── normalize.ts      # Shared address normalization (EVM lowercase, Solana as-is)
 ```
 
-## 3. Pipeline (9 steps)
+## 3. Pipeline (11 steps)
 
 1. Fetch netflows (5 chains, paginated)
 2. Fetch screener (price/volume enrichment)
-3. **Enrich with DexScreener** (free API, cached, batched)
-4. Discover sectors (unique sector combinations)
-5. Aggregate tokens into narratives
-6. Classify tokens (Hot/Watch/Avoid)
-7. **Detect early signals** (SM accumulating before price move)
-8. Track rotations (delta vs previous scan)
-9. Sub-narratives (optional Agent API deep dive)
+3. **Fetch Smart Money Holdings** (SM portfolio data, graceful degradation)
+4. **Enrich with DexScreener** (free API, cached, batched)
+5. Discover sectors (unique sector combinations)
+6. Aggregate tokens into narratives
+7. Classify tokens (Hot/Watch/Avoid)
+8. **Extract screener highlights** (top-30 SM active tokens by conviction)
+9. **Detect early signals** (SM accumulating before price move)
+10. Track rotations (delta vs previous scan)
+11. Sub-narratives (optional Agent API deep dive)
 
 ## 4. CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `scan` | One-time scan (options: --no-sankey, --no-html, --deep) |
-| `watch` | 24/7 cron mode (options: --schedule, --no-sankey, --no-html) |
+| `scan` | One-time scan (options: --no-html, --deep) |
+| `watch` | 24/7 cron mode (options: --schedule, --no-html) |
 | `sectors` | List all discovered sectors |
 | `serve` | Live dashboard at localhost:3000 (options: --port, --deep) |
 | `mcp` | MCP server for AI agents (stdio transport) |
