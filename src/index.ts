@@ -11,6 +11,7 @@ import { renderHtmlReport } from "./visual/html-report.js";
 import { config } from "./config.js";
 import { startWatchMode } from "./scheduler/cron.js";
 import { startServer } from "./server/index.js";
+import { startMcpServer } from "./mcp/server.js";
 
 const program = new Command();
 
@@ -156,6 +157,22 @@ program
         port,
         skipAgent: !options.deep,
       });
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
+  });
+
+// ── mcp ─────────────────────────────────────────────────────
+
+program
+  .command("mcp")
+  .description("Start MCP server for AI agent integration (stdio transport)")
+  .action(async () => {
+    try {
+      await startMcpServer();
     } catch (error) {
       console.error(
         `Error: ${error instanceof Error ? error.message : String(error)}`
