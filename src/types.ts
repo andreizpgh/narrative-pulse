@@ -101,6 +101,7 @@ export interface ScanResult {
   earlySignals: EarlySignalToken[];
   screenerHighlights: ScreenerHighlight[];
   enrichedTokens: EnrichedTokenData[];
+  holdingsCount: number; // number of unique tokens in SM holdings
   apiCallsUsed: number;
   creditsUsed: number;
 }
