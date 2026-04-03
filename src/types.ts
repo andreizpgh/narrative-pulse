@@ -130,7 +130,7 @@ export interface ScreenerHighlight {
   nofBuyers: number;
   nofSellers: number;
   volume: number;
-  classification: "heavy_accumulation" | "accumulating" | "distributing";
+  classification: "heavy_accumulation" | "accumulating" | "mixed" | "distributing";
 }
 
 // ============================================================

@@ -36,9 +36,11 @@ function isStablecoin(symbol: string): boolean {
 // Classification thresholds (buy/sell ratio)
 // ============================================================
 
-function classifyToken(buySellRatio: number): ScreenerHighlight["classification"] {
+function classifyToken(buySellRatio: number, netflowUsd: number): ScreenerHighlight["classification"] {
   if (buySellRatio >= 3.0) return "heavy_accumulation";
   if (buySellRatio >= 1.5) return "accumulating";
+  // Positive netflow but low ratio — mixed signal (SM net inflow but sellers > buyers by volume)
+  if (netflowUsd > 0) return "mixed";
   return "distributing";
 }
 
@@ -114,7 +116,7 @@ export function extractScreenerHighlights(
       nofBuyers: entry.nof_buyers ?? 0,
       nofSellers: entry.nof_sellers ?? 0,
       volume: entry.volume ?? 0,
-      classification: classifyToken(buySellRatio),
+      classification: classifyToken(buySellRatio, entry.netflow),
     });
   }
 

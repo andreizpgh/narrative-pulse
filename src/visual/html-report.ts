@@ -566,6 +566,11 @@ function generateHtml(data: HtmlReportData): string {
       color: var(--color-negative);
     }
 
+    .screener-badge.mixed {
+      background: rgba(139, 143, 163, 0.15);
+      color: var(--text-secondary);
+    }
+
     .chain-badge {
       display: inline-block;
       font-size: 0.6rem;
@@ -729,7 +734,8 @@ function generateHtml(data: HtmlReportData): string {
     // Show all classified tokens (no minimum netflow filter)
 
     var processedNarratives = SCAN_DATA.narratives.filter(function(n) {
-      return Math.abs(n.totalNetflow24h) > 0;
+      // Show narrative if it has classified tokens OR significant netflow (>$500)
+      return n.topTokens.length > 0 || Math.abs(n.totalNetflow24h) > 500;
     }).map(function(n) {
       return {
         displayName: n.displayName,
@@ -767,7 +773,9 @@ function generateHtml(data: HtmlReportData): string {
         highlightHtml += '<div class="highlight-card">';
         highlightHtml += '<div class="highlight-label">Top SM Activity</div>';
         highlightHtml += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
-        highlightHtml += '<div class="highlight-sub">' + topScreener.nofBuyers + ' buyers \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
+        var totalTraders = topScreener.nofBuyers + topScreener.nofSellers;
+        var traderText = totalTraders > 0 ? totalTraders + ' SM traders' : 'Active';
+        highlightHtml += '<div class="highlight-sub">' + traderText + ' \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
         highlightHtml += '</div>';
       } else {
         highlightHtml += '<div class="highlight-card"><div class="highlight-label">Top SM Activity</div><div class="highlight-value" style="color:var(--text-muted)">No data</div></div>';
@@ -1116,11 +1124,14 @@ function generateHtml(data: HtmlReportData): string {
 
         // Classification badge
         var badgeClass = t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
-                         t.classification === 'accumulating' ? 'accumulating' : 'distributing';
+                         t.classification === 'accumulating' ? 'accumulating' :
+                         t.classification === 'mixed' ? 'mixed' : 'distributing';
         var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
-                        t.classification === 'accumulating' ? 'ACCUM' : 'DIST';
+                        t.classification === 'accumulating' ? 'ACCUM' :
+                        t.classification === 'mixed' ? 'MIXED' : 'DIST';
         var badgeTooltip = t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
-                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' : 'Buy/sell ratio < 1.5: Smart Money is selling';
+                           t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
+                           t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
 
         html += '<tr>';
         html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
