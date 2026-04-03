@@ -29,6 +29,11 @@ interface HtmlReportToken {
   netflow24hUsd: number;
   priceChange: number;
   marketCapUsd: number;
+  buyVolume: number;
+  sellVolume: number;
+  traderCount: number;
+  volume24h: number;
+  liquidity: number;
 }
 
 interface HtmlReportNarrative {
@@ -109,6 +114,11 @@ function toHtmlToken(t: ClassifiedToken): HtmlReportToken {
     netflow24hUsd: t.netflow24hUsd,
     priceChange: t.priceChange,
     marketCapUsd: t.marketCapUsd,
+    buyVolume: t.buyVolume,
+    sellVolume: t.sellVolume,
+    traderCount: t.traderCount,
+    volume24h: t.volume24h,
+    liquidity: t.liquidity,
   };
 }
 
@@ -603,6 +613,114 @@ function generateHtml(data: HtmlReportData): string {
     .buy-sell-bar .buy-bar { background: var(--color-positive); }
     .buy-sell-bar .sell-bar { background: var(--color-negative); }
 
+    /* Expandable Rows */
+
+    .token-table tbody tr.expandable-row { cursor: pointer; }
+    .token-table tbody tr.expandable-row:hover { background: var(--bg-card-hover); }
+
+    .expand-arrow {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+      vertical-align: middle;
+      transition: transform 0.2s ease;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .expand-arrow.open { transform: rotate(90deg); }
+
+    .expanded-detail {
+      display: none;
+      background: var(--bg-card-alt);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .expanded-detail.visible { display: table-row; }
+
+    .expanded-detail td {
+      padding: 12px 16px !important;
+      font-size: 0.82rem;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px 20px;
+    }
+
+    .detail-item-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .detail-item-value {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.88rem;
+      color: var(--text-primary);
+    }
+
+    .detail-link {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(139, 143, 163, 0.1);
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      text-decoration: none;
+      border: 1px solid var(--border-color);
+      transition: all 0.15s ease;
+    }
+
+    .detail-link:hover {
+      background: rgba(139, 143, 163, 0.2);
+      color: var(--text-primary);
+    }
+
+    /* Sortable Headers */
+
+    .token-table thead th.sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 18px;
+    }
+
+    .token-table thead th.sortable:hover {
+      color: var(--text-primary);
+    }
+
+    .token-table thead th.sortable::after {
+      content: '\\2195';
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .token-table thead th.sortable.sort-asc::after {
+      content: '\\2191';
+      opacity: 1;
+      color: var(--color-positive);
+    }
+
+    .token-table thead th.sortable.sort-desc::after {
+      content: '\\2193';
+      opacity: 1;
+      color: var(--color-positive);
+    }
+
+    /* Column header tooltips */
+    .token-table thead th[title] { position: relative; }
+
     /* Responsive */
 
     @media (max-width: 768px) {
@@ -725,6 +843,87 @@ function generateHtml(data: HtmlReportData): string {
 
     function dexLink(chain, address, symbolHtml) {
       return '<a href="' + dexScreenerUrl(chain, address || '') + '" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;border-bottom:1px dotted var(--text-muted)">' + symbolHtml + '</a>';
+    }
+
+    function formatVolume(value) {
+      if (!value || value <= 0) return '\\u2014';
+      return formatUsdAbs(value);
+    }
+
+    // Sort state tracker per table
+    var sortStates = {};
+
+    function sortTable(tableId, colIndex, type) {
+      var table = document.getElementById(tableId);
+      if (!table) return;
+      var tbody = table.querySelector('tbody');
+      if (!tbody) return;
+
+      // Toggle sort direction
+      var key = tableId + '-' + colIndex;
+      if (sortStates[key] === 'asc') {
+        sortStates[key] = 'desc';
+      } else {
+        sortStates[key] = 'asc';
+      }
+      var dir = sortStates[key];
+
+      // Update header classes
+      var headers = table.querySelectorAll('thead th.sortable');
+      headers.forEach(function(th) { th.classList.remove('sort-asc', 'sort-desc'); });
+      var activeTh = table.querySelectorAll('thead th')[colIndex];
+      if (activeTh) {
+        activeTh.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+
+      // Collect rows (skip expanded-detail rows)
+      var rows = [];
+      var allRows = tbody.querySelectorAll('tr');
+      for (var i = 0; i < allRows.length; i++) {
+        if (!allRows[i].classList.contains('expanded-detail')) {
+          rows.push(allRows[i]);
+        }
+      }
+
+      // Sort
+      rows.sort(function(a, b) {
+        var aVal = a.getAttribute('data-sort-' + colIndex);
+        var bVal = b.getAttribute('data-sort-' + colIndex);
+        if (type === 'number') {
+          aVal = parseFloat(aVal) || 0;
+          bVal = parseFloat(bVal) || 0;
+        } else {
+          aVal = (aVal || '').toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+        if (aVal < bVal) return dir === 'asc' ? -1 : 1;
+        if (aVal > bVal) return dir === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // Re-insert in sorted order, keeping detail rows paired
+      rows.forEach(function(row) {
+        var detail = row.nextElementSibling;
+        if (detail && detail.classList.contains('expanded-detail')) {
+          tbody.appendChild(row);
+          tbody.appendChild(detail);
+        } else {
+          tbody.appendChild(row);
+        }
+      });
+    }
+
+    function toggleExpand(row, detailId) {
+      var detail = document.getElementById(detailId);
+      var arrow = row.querySelector('.expand-arrow');
+      if (!detail) return;
+      if (detail.classList.contains('visible')) {
+        detail.classList.remove('visible');
+        if (arrow) arrow.classList.remove('open');
+      } else {
+        detail.classList.add('visible');
+        if (arrow) arrow.classList.add('open');
+      }
     }
 
     // ── Data Preprocessing ──────────────────────────────────
@@ -936,10 +1135,11 @@ function generateHtml(data: HtmlReportData): string {
 
     // ── Narrative Card Rendering ────────────────────────────
 
-    function renderNarrativeCard(narrative) {
+    function renderNarrativeCard(narrative, cardIndex) {
       var slug = slugify(narrative.displayName);
       var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
       var borderClass = narrative.isHot ? 'border-positive' : 'border-negative';
+      var tableId = 'narrative-table-' + cardIndex;
 
       var html = '<div class="narrative-card ' + borderClass + '" id="narrative-' + slug + '">';
       html += '<div class="narrative-header">';
@@ -950,17 +1150,20 @@ function generateHtml(data: HtmlReportData): string {
       html += '</div></div>';
 
       if (narrative.topTokens.length > 0) {
-        // Sort all tokens by |netflow| DESC
         var sorted = narrative.topTokens.slice().sort(function(a, b) {
           return Math.abs(b.netflow24hUsd) - Math.abs(a.netflow24hUsd);
         });
 
-        html += '<table class="token-table">';
+        html += '<table class="token-table" id="' + tableId + '">';
         html += '<thead><tr>';
-        html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Market Cap</th><th>Category</th>';
+        html += '<th title="Token symbol and chain">Token</th>';
+        html += '<th class="sortable" title="Smart Money net capital flow over 24 hours" onclick="sortTable(\\'' + tableId + '\\', 1, \\'number\\')">Netflow 24h</th>';
+        html += '<th class="sortable" title="Price change over 24 hours" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Price \\u0394</th>';
+        html += '<th class="sortable" title="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 3, \\'number\\')">Market Cap</th>';
+        html += '<th class="sortable" title="Classification: HOT = strong SM accumulation + rising price, WATCH = SM accumulating, price flat, AVOID = SM distributing" onclick="sortTable(\\'' + tableId + '\\', 4, \\'text\\')">Category</th>';
         html += '</tr></thead><tbody>';
 
-        sorted.forEach(function(t) {
+        sorted.forEach(function(t, tidx) {
           var tNetflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
           var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
           var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
@@ -971,19 +1174,39 @@ function generateHtml(data: HtmlReportData): string {
                              t.category === 'watch' ? 'WATCH' : 'AVOID';
           var catTooltip = t.category === 'hot' ? 'Strong SM accumulation + rising price' :
                            t.category === 'watch' ? 'SM accumulating, price hasn\\'t moved yet' : 'SM distributing, consider reducing exposure';
+          var catSortOrder = t.category === 'hot' ? 0 : t.category === 'watch' ? 1 : 2;
 
-          html += '<tr>';
-          html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+          var detailId = 'narrative-detail-' + cardIndex + '-' + tidx;
+
+          html += '<tr class="expandable-row" onclick="toggleExpand(this, \\'' + detailId + '\\')"';
+          html += ' data-sort-1="' + t.netflow24hUsd + '"';
+          html += ' data-sort-2="' + t.priceChange + '"';
+          html += ' data-sort-3="' + (t.marketCapUsd || 0) + '"';
+          html += ' data-sort-4="' + catSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+          html += '>';
+
+          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
           html += '<td><span class="' + catBadgeCls + '" title="' + catTooltip + '">' + catBadgeText + '</span></td>';
           html += '</tr>';
+
+          // Expanded detail row
+          html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="5">';
+          html += '<div class="detail-grid">';
+          html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
+          html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
+          html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + t.traderCount + '</div></div>';
+          html += '<div><div class="detail-item-label">Volume 24h</div><div class="detail-item-value">' + formatVolume(t.volume24h) + '</div></div>';
+          html += '<div><div class="detail-item-label">Liquidity</div><div class="detail-item-value">' + formatMcap(t.liquidity) + '</div></div>';
+          html += '</div>';
+          html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
+          html += '</td></tr>';
         });
 
         html += '</tbody></table>';
       } else {
-        // No classified tokens — show summary only
         html += '<p style="color: var(--text-muted); font-size: 0.9rem;">' +
           narrative.tokenCount + ' tokens tracked. Strong SM ' +
           (narrative.totalNetflow24h >= 0 ? 'accumulation' : 'distribution') +
@@ -1009,7 +1232,7 @@ function generateHtml(data: HtmlReportData): string {
       accumulatingNarratives.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
 
       var html = '';
-      accumulatingNarratives.forEach(function(n) { html += renderNarrativeCard(n); });
+      accumulatingNarratives.forEach(function(n, idx) { html += renderNarrativeCard(n, 'acc-' + idx); });
       container.innerHTML = html;
     })();
 
@@ -1028,7 +1251,7 @@ function generateHtml(data: HtmlReportData): string {
       distributingNarratives.sort(function(a, b) { return a.totalNetflow24h - b.totalNetflow24h; });
 
       var html = '';
-      distributingNarratives.forEach(function(n) { html += renderNarrativeCard(n); });
+      distributingNarratives.forEach(function(n, idx) { html += renderNarrativeCard(n, 'dist-' + idx); });
       container.innerHTML = html;
     })();
 
@@ -1070,9 +1293,14 @@ function generateHtml(data: HtmlReportData): string {
       html += '<div class="early-signals-title">Early Signal Tokens \\u2014 Smart Money Accumulating Before Price Move</div>';
 
       html += '<table class="token-table">';
-      html += '<thead><tr>';
-      html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Volume 24h</th><th>Buy Pressure</th><th>Market Cap</th>';
-      html += '</tr></thead><tbody>';
+        html += '<thead><tr>';
+        html += '<th title="Token symbol and chain">Token</th>';
+        html += '<th title="Smart Money net capital flow over 24 hours">Netflow 24h</th>';
+        html += '<th title="Price change over 24 hours">Price \\u0394</th>';
+        html += '<th title="Total trading volume over 24 hours">Volume 24h</th>';
+        html += '<th title="Buy/sell ratio — higher means more buying pressure">Buy Pressure</th>';
+        html += '<th title="Current market capitalization">Market Cap</th>';
+        html += '</tr></thead><tbody>';
 
       SCAN_DATA.earlySignals.forEach(function(t) {
         var netflowCls = t.netflow24hUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
@@ -1100,29 +1328,33 @@ function generateHtml(data: HtmlReportData): string {
       if (!SCAN_DATA.screenerHighlights || SCAN_DATA.screenerHighlights.length === 0) return;
 
       var container = document.getElementById('screener-highlights');
+      var tableId = 'screener-table';
 
       var html = '<div class="screener-highlights-card">';
-      html += '<div class="screener-title">🔥 Smart Money Active Tokens</div>';
+      html += '<div class="screener-title">\\uD83D\\uDD25 Smart Money Active Tokens</div>';
       html += '<div class="screener-subtitle">Top tokens by Smart Money buy/sell ratio and netflow — always fresh data from 500+ tokens</div>';
 
-      html += '<table class="token-table">';
+      html += '<table class="token-table" id="' + tableId + '">';
       html += '<thead><tr>';
-      html += '<th>Token</th><th>Netflow 24h</th><th>Buy / Sell</th><th>Ratio</th><th>Price \\u0394</th><th>Market Cap</th><th>Signal</th>';
+      html += '<th title="Token symbol and chain">Token</th>';
+      html += '<th class="sortable" title="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 1, \\'number\\')">Netflow 24h</th>';
+      html += '<th title="Visual ratio of buy volume (green) vs sell volume (red)">Buy / Sell</th>';
+      html += '<th class="sortable" title="Buy volume divided by sell volume — higher means more buying pressure" onclick="sortTable(\\'' + tableId + '\\', 3, \\'number\\')">Ratio</th>';
+      html += '<th class="sortable" title="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Price \\u0394</th>';
+      html += '<th class="sortable" title="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Market Cap</th>';
+      html += '<th class="sortable" title="Signal classification based on buy/sell ratio and netflow direction" onclick="sortTable(\\'' + tableId + '\\', 6, \\'text\\')">Signal</th>';
       html += '</tr></thead><tbody>';
 
-      SCAN_DATA.screenerHighlights.forEach(function(t) {
+      SCAN_DATA.screenerHighlights.forEach(function(t, idx) {
         var netflowCls = t.netflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
         var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
         var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
 
-        // Buy/sell bar
         var totalVol = Math.abs(t.buyVolume) + Math.abs(t.sellVolume);
         var buyPct = totalVol > 0 ? (Math.abs(t.buyVolume) / totalVol * 100) : 50;
         var sellPct = 100 - buyPct;
-
         var ratioText = t.buySellRatio >= 99 ? '99x+' : t.buySellRatio.toFixed(1) + 'x';
 
-        // Classification badge
         var badgeClass = t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
                          t.classification === 'accumulating' ? 'accumulating' :
                          t.classification === 'mixed' ? 'mixed' : 'distributing';
@@ -1133,8 +1365,22 @@ function generateHtml(data: HtmlReportData): string {
                            t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
                            t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
 
-        html += '<tr>';
-        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+        // Sort order for signal: heavy_accumulation=0, accumulating=1, mixed=2, distributing=3
+        var signalSortOrder = t.classification === 'heavy_accumulation' ? 0 :
+                              t.classification === 'accumulating' ? 1 :
+                              t.classification === 'mixed' ? 2 : 3;
+
+        var detailId = 'screener-detail-' + idx;
+
+        // Main row (clickable to expand)
+        html += '<tr class="expandable-row" onclick="toggleExpand(this, \\'' + detailId + '\\')"';
+        html += ' data-sort-1="' + t.netflowUsd + '"';
+        html += ' data-sort-3="' + t.buySellRatio + '"';
+        html += ' data-sort-4="' + t.priceChange + '"';
+        html += ' data-sort-5="' + (t.marketCapUsd || 0) + '"';
+        html += ' data-sort-6="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+        html += '>';
+        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
@@ -1142,6 +1388,18 @@ function generateHtml(data: HtmlReportData): string {
         html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
         html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
         html += '</tr>';
+
+        // Expanded detail row (hidden by default)
+        html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="7">';
+        html += '<div class="detail-grid">';
+        html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
+        html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
+        html += '<div><div class="detail-item-label">SM Buyers</div><div class="detail-item-value">' + t.nofBuyers + '</div></div>';
+        html += '<div><div class="detail-item-label">SM Sellers</div><div class="detail-item-value">' + t.nofSellers + '</div></div>';
+        html += '<div><div class="detail-item-label">Total Volume</div><div class="detail-item-value">' + formatVolume(t.volume) + '</div></div>';
+        html += '</div>';
+        html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
+        html += '</td></tr>';
       });
 
       html += '</tbody></table>';
