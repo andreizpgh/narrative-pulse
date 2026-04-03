@@ -193,11 +193,6 @@ export interface DexScreenerPair {
   pairCreatedAt: number | null;
 }
 
-export interface DexScreenerResponse {
-  schemaVersion: string;
-  pairs: DexScreenerPair[] | null;
-}
-
 // ============================================================
 // Enriched Token Data (merged Nansen + DexScreener)
 // ============================================================

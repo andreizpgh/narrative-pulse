@@ -4,7 +4,7 @@
 // Free, no auth, 300 req/min. Batch up to 30 addresses per request.
 // ============================================================
 
-import type { DexScreenerPair, DexScreenerResponse } from "../types.js";
+import type { DexScreenerPair } from "../types.js";
 import { config } from "../config.js";
 import { normalizeAddress } from "../utils/normalize.js";
 
@@ -111,9 +111,15 @@ async function fetchBatch(
         throw new Error(`HTTP ${response.status} on GET ${url}`);
       }
 
-      const data = (await response.json()) as DexScreenerResponse;
+      const data: unknown = await response.json();
 
-      return data.pairs ?? [];
+      // /tokens/v1/{chainId}/{addresses} returns a flat JSON array of pairs,
+      // NOT an object with a .pairs field. Guard against unexpected shapes.
+      if (!Array.isArray(data)) {
+        return [] as DexScreenerPair[];
+      }
+
+      return data as DexScreenerPair[];
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
 

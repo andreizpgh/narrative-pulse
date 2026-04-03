@@ -3,16 +3,13 @@ import type { NetflowEntry, NarrativeKey, NarrativeSummary } from "../types.js";
 /**
  * Converts a list of sectors into a normalized NarrativeKey.
  *
- * Simplification rules to reduce noise:
- *  - 1 sector  → use as-is
- *  - 2 sectors → sorted join with "+" (e.g. "AI+DeFi")
- *  - 3+ sectors → use only the first sector (collapse into broader category)
+ * Always uses the PRIMARY (first) sector for grouping. This produces
+ * broader, more meaningful narratives (e.g. "AI", "Memecoins", "DeFi")
+ * that include all tokens from that sector regardless of secondary sectors.
  */
 export function toNarrativeKey(sectors: string[]): string {
   if (sectors.length === 0) return "";
-  if (sectors.length === 1) return sectors[0];
-  if (sectors.length === 2) return [...sectors].sort().join("+");
-  // 3+ sectors: collapse to first sector only
+  // Always use primary sector for broader narrative grouping
   return sectors[0];
 }
 
@@ -20,9 +17,8 @@ export function toNarrativeKey(sectors: string[]): string {
  * Groups netflow entries by narrative (derived from token_sectors)
  * and computes aggregate statistics for each narrative.
  *
- * Simplification: tokens with 3+ sectors are collapsed to their first sector.
- * After grouping, narratives with at least 1 token are kept
- * (any SM activity is considered useful signal).
+ * Tokens are grouped by their primary sector only, producing broader narratives.
+ * After grouping, narratives with meaningful signal are kept.
  *
  * Results are sorted by |totalNetflow24h| descending.
  */
@@ -66,7 +62,7 @@ export function aggregateByNarrative(
 
     // Filter: keep narratives with meaningful signal
     const isSignificant =
-      group.length >= 2 || Math.abs(totalNetflow24h) > 1_000;
+      group.length >= 2 || Math.abs(totalNetflow24h) > 500;
     if (!isSignificant) continue;
 
     summaries.push({

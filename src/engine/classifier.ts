@@ -171,19 +171,19 @@ function determineCategoryNetflowOnly(
     const sellVolume = Math.max(enriched.sells24h, 1);
 
     // Strong accumulation with buy pressure
-    if (netflow.net_flow_24h_usd > 5_000 && buyVolume > sellVolume) return "hot";
+    if (netflow.net_flow_24h_usd > 2_000 && buyVolume > sellVolume) return "hot";
     // Moderate accumulation
-    if (netflow.net_flow_24h_usd > 1_000) return "watch";
+    if (netflow.net_flow_24h_usd > 500) return "watch";
     // Distribution
-    if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+    if (netflow.net_flow_24h_usd < -500) return "avoid";
   } else {
     // No enriched data — pure netflow-based classification
     // Strong accumulation without price data
-    if (netflow.net_flow_24h_usd > 5_000) return "hot";
-    // Moderate accumulation
-    if (netflow.net_flow_24h_usd > 1_000) return "watch";
+    if (netflow.net_flow_24h_usd > 2_000) return "hot";
+    // Moderate accumulation — any SM netflow > $500 from 3+ traders is meaningful
+    if (netflow.net_flow_24h_usd > 500) return "watch";
     // Distribution
-    if (netflow.net_flow_24h_usd < -1_000) return "avoid";
+    if (netflow.net_flow_24h_usd < -500) return "avoid";
   }
 
   // Not enough signal to classify
