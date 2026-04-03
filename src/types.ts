@@ -99,6 +99,7 @@ export interface ScanResult {
   subNarratives?: SubNarrative[]; // Sub-narratives of top narrative (if any)
   topNarrativeKey?: NarrativeKey; // Key of the top narrative
   earlySignals: EarlySignalToken[];
+  screenerHighlights: ScreenerHighlight[];
   enrichedTokens: EnrichedTokenData[];
   apiCallsUsed: number;
   creditsUsed: number;
@@ -109,6 +110,26 @@ export interface NarrativeRotation {
   to: NarrativeKey;
   valueUsd: number; // Flow volume
   direction: "inflow" | "outflow";
+}
+
+// ============================================================
+// Screener Highlight — Top Smart Money Active Tokens
+// ============================================================
+
+export interface ScreenerHighlight {
+  token_symbol: string;
+  token_address: string;
+  chain: string;
+  netflowUsd: number;
+  buyVolume: number;
+  sellVolume: number;
+  buySellRatio: number;
+  priceChange: number;
+  marketCapUsd: number;
+  nofBuyers: number;
+  nofSellers: number;
+  volume: number;
+  classification: "heavy_accumulation" | "accumulating" | "distributing";
 }
 
 // ============================================================
