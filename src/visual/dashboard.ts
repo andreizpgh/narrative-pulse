@@ -414,6 +414,90 @@ export function renderDashboardHtml(): string {
       margin-top: 32px;
     }
 
+    /* ── Screener Highlights ───────────────────── */
+
+    .screener-highlights-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      border-left: 4px solid var(--color-warning);
+    }
+
+    .screener-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #ffffff;
+    }
+
+    .screener-subtitle {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .screener-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 4px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .screener-badge.heavy-accumulation {
+      background: rgba(52, 211, 153, 0.18);
+      color: var(--color-positive);
+    }
+
+    .screener-badge.accumulating {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--color-warning);
+    }
+
+    .screener-badge.distributing {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--color-negative);
+    }
+
+    .chain-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(139, 143, 163, 0.15);
+      color: var(--text-secondary);
+      margin-left: 4px;
+      vertical-align: middle;
+      text-transform: uppercase;
+    }
+
+    .chain-ethereum { background: rgba(98, 126, 234, 0.2); color: #627eea; }
+    .chain-solana { background: rgba(156, 106, 222, 0.2); color: #9c6ade; }
+    .chain-base { background: rgba(0, 170, 255, 0.2); color: #00aaff; }
+    .chain-bnb { background: rgba(243, 186, 47, 0.2); color: #f3ba2f; }
+    .chain-arbitrum { background: rgba(40, 160, 240, 0.2); color: #28a0f0; }
+
+    /* ── Buy/Sell Bar ──────────────────────────── */
+
+    .buy-sell-bar {
+      display: flex;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+
+    .buy-sell-bar .buy-bar { background: var(--color-positive); }
+    .buy-sell-bar .sell-bar { background: var(--color-negative); }
+
     /* ── Responsive ─────────────────────────────── */
 
     @media (max-width: 768px) {
@@ -545,6 +629,12 @@ export function renderDashboardHtml(): string {
       el.textContent = 'Updated ' + minutesAgo(lastScanTime);
     }
 
+    function chainBadge(chain) {
+      var cls = 'chain-badge chain-' + chain;
+      var labels = { ethereum: 'ETH', solana: 'SOL', base: 'BASE', bnb: 'BNB', arbitrum: 'ARB' };
+      return '<span class="' + cls + '">' + (labels[chain] || chain) + '</span>';
+    }
+
     // ── Data Fetching ──────────────────────────────────────
 
     function fetchData() {
@@ -635,6 +725,7 @@ export function renderDashboardHtml(): string {
         totalTokens: totalTokens,
         narrativeCount: narratives.length,
         earlySignals: scan.earlySignals || [],
+        screenerHighlights: scan.screenerHighlights || [],
         subNarratives: scan.subNarratives || [],
         topNarrativeKey: scan.topNarrativeKey || null,
         rotations: scan.rotations || []
@@ -670,6 +761,18 @@ export function renderDashboardHtml(): string {
       document.getElementById('stat-credits').textContent = data.creditsUsed;
       updateAgoText();
 
+      // Update stats bar with screener highlights count
+      var statsBar = document.getElementById('stats-bar');
+      if (statsBar && !document.getElementById('stat-screener')) {
+        var screenerStat = document.createElement('div');
+        screenerStat.className = 'stat';
+        screenerStat.id = 'stat-screener';
+        screenerStat.innerHTML = '<div class="stat-value" id="stat-screener-val">&mdash;</div><div class="stat-label">SM Active Tokens</div>';
+        statsBar.appendChild(screenerStat);
+      }
+      var screenerValEl = document.getElementById('stat-screener-val');
+      if (screenerValEl) screenerValEl.textContent = data.screenerHighlights ? data.screenerHighlights.length : 0;
+
       // Hero Section
       html += renderHero(data.hero);
 
@@ -678,6 +781,11 @@ export function renderDashboardHtml(): string {
       html += '<div class="card-title">Narrative Netflows (24h)</div>';
       html += '<div id="bar-chart"></div>';
       html += '</div>';
+
+      // Screener Highlights (HERO section)
+      if (data.screenerHighlights && data.screenerHighlights.length > 0) {
+        html += renderScreenerHighlights(data.screenerHighlights);
+      }
 
       // Early Signals
       if (data.earlySignals && data.earlySignals.length > 0) {
@@ -788,6 +896,50 @@ export function renderDashboardHtml(): string {
       return html;
     }
 
+    function renderScreenerHighlights(highlights) {
+      var html = '<div class="screener-highlights-card">';
+      html += '<div class="screener-title">🔥 Smart Money Active Tokens</div>';
+      html += '<div class="screener-subtitle">Top tokens by Smart Money buy/sell ratio and netflow — always fresh data from 500+ tokens</div>';
+
+      html += '<table class="token-table">';
+      html += '<thead><tr>';
+      html += '<th>Token</th><th>Netflow 24h</th><th>Buy / Sell</th><th>Ratio</th><th>Price \\u0394</th><th>Market Cap</th><th>Signal</th>';
+      html += '</tr></thead><tbody>';
+
+      highlights.forEach(function(t) {
+        var netflowCls = t.netflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
+        var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
+        var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
+
+        // Buy/sell bar
+        var totalVol = Math.abs(t.buyVolume) + Math.abs(t.sellVolume);
+        var buyPct = totalVol > 0 ? (Math.abs(t.buyVolume) / totalVol * 100) : 50;
+        var sellPct = 100 - buyPct;
+
+        var ratioText = t.buySellRatio >= 99 ? '99x+' : t.buySellRatio.toFixed(1) + 'x';
+
+        // Classification badge
+        var badgeClass = t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
+                         t.classification === 'accumulating' ? 'accumulating' : 'distributing';
+        var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
+                        t.classification === 'accumulating' ? 'ACCUM' : 'DIST';
+
+        html += '<tr>';
+        html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
+        html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
+        html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
+        html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
+        html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
+        html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
+        html += '<td><span class="screener-badge ' + badgeClass + '">' + badgeText + '</span></td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      html += '</div>';
+      return html;
+    }
+
     function renderNarrativeCard(narrative) {
       var netflowClass = narrative.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
       var borderClass = narrative.isHot ? 'border-positive' : 'border-negative';
@@ -803,7 +955,7 @@ export function renderDashboardHtml(): string {
       if (narrative.topTokens.length > 0) {
         html += '<table class="token-table">';
         html += '<thead><tr>';
-        html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Market Cap</th>';
+        html += '<th>Token</th><th>Netflow 24h</th><th>Price \\u0394</th><th>Market Cap</th><th>Category</th>';
         html += '</tr></thead><tbody>';
 
         narrative.topTokens.forEach(function(t) {
@@ -811,11 +963,17 @@ export function renderDashboardHtml(): string {
           var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
           var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
 
+          var catBadgeCls = t.category === 'hot' ? 'screener-badge heavy-accumulation' :
+                            t.category === 'watch' ? 'screener-badge accumulating' : 'screener-badge distributing';
+          var catBadgeText = t.category === 'hot' ? 'HOT' :
+                             t.category === 'watch' ? 'WATCH' : 'AVOID';
+
           html += '<tr>';
-          html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong></td>';
+          html += '<td><strong>' + escapeHtml(t.token_symbol) + '</strong>' + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
+          html += '<td><span class="' + catBadgeCls + '">' + catBadgeText + '</span></td>';
           html += '</tr>';
         });
 
