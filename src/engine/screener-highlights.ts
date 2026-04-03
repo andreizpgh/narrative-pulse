@@ -14,6 +14,25 @@ const MAX_HIGHLIGHTS = 30;
 const MIN_VOLUME_USD = 10_000; // $10K minimum volume to filter noise
 
 // ============================================================
+// Stablecoin / wrapped-token filter
+// Huge volume, zero trading signal — must exclude from highlights
+// ============================================================
+
+const STABLECOIN_PATTERNS = [
+  "USDT", "USDC", "DAI", "TUSD", "BUSD", "FRAX", "LUSD", "USDD",
+  "GUSD", "USDP", "SUSD", "PYUSD", "FDUSD", "EURA", "USDV",
+  "WETH", "WBTC", "WBNB", "WSTETH", "WAVAX", "WMATIC",
+  "CBETH", "RETH", "WEETH", "SDETH",
+  // Nansen-specific wrapped names
+  "SUSDS", "SYRUPUSDC", "RLUSD", "MWETH",
+];
+
+function isStablecoin(symbol: string): boolean {
+  const upper = symbol.toUpperCase();
+  return STABLECOIN_PATTERNS.includes(upper);
+}
+
+// ============================================================
 // Classification thresholds (buy/sell ratio)
 // ============================================================
 
@@ -38,9 +57,12 @@ function scoreEntry(entry: TokenScreenerEntry): number {
       ? 10
       : 0;
 
-  // Score: ratio × |netflow| normalized by volume for relevance
-  // Higher = more conviction + more capital
-  return ratio * Math.abs(entry.netflow);
+  // Price change bonus: volatile tokens are more interesting
+  const priceChangePct = Math.abs((entry.price_change ?? 0) * 100);
+  const volatilityBonus = 1 + Math.min(priceChangePct / 20, 2); // up to 3x bonus for 40%+ moves
+
+  // Score: conviction × capital × volatility
+  return ratio * Math.abs(entry.netflow) * volatilityBonus;
 }
 
 // ============================================================
@@ -70,6 +92,13 @@ export function extractScreenerHighlights(
 
     // Only include tokens with meaningful SM activity
     if (Math.abs(entry.netflow) < 100) continue;
+
+    // Skip stablecoins and wrappers — huge volume, zero trading signal
+    if (isStablecoin(entry.token_symbol)) continue;
+
+    // Skip near-zero price movement (likely stablecoins not caught by name)
+    const priceChangePct = (entry.price_change ?? 0) * 100;
+    if (Math.abs(priceChangePct) < 0.5) continue;
 
     candidates.push({
       token_symbol: entry.token_symbol,
