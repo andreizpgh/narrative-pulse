@@ -280,10 +280,15 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .highlight-card {
-      padding: 14px 18px;
-      border-radius: 10px;
-      background: var(--bg-card);
+      padding: 18px 22px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-alt));
       border: 1px solid var(--border-color);
+      transition: border-color 0.2s ease;
+    }
+
+    .highlight-card:hover {
+      border-color: rgba(139, 143, 163, 0.3);
     }
 
     .highlight-label {
@@ -295,7 +300,7 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .highlight-value {
-      font-size: 1.15rem;
+      font-size: 1.3rem;
       font-weight: 700;
       color: #ffffff;
     }
@@ -314,7 +319,7 @@ function generateHtml(data: HtmlReportData): string {
     }
 
     .stat { text-align: center; }
-    .stat-value { font-size: 1.2rem; font-weight: 700; color: #ffffff; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: #ffffff; }
     .stat-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
     /* Sankey Chart */
@@ -350,6 +355,13 @@ function generateHtml(data: HtmlReportData): string {
       background: linear-gradient(135deg, rgba(248, 113, 113, 0.10), rgba(248, 113, 113, 0.03));
       color: var(--color-negative);
       border: 1px solid rgba(248, 113, 113, 0.15);
+      border-bottom: none;
+    }
+
+    .section-title.narratives-title {
+      background: linear-gradient(135deg, rgba(129, 140, 248, 0.12), rgba(129, 140, 248, 0.04));
+      color: #a5b4fc;
+      border: 1px solid rgba(129, 140, 248, 0.2);
       border-bottom: none;
     }
 
@@ -758,16 +770,10 @@ function generateHtml(data: HtmlReportData): string {
       <div class="sankey-hint">Outflows &rarr; Smart Money &rarr; Inflows. Click a narrative to jump to details.</div>
     </div>
 
-    <!-- Accumulating Narratives -->
-    <section class="section" id="section-accumulating">
-      <h2 class="section-title accumulating">Smart Money is ACCUMULATING</h2>
-      <div class="section-body" id="accumulating-narratives"></div>
-    </section>
-
-    <!-- Distributing Narratives -->
-    <section class="section" id="section-distributing">
-      <h2 class="section-title distributing">Smart Money is DISTRIBUTING</h2>
-      <div class="section-body" id="distributing-narratives"></div>
+    <!-- Narrative Breakdown -->
+    <section class="section" id="section-narratives">
+      <h2 class="section-title narratives-title">Narrative Breakdown</h2>
+      <div class="section-body" id="narratives-container"></div>
     </section>
 
     <!-- Sub-narratives (only rendered if data exists) -->
@@ -946,9 +952,6 @@ function generateHtml(data: HtmlReportData): string {
       };
     });
 
-    var accumulatingNarratives = processedNarratives.filter(function(n) { return n.isHot; });
-    var distributingNarratives = processedNarratives.filter(function(n) { return !n.isHot; });
-
     // ── Header Rendering ────────────────────────────────────
 
     (function renderHeader() {
@@ -1025,6 +1028,18 @@ function generateHtml(data: HtmlReportData): string {
       var outflows = processedNarratives.filter(function(n) { return n.totalNetflow24h < -100; });
       var inflows = processedNarratives.filter(function(n) { return n.totalNetflow24h > 100; });
 
+      // Update hint text based on flow direction
+      var hintEl = document.querySelector('#sankey-section .sankey-hint');
+      if (hintEl) {
+        if (outflows.length === 0) {
+          hintEl.textContent = 'Smart Money is flowing into narratives. Click a node to jump to details.';
+        } else if (inflows.length === 0) {
+          hintEl.textContent = 'Smart Money is exiting these narratives. Click a node to jump to details.';
+        } else {
+          hintEl.textContent = 'Outflows \u2192 Smart Money \u2192 Inflows. Click a node to jump to details.';
+        }
+      }
+
       if (outflows.length === 0 && inflows.length === 0) {
         document.getElementById('sankey-section').style.display = 'none';
         return;
@@ -1032,6 +1047,9 @@ function generateHtml(data: HtmlReportData): string {
 
       var nodes = [];
       var links = [];
+
+      // When no outflows, align left so Smart Money node is at left edge
+      var nodeAlign = outflows.length === 0 ? 'left' : 'justify';
 
       // Center node: Smart Money
       nodes.push({
@@ -1074,11 +1092,6 @@ function generateHtml(data: HtmlReportData): string {
       });
 
       chart.setOption({
-        title: {
-          text: 'Capital Flow Map',
-          left: 'center',
-          textStyle: { fontSize: 15, color: '#e8e9ed', fontWeight: 600 }
-        },
         tooltip: {
           trigger: 'item',
           triggerOn: 'mousemove',
@@ -1096,14 +1109,14 @@ function generateHtml(data: HtmlReportData): string {
           type: 'sankey',
           layout: 'none',
           emphasis: { focus: 'adjacency' },
-          nodeAlign: 'justify',
+          nodeAlign: nodeAlign,
           nodeGap: 20,
           nodeWidth: 24,
           layoutIterations: 32,
           top: 55,
           bottom: 30,
-          left: 60,
-          right: 60,
+          left: 80,
+          right: 120,
           label: {
             fontSize: 13,
             color: '#e8e9ed',
@@ -1217,41 +1230,26 @@ function generateHtml(data: HtmlReportData): string {
       return html;
     }
 
-    // ── Accumulating Section ────────────────────────────────
+    // ── Unified Narrative Rendering ──────────────────────
 
-    (function renderAccumulating() {
-      var container = document.getElementById('accumulating-narratives');
-      var section = document.getElementById('section-accumulating');
+    (function renderNarratives() {
+      var container = document.getElementById('narratives-container');
+      var section = document.getElementById('section-narratives');
 
-      if (accumulatingNarratives.length === 0) {
+      if (processedNarratives.length === 0) {
         section.style.display = 'none';
         return;
       }
 
-      // Sort: highest netflow first
-      accumulatingNarratives.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
+      // Sort: by |netflow| descending — strongest signals first
+      processedNarratives.sort(function(a, b) {
+        return Math.abs(b.totalNetflow24h) - Math.abs(a.totalNetflow24h);
+      });
 
       var html = '';
-      accumulatingNarratives.forEach(function(n, idx) { html += renderNarrativeCard(n, 'acc-' + idx); });
-      container.innerHTML = html;
-    })();
-
-    // ── Distributing Section ────────────────────────────────
-
-    (function renderDistributing() {
-      var container = document.getElementById('distributing-narratives');
-      var section = document.getElementById('section-distributing');
-
-      if (distributingNarratives.length === 0) {
-        section.style.display = 'none';
-        return;
-      }
-
-      // Sort: most negative first
-      distributingNarratives.sort(function(a, b) { return a.totalNetflow24h - b.totalNetflow24h; });
-
-      var html = '';
-      distributingNarratives.forEach(function(n, idx) { html += renderNarrativeCard(n, 'dist-' + idx); });
+      processedNarratives.forEach(function(n, idx) {
+        html += renderNarrativeCard(n, 'nar-' + idx);
+      });
       container.innerHTML = html;
     })();
 
