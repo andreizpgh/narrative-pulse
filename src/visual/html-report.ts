@@ -167,10 +167,13 @@ function toHtmlScreenerHighlight(h: ScreenerHighlight): HtmlReportScreenerHighli
 }
 
 function toHtmlReportData(result: ScanResult): HtmlReportData {
+  // Filter out narratives with $0 netflow at the data layer (display-layer only)
+  const activeNarratives = result.narratives.filter(n => Math.abs(n.totalNetflow24h) > 0);
+
   return {
     timestamp: result.timestamp,
     creditsUsed: result.creditsUsed,
-    narratives: result.narratives.map(toHtmlNarrative),
+    narratives: activeNarratives.map(toHtmlNarrative),
     rotations: result.rotations.map(toHtmlRotation),
     subNarratives: result.subNarratives?.map(toHtmlSubNarrative),
     topNarrativeKey: result.topNarrativeKey,
@@ -741,7 +744,7 @@ function generateHtml(data: HtmlReportData): string {
       // Stats
       var statsEl = document.getElementById('header-stats');
       statsEl.innerHTML =
-        '<div class="stat"><div class="stat-value">' + narrativeCount + '</div><div class="stat-label">Narratives Tracked</div></div>' +
+        '<div class="stat"><div class="stat-value">' + narrativeCount + '</div><div class="stat-label">Active Narratives</div></div>' +
         '<div class="stat"><div class="stat-value">' + classifiedTokens + '</div><div class="stat-label">Classified Tokens</div></div>' +
         '<div class="stat"><div class="stat-value">' + (SCAN_DATA.screenerHighlights ? SCAN_DATA.screenerHighlights.length : 0) + '</div><div class="stat-label">SM Active Tokens</div></div>' +
         '<div class="stat"><div class="stat-value">' + (SCAN_DATA.creditsUsed || 0) + '</div><div class="stat-label">Credits Used</div></div>';

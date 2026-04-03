@@ -674,17 +674,15 @@ export function renderDashboardHtml(): string {
 
     // ── Data Processing ────────────────────────────────────
 
-    var MIN_NARRATIVE_NETFLOW = 500;
-
     function processData(apiResponse) {
       if (!apiResponse || !apiResponse.scan) return null;
 
       var scan = apiResponse.scan;
       lastScanTime = apiResponse.lastScanTime || scan.timestamp;
 
-      // Filter narratives with meaningful netflow
+      // Filter out narratives with $0 netflow (display-layer only)
       var narratives = (scan.narratives || []).filter(function(n) {
-        return Math.abs(n.totalNetflow24h) >= MIN_NARRATIVE_NETFLOW;
+        return Math.abs(n.totalNetflow24h) > 0;
       }).map(function(n) {
         return {
           displayName: n.displayName,

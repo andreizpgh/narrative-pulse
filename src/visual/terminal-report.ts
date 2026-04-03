@@ -376,15 +376,18 @@ function renderScreenerHighlights(highlights: ScreenerHighlight[]): void {
  *   6. Smart Money Active Tokens (screener highlights)
  */
 export function renderTerminalReport(result: ScanResult): void {
+  // Filter out narratives with $0 netflow (display-layer only)
+  const activeNarratives = result.narratives.filter(n => Math.abs(n.totalNetflow24h) > 0);
+
   // Section 1: Summary Header
   renderHeader(result);
 
   // Section 2: Narrative Summary Table
-  renderNarrativeSummary(result.narratives);
+  renderNarrativeSummary(activeNarratives);
 
   // Section 3: Token Tables (grouped by accumulating/distributing)
-  const accumulating = result.narratives.filter(n => n.isHot && n.topTokens.length > 0);
-  const distributing = result.narratives.filter(n => !n.isHot && n.topTokens.length > 0);
+  const accumulating = activeNarratives.filter(n => n.isHot && n.topTokens.length > 0);
+  const distributing = activeNarratives.filter(n => !n.isHot && n.topTokens.length > 0);
 
   if (accumulating.length > 0) {
     console.log(chalk.green.bold("━━━ Smart Money is ACCUMULATING ━━━"));
