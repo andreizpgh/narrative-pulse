@@ -41,7 +41,7 @@ Nobody gives you that signal — until now.
 
 | Feature | V1 | V2 |
 |---------|----|----|
-| Token enrichment | Token Screener only (~25% match rate) | **DexScreener enrichment for ALL tokens** (free, no auth) |
+| Token enrichment | Token Screener only | **DexScreener enrichment for ALL tokens** (free, no auth) |
 | Early signals | None | **Detects SM accumulation before price moves** |
 | Web dashboard | Static HTML only | **Live auto-refresh dashboard** at localhost:3000 |
 | Social sharing | None | **Research Cards** — 1200×675 PNG for Twitter |
@@ -87,7 +87,7 @@ Nobody gives you that signal — until now.
 ```
   1. Fetch Smart Money Netflows     ← Nansen (5 chains, paginated)
   2. Fetch Token Screener Data      ← Nansen (price, volume, buys/sells)
-  3. Enrich with DexScreener        ← Free API (covers ALL tokens, not just 25%)
+  3. Enrich with DexScreener        ← Free API (real-time price/volume for all tokens)
   4. Discover Sectors               ← Extract unique sectors from token_sectors
   5. Aggregate by Narrative         ← Group tokens → narratives, sum netflows
   6. Classify Tokens                ← 🔥 Hot / 👀 Watch / ⛔ Avoid
@@ -264,11 +264,11 @@ These tokens surface in the terminal output, HTML report, and via the MCP `get_e
 
 | Step | Endpoint | Purpose | Credits |
 |------|----------|---------|:-------:|
-| 1 | `smart-money/netflows` | SM netflows across 5 chains (paginated) | 25 |
-| 2 | `token-screener` | Price, volume, buy/sell breakdown | 5 |
-| 8 | `smart-money/holdings` | Holdings enrichment (optional) | 5/page |
-| 9 | `agent/fast` | Sub-narrative AI analysis (optional, `--deep` only) | 2000 |
-| | | **Total (standard scan)** | **~30** |
+| 1 | `smart-money/netflows` | SM netflows across 5 chains (paginated) | 50/page × ~2 pages ≈ 100 |
+| 2 | `token-screener` | Price, volume, buy/sell breakdown | 10/page × ~10 pages ≈ 100 |
+| 3 | `smart-money/holdings` | Holdings enrichment (not used in pipeline yet) | 5/page |
+| 4 | `agent/fast` | Sub-narrative AI analysis (optional, `--deep` only) | 2000 |
+| | | **Total (standard scan)** | **~200** |
 
 ### External APIs
 
@@ -277,7 +277,7 @@ These tokens surface in the terminal output, HTML report, and via the MCP `get_e
 | DexScreener | Price, volume, liquidity for ALL tokens | None (free) | 300 req/min |
 | | Batch up to 30 addresses per request | | |
 
-DexScreener is the **secret weapon**: it enriches 100% of tokens with real-time price/volume data, compared to the ~25% match rate from token-screener alone.
+DexScreener enriches all tokens with real-time price/volume data, filling gaps where token-screener has no coverage.
 
 ---
 
@@ -399,14 +399,14 @@ The core data source. Returns token-level Smart Money net flow with `token_secto
 ### 2. Token Screener (`token-screener`)
 Provides price change, volume, and buy/sell breakdown — essential for Hot/Watch/Avoid classification. Covers ~25% of tokens.
 
-### 3. DexScreener (External, Free)
-Fills the 75% coverage gap. Free, no auth, 300 req/min. Batch up to 30 addresses per request. Provides real-time price, volume, liquidity for ALL tokens.
-
-### 4. Agent API (`agent/fast`)
+### 3. Agent API (`agent/fast`)
 AI-powered analysis that breaks down the top narrative into sub-narratives with conviction ratings. Optional (`--deep` flag), costs 2000 credits.
 
-### 5. Smart Money Holdings (`smart-money/holdings`)
+### 4. Smart Money Holdings (`smart-money/holdings`)
 Portfolio-level Smart Money data — what they're holding, not just what's flowing. 5 credits per page.
+
+### 5. DexScreener (External, Free)
+Fills coverage gaps where token-screener has no data. Free, no auth, 300 req/min. Batch up to 30 addresses per request. Provides real-time price, volume, liquidity for ALL tokens.
 
 ---
 
