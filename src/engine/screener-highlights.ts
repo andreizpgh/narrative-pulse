@@ -79,7 +79,8 @@ export function extractScreenerHighlights(
       buyVolume,
       sellVolume,
       buySellRatio: Math.round(buySellRatio * 100) / 100,
-      priceChange: entry.price_change ?? 0,
+      // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
+      priceChange: (entry.price_change ?? 0) * 100,
       marketCapUsd: entry.market_cap_usd ?? 0,
       nofBuyers: entry.nof_buyers ?? 0,
       nofSellers: entry.nof_sellers ?? 0,

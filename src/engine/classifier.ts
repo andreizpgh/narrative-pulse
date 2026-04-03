@@ -86,7 +86,8 @@ export function classifyTokens(
       category,
       netflow24hUsd: netflow.net_flow_24h_usd,
       netflow7dUsd: netflow.net_flow_7d_usd,
-      priceChange: enriched?.priceChange24h ?? screener?.price_change ?? 0,
+      // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
+      priceChange: enriched?.priceChange24h ?? (screener?.price_change ?? 0) * 100,
       buyVolume: enriched?.buys24h ?? screener?.buy_volume ?? 0,
       sellVolume: enriched?.sells24h ?? screener?.sell_volume ?? 0,
       traderCount: netflow.trader_count,
@@ -128,7 +129,8 @@ function determineCategory(
   enriched?: EnrichedTokenData
 ): TokenCategory | null {
   // Use enriched data when available, otherwise screener
-  const priceChange = enriched?.priceChange24h ?? screener.price_change;
+  // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
+  const priceChange = enriched?.priceChange24h ?? (screener.price_change * 100);
   const buyVolume = enriched?.buys24h ?? screener.buy_volume;
   const sellVolume = enriched?.sells24h ?? screener.sell_volume;
 

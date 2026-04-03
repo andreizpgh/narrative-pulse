@@ -42,9 +42,9 @@ function buildEnrichedToken(
     ? parseFloat(dexPair.priceUsd)
     : screener?.price_usd ?? 0;
 
+  // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
   const priceChange24h = dexPair?.priceChange?.h24
-    ?? screener?.price_change
-    ?? 0;
+    ?? ((screener?.price_change ?? 0) * 100);
 
   const priceChange1h = dexPair?.priceChange?.h1 ?? 0;
 
