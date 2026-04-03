@@ -6,7 +6,6 @@ import { runScan } from "./engine/scanner.js";
 import { fetchNetflows } from "./api/netflows.js";
 import { discoverSectors } from "./engine/discovery.js";
 import { renderTerminalReport } from "./visual/terminal-report.js";
-import { renderSankey } from "./visual/sankey.js";
 import { renderHtmlReport } from "./visual/html-report.js";
 import { config } from "./config.js";
 import { startWatchMode } from "./scheduler/cron.js";
@@ -25,21 +24,12 @@ program
 program
   .command("scan")
   .description("Run a one-time narrative scan across all chains")
-  .option("--no-sankey", "Skip Sankey diagram generation")
   .option("--no-html", "Skip HTML report generation")
   .option("--deep", "Include Agent API deep analysis (costs 2000 extra credits)")
-  .action(async (options: { sankey: boolean; html: boolean; deep: boolean }) => {
+  .action(async (options: { html: boolean; deep: boolean }) => {
     try {
       const result = await runScan({ skipAgent: !options.deep });
       renderTerminalReport(result);
-
-      if (options.sankey) {
-        const sankeyPath = await renderSankey(
-          result.narratives,
-          result.rotations
-        );
-        console.log(`\nSankey diagram saved: ${sankeyPath}`);
-      }
 
       if (options.html) {
         const htmlPath = await renderHtmlReport(result);
@@ -59,28 +49,13 @@ program
   .command("watch")
   .description("Start 24/7 watch mode with periodic scans")
   .option("-s, --schedule <cron>", "Cron schedule expression", config.cronSchedule)
-  .option("--no-sankey", "Skip Sankey diagram generation")
   .option("--no-html", "Skip HTML report generation")
-  .action(async (options: { schedule: string; sankey: boolean; html: boolean }) => {
+  .action(async (options: { schedule: string; html: boolean }) => {
     try {
       // Build the scan function with visual output
       const scanWithVisuals = async () => {
         const result = await runScan();
         renderTerminalReport(result);
-
-        if (options.sankey) {
-          try {
-            const sankeyPath = await renderSankey(
-              result.narratives,
-              result.rotations
-            );
-            console.log(`[Watch] Sankey saved: ${sankeyPath}`);
-          } catch (err) {
-            console.error(
-              `[Watch] Sankey generation failed: ${err instanceof Error ? err.message : String(err)}`
-            );
-          }
-        }
 
         if (options.html) {
           try {
