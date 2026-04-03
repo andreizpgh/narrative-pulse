@@ -29,6 +29,7 @@ interface HtmlReportToken {
   netflow24hUsd: number;
   priceChange: number;
   marketCapUsd: number;
+  priceUsd?: number;
   buyVolume: number;
   sellVolume: number;
   traderCount: number;
@@ -80,6 +81,7 @@ interface HtmlReportScreenerHighlight {
   buySellRatio: number;
   priceChange: number;
   marketCapUsd: number;
+  priceUsd?: number;
   nofBuyers: number;
   nofSellers: number;
   volume: number;
@@ -114,6 +116,7 @@ function toHtmlToken(t: ClassifiedToken): HtmlReportToken {
     netflow24hUsd: t.netflow24hUsd,
     priceChange: t.priceChange,
     marketCapUsd: t.marketCapUsd,
+    priceUsd: t.priceUsd,
     buyVolume: t.buyVolume,
     sellVolume: t.sellVolume,
     traderCount: t.traderCount,
@@ -175,6 +178,7 @@ function toHtmlScreenerHighlight(h: ScreenerHighlight): HtmlReportScreenerHighli
     buySellRatio: h.buySellRatio,
     priceChange: h.priceChange,
     marketCapUsd: h.marketCapUsd,
+    priceUsd: h.priceUsd,
     nofBuyers: h.nofBuyers,
     nofSellers: h.nofSellers,
     volume: h.volume,
@@ -1208,6 +1212,7 @@ function generateHtml(data: HtmlReportData): string {
           // Expanded detail row
           html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="5">';
           html += '<div class="detail-grid">';
+          html += '<div><div class="detail-item-label">Current Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
           html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
           html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
           html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + t.traderCount + '</div></div>';
@@ -1390,6 +1395,7 @@ function generateHtml(data: HtmlReportData): string {
         // Expanded detail row (hidden by default)
         html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="7">';
         html += '<div class="detail-grid">';
+        html += '<div><div class="detail-item-label">Current Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
         html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
         html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
         html += '<div><div class="detail-item-label">SM Buyers</div><div class="detail-item-value">' + t.nofBuyers + '</div></div>';

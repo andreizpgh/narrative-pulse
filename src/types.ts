@@ -77,6 +77,7 @@ export interface ClassifiedToken {
   sellVolume: number;
   traderCount: number;
   marketCapUsd: number;
+  priceUsd?: number;
   // Enriched fields from DexScreener
   volume24h: number;
   liquidity: number;
@@ -127,6 +128,7 @@ export interface ScreenerHighlight {
   buySellRatio: number;
   priceChange: number;
   marketCapUsd: number;
+  priceUsd?: number;
   nofBuyers: number;
   nofSellers: number;
   volume: number;

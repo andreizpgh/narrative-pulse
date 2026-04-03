@@ -113,6 +113,7 @@ export function extractScreenerHighlights(
       // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
       priceChange: (entry.price_change ?? 0) * 100,
       marketCapUsd: entry.market_cap_usd ?? 0,
+      priceUsd: entry.price_usd > 0 ? entry.price_usd : undefined,
       nofBuyers: entry.nof_buyers ?? 0,
       nofSellers: entry.nof_sellers ?? 0,
       volume: entry.volume ?? 0,

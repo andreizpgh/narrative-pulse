@@ -92,6 +92,7 @@ export function classifyTokens(
       sellVolume: enriched?.sells24h ?? screener?.sell_volume ?? 0,
       traderCount: netflow.trader_count,
       marketCapUsd: enriched?.marketCap ?? netflow.market_cap_usd ?? 0,
+      priceUsd: enriched?.priceUsd ?? screener?.price_usd ?? undefined,
       volume24h: enriched?.volume24h ?? 0,
       liquidity: enriched?.liquidity ?? 0,
       priceChange1h: enriched?.priceChange1h ?? 0,
