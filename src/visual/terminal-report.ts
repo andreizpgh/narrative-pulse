@@ -339,7 +339,9 @@ function renderScreenerHighlights(highlights: ScreenerHighlight[]): void {
       ? chalk.green.bold("🔥 HEAVY ACCUM")
       : t.classification === "accumulating"
         ? chalk.yellow("👀 ACCUMULATING")
-        : chalk.red("⚠️ DISTRIBUTING");
+        : t.classification === "mixed"
+          ? chalk.gray("◐ MIXED")
+          : chalk.red("⚠️ DISTRIBUTING");
 
     const chainLabel = t.chain.toUpperCase();
 

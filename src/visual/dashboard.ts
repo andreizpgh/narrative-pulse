@@ -919,7 +919,7 @@ export function renderDashboardHtml(): string {
         var screenerCls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
         highlightHtml += '<div class="highlight-card">';
         highlightHtml += '<div class="highlight-label">Top SM Activity</div>';
-        highlightHtml += '<div class="highlight-value">' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
+        highlightHtml += '<div class="highlight-value">$' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
         var totalTraders = (topScreener.nofBuyers || 0) + (topScreener.nofSellers || 0);
         var traderText = totalTraders > 0 ? totalTraders + ' SM traders' : 'Active';
         highlightHtml += '<div class="highlight-sub">' + traderText + ' \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
@@ -1163,7 +1163,7 @@ export function renderDashboardHtml(): string {
         html += ' data-sort-5="' + (t.marketCapUsd || 0) + '"';
         html += ' data-sort-6="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
         html += '>';
-        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
@@ -1239,7 +1239,7 @@ export function renderDashboardHtml(): string {
           html += ' data-sort-4="' + catSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
           html += '>';
 
-          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
@@ -1316,7 +1316,7 @@ export function renderDashboardHtml(): string {
         var pressureText = !t.buyPressure || t.buyPressure <= 0 ? '\\u2014' : t.buyPressure.toFixed(1) + 'x';
 
         html += '<tr>';
-        html += '<td>' + dexLink(t.chain || '', t.token_address, '<strong>' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
+        html += '<td>' + dexLink(t.chain || '', t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
         html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
         html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
