@@ -12,6 +12,7 @@ import type {
   ClassifiedToken,
   SubNarrative,
   NarrativeRotation,
+  ScreenerHighlight,
   TokenCategory,
 } from "../types.js";
 
@@ -297,6 +298,70 @@ function renderRotations(rotations: NarrativeRotation[]): void {
 }
 
 // ============================================================
+// Section 6: Smart Money Active Tokens (Screener Highlights)
+// ============================================================
+
+function renderScreenerHighlights(highlights: ScreenerHighlight[]): void {
+  if (highlights.length === 0) return;
+
+  // Show top 10 in terminal
+  const top10 = highlights.slice(0, 10);
+
+  console.log(chalk.bold("━━━ 🔥 Smart Money Active Tokens ━━━"));
+  console.log(
+    chalk.gray("  Top tokens by buy/sell ratio × netflow (from 500+ screener entries)")
+  );
+  console.log();
+
+  const table = new Table({
+    head: [
+      chalk.white("Token"),
+      chalk.white("Chain"),
+      chalk.white("Netflow 24h"),
+      chalk.white("B/S Ratio"),
+      chalk.white("Price Δ"),
+      chalk.white("MarketCap"),
+      chalk.white("Signal"),
+    ],
+    colWidths: [10, 7, 16, 10, 12, 12, 18],
+    style: { head: [], border: ["gray"] },
+  });
+
+  for (const t of top10) {
+    const ratioText = t.buySellRatio >= 99 ? "99x+" : t.buySellRatio.toFixed(1) + "x";
+    const ratioColored = t.buySellRatio >= 3
+      ? chalk.green(ratioText)
+      : t.buySellRatio >= 1.5
+        ? chalk.yellow(ratioText)
+        : chalk.red(ratioText);
+
+    const signalLabel = t.classification === "heavy_accumulation"
+      ? chalk.green.bold("🔥 HEAVY ACCUM")
+      : t.classification === "accumulating"
+        ? chalk.yellow("👀 ACCUMULATING")
+        : chalk.red("⚠️ DISTRIBUTING");
+
+    const chainLabel = t.chain.toUpperCase();
+
+    table.push([
+      t.token_symbol,
+      chalk.gray(chainLabel),
+      formatUsdColored(t.netflowUsd),
+      ratioColored,
+      formatPercentColored(t.priceChange),
+      formatMcap(t.marketCapUsd),
+      signalLabel,
+    ]);
+  }
+
+  const lines = table.toString().split("\n");
+  for (const line of lines) {
+    console.log(`  ${line}`);
+  }
+  console.log();
+}
+
+// ============================================================
 // Main Entry Point
 // ============================================================
 
@@ -308,6 +373,7 @@ function renderRotations(rotations: NarrativeRotation[]): void {
  *   3. Token tables per narrative
  *   4. Sub-narratives (if present)
  *   5. Top rotations
+ *   6. Smart Money Active Tokens (screener highlights)
  */
 export function renderTerminalReport(result: ScanResult): void {
   // Section 1: Summary Header
@@ -340,4 +406,7 @@ export function renderTerminalReport(result: ScanResult): void {
 
   // Section 5: Top Rotations
   renderRotations(result.rotations);
+
+  // Section 6: Smart Money Active Tokens
+  renderScreenerHighlights(result.screenerHighlights);
 }
