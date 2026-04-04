@@ -559,6 +559,11 @@ export function renderDashboardHtml(): string {
       color: var(--text-secondary);
     }
 
+    .screener-badge.diverging {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+    }
+
     .chain-badge {
       display: inline-block;
       font-size: 0.6rem;
@@ -1147,22 +1152,26 @@ export function renderDashboardHtml(): string {
 
         var badgeClass = t.classification === 'pumping' ? 'pumping' :
                          t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
+                         t.classification === 'diverging' ? 'diverging' :
                          t.classification === 'accumulating' ? 'accumulating' :
                          t.classification === 'mixed' ? 'mixed' : 'distributing';
         var badgeText = t.classification === 'pumping' ? '🚀 PUMPING' :
                         t.classification === 'heavy_accumulation' ? '🔥 HEAVY ACCUM' :
+                        t.classification === 'diverging' ? '📊 DIVERGING' :
                         t.classification === 'accumulating' ? '👀 ACCUM' :
                         t.classification === 'mixed' ? '◐ MIXED' : '⚠️ DIST';
         var badgeTooltip = t.classification === 'pumping' ? 'Warning: High SM buying ratio but token already pumped > 30%' :
                            t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
+                           t.classification === 'diverging' ? 'Sustained 7-day SM accumulation but price hasn\\'t moved yet — potential divergence signal' :
                            t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
                            t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
 
-        // Sort order for signal: pumping=0, heavy_accumulation=1, accumulating=2, mixed=3, distributing=4
+        // Sort order for signal: pumping=0, diverging=1, heavy_accumulation=2, accumulating=3, mixed=4, distributing=5
         var signalSortOrder = t.classification === 'pumping' ? 0 :
-                              t.classification === 'heavy_accumulation' ? 1 :
-                              t.classification === 'accumulating' ? 2 :
-                              t.classification === 'mixed' ? 3 : 4;
+                              t.classification === 'diverging' ? 1 :
+                              t.classification === 'heavy_accumulation' ? 2 :
+                              t.classification === 'accumulating' ? 3 :
+                              t.classification === 'mixed' ? 4 : 5;
 
         var detailId = 'screener-detail-' + idx;
 
@@ -1232,13 +1241,16 @@ export function renderDashboardHtml(): string {
           var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
           var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
 
-          var catBadgeCls = t.category === 'hot' ? 'screener-badge heavy-accumulation' :
+          var catBadgeCls = t.category === 'pumping' ? 'screener-badge pumping' :
+                            t.category === 'hot' ? 'screener-badge heavy-accumulation' :
                             t.category === 'watch' ? 'screener-badge accumulating' : 'screener-badge distributing';
-          var catBadgeText = t.category === 'hot' ? 'HOT' :
+          var catBadgeText = t.category === 'pumping' ? '🚀 PUMPING' :
+                             t.category === 'hot' ? 'HOT' :
                              t.category === 'watch' ? 'WATCH' : 'AVOID';
-          var catTooltip = t.category === 'hot' ? 'Strong SM accumulation + rising price' :
+          var catTooltip = t.category === 'pumping' ? 'Price surged >30% — may be overextended, exercise caution' :
+                           t.category === 'hot' ? 'Strong SM accumulation + rising price' :
                            t.category === 'watch' ? 'SM accumulating, price hasn\\'t moved yet' : 'SM distributing, consider reducing exposure';
-          var catSortOrder = t.category === 'hot' ? 0 : t.category === 'watch' ? 1 : 2;
+          var catSortOrder = t.category === 'pumping' ? 0 : t.category === 'hot' ? 1 : t.category === 'watch' ? 2 : 3;
 
           var detailId = 'narrative-detail-' + cardIndex + '-' + tidx;
 

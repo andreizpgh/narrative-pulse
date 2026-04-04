@@ -92,6 +92,8 @@ function formatMcap(value: number): string {
 
 function formatCategory(category: TokenCategory): string {
   switch (category) {
+    case "pumping":
+      return chalk.magenta("🚀 Pumping");
     case "hot":
       return chalk.green("🔥 Hot");
     case "watch":
@@ -339,11 +341,13 @@ function renderScreenerHighlights(highlights: ScreenerHighlight[]): void {
       ? chalk.magenta.bold("🚀 PUMPING")
       : t.classification === "heavy_accumulation"
         ? chalk.green.bold("🔥 HEAVY ACCUM")
-        : t.classification === "accumulating"
-          ? chalk.yellow("👀 ACCUMULATING")
-          : t.classification === "mixed"
-            ? chalk.gray("◐ MIXED")
-            : chalk.red("⚠️ DISTRIBUTING");
+        : t.classification === "diverging"
+          ? chalk.cyan.bold("📊 DIVERGING")
+          : t.classification === "accumulating"
+            ? chalk.yellow("👀 ACCUMULATING")
+            : t.classification === "mixed"
+              ? chalk.gray("◐ MIXED")
+              : chalk.red("⚠️ DISTRIBUTING");
 
     const chainLabel = t.chain.toUpperCase();
 
