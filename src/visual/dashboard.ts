@@ -47,6 +47,13 @@ export function renderDashboardHtml(): string {
       min-height: 100vh;
     }
 
+    body::before {
+      content: '';
+      display: block;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(52,211,153,0.6), rgba(129,140,248,0.6), rgba(52,211,153,0.6));
+    }
+
     .container {
       max-width: 1400px;
       margin: 0 auto;
@@ -74,9 +81,9 @@ export function renderDashboardHtml(): string {
     }
 
     .header-title {
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: 0.04em;
       color: #ffffff;
     }
 
@@ -99,6 +106,9 @@ export function renderDashboardHtml(): string {
     .header-meta {
       font-size: 0.75rem;
       color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
     }
 
     .header-credits {
@@ -168,11 +178,12 @@ export function renderDashboardHtml(): string {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       text-align: center;
-      transition: border-color 0.25s ease;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
     }
 
     .signal-card:hover {
-      border-color: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 20px rgba(52, 211, 153, 0.06);
     }
 
     .signal-card-icon {
@@ -621,8 +632,8 @@ export function renderDashboardHtml(): string {
 
     .flow-intel-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 4px 0;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
     }
 
     .flow-intel-row {
@@ -634,7 +645,7 @@ export function renderDashboardHtml(): string {
     }
 
     .flow-intel-label {
-      flex: 0 0 120px;
+      flex: 0 0 100px;
       font-weight: 500;
       color: var(--text-secondary);
       font-size: 0.78rem;
@@ -665,7 +676,7 @@ export function renderDashboardHtml(): string {
 
     .ai-analysis-blur {
       position: relative;
-      padding: 20px;
+      padding: 14px;
       border-radius: 8px;
       border: 1px dashed rgba(129, 140, 248, 0.3);
       cursor: pointer;
@@ -696,6 +707,21 @@ export function renderDashboardHtml(): string {
       50% { background-position: 100% 50%; }
     }
 
+    .ai-fade-out {
+      opacity: 0;
+      transform: scaleY(0.95);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .ai-fade-in {
+      animation: aiFadeIn 0.3s ease forwards;
+    }
+
+    @keyframes aiFadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .ai-analysis-content {
       position: relative;
       z-index: 1;
@@ -711,7 +737,7 @@ export function renderDashboardHtml(): string {
     /* AI Setup Form */
 
     .ai-setup {
-      padding: 16px;
+      padding: 12px;
       border: 1px solid var(--border-color);
       border-radius: 8px;
       background: var(--bg-card-alt);
@@ -785,7 +811,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 16px;
+      padding: 12px;
       font-size: 0.82rem;
       color: var(--text-secondary);
     }
@@ -802,7 +828,7 @@ export function renderDashboardHtml(): string {
     /* AI Result */
 
     .ai-result {
-      padding: 14px 16px;
+      padding: 10px 14px;
       border: 1px solid rgba(129, 140, 248, 0.2);
       border-radius: 8px;
       background: rgba(129, 140, 248, 0.04);
@@ -812,7 +838,7 @@ export function renderDashboardHtml(): string {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
 
     .ai-result-icon { font-size: 0.95rem; }
@@ -824,10 +850,10 @@ export function renderDashboardHtml(): string {
     }
 
     .ai-result-text {
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: var(--text-primary);
-      line-height: 1.6;
-      margin-bottom: 6px;
+      line-height: 1.5;
+      margin-bottom: 4px;
     }
 
     .ai-btn-reanalyze {
@@ -950,6 +976,7 @@ export function renderDashboardHtml(): string {
           <span class="header-title">NARRATIVE PULSE</span>
           <span class="header-sep">&middot;</span>
           <span class="header-tagline">Smart Money Intelligence</span>
+          <span class="header-powered" style="font-size:0.62rem;color:var(--text-muted);opacity:0.5;margin-left:4px">powered by Nansen</span>
         </div>
         <div class="header-actions">
           <span class="header-meta" id="header-ago">Updated — ago</span>
@@ -1072,12 +1099,18 @@ export function renderDashboardHtml(): string {
       el.textContent = 'Updated ' + minutesAgo(lastScanTime);
     }
 
-    function chainDot(chain) {
-      var colors = { ethereum: '#627eea', solana: '#9c6ade', base: '#00aaff', bnb: '#f3ba2f', arbitrum: '#28a0f0' };
-      var labels = { ethereum: 'Ethereum', solana: 'Solana', base: 'Base', bnb: 'BNB', arbitrum: 'Arbitrum' };
-      var color = colors[chain] || '#8b8fa3';
+    function chainLabel(chain) {
+      var styles = {
+        ethereum: 'background:rgba(98,126,234,0.15);color:#8ba0f0',
+        solana: 'background:rgba(156,106,222,0.15);color:#b48de8',
+        base: 'background:rgba(0,170,255,0.15);color:#4db8ff',
+        bnb: 'background:rgba(243,186,47,0.15);color:#f5c842',
+        arbitrum: 'background:rgba(40,160,240,0.15);color:#5eb8f0'
+      };
+      var labels = { ethereum: 'ETH', solana: 'SOL', base: 'BASE', bnb: 'BNB', arbitrum: 'ARB' };
+      var style = styles[chain] || 'background:rgba(139,143,163,0.15);color:#8b8fa3';
       var label = labels[chain] || chain;
-      return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-left:6px;vertical-align:middle" title="' + label + '"></span>';
+      return '<span style="' + style + ';font-size:0.6rem;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:0.02em;margin-left:6px;vertical-align:middle">' + label + '</span>';
     }
 
     function dexScreenerUrl(chain, address) {
@@ -1388,15 +1421,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="filter-count" id="visible-count"></div>';
       html += '</div>';
 
-      // Chain legend
-      html += '<div class="chain-legend">';
-      html += '<span class="chain-legend-label">Chains:</span>';
-      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#627eea;margin-right:3px"></span>ETH</span>';
-      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#9c6ade;margin-right:3px"></span>SOL</span>';
-      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00aaff;margin-right:3px"></span>BASE</span>';
-      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f3ba2f;margin-right:3px"></span>BNB</span>';
-      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#28a0f0;margin-right:3px"></span>ARB</span>';
-      html += '</div>';
+
 
       html += '<table class="token-table" id="' + tableId + '">';
       html += '<thead><tr>';
@@ -1480,7 +1505,7 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-6="' + (t.marketCapUsd || 0) + '"';
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
-      html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainDot(t.chain) + '</td>';
+      html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
       html += '<td><span class="narrative-pill" title="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
       html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
@@ -1685,11 +1710,22 @@ export function renderDashboardHtml(): string {
         return;
       }
 
-      // Show loading
-      el.innerHTML = '<div class="ai-loading">' +
-        '<div class="ai-loading-spinner"></div>' +
-        '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
-        '</div>';
+      // Fade out existing content, then show loading
+      var currentContent = el.firstElementChild;
+      if (currentContent) {
+        currentContent.classList.add('ai-fade-out');
+        setTimeout(function() {
+          el.innerHTML = '<div class="ai-loading ai-fade-in">' +
+            '<div class="ai-loading-spinner"></div>' +
+            '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+            '</div>';
+        }, 250);
+      } else {
+        el.innerHTML = '<div class="ai-loading ai-fade-in">' +
+          '<div class="ai-loading-spinner"></div>' +
+          '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+          '</div>';
+      }
 
       // Call API
       fetch('/api/ai-analyze', {
@@ -1716,19 +1752,35 @@ export function renderDashboardHtml(): string {
       });
     }
 
+    function renderMarkdown(text) {
+      // First escape HTML for safety
+      var html = escapeHtml(text);
+      // Bold: **text** → <strong>text</strong>
+      html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+      // Italic: *text* → <em>text</em>  (single asterisk, not double)
+      html = html.replace(/(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)/g, '<em>$1</em>');
+      return html;
+    }
+
     function showAiResult(detailId, analysis, config) {
       var el = document.getElementById('ai-' + detailId);
       if (!el) return;
 
       var paragraphs = analysis.split('\\n').filter(function(p) { return p.trim(); });
-      var html = '<div class="ai-result">';
+      var html = '<div class="ai-result ai-fade-in">';
       html += '<div class="ai-result-header">';
       html += '<span class="ai-result-icon">\\uD83E\\uDD16</span>';
       html += '<span class="ai-result-provider">' + escapeHtml(config.provider + ' / ' + config.model) + '</span>';
       html += '<button class="ai-btn-reanalyze" style="margin-left:auto" onclick="showAiSetup(\\'' + detailId + '\\')">Settings</button>';
       html += '</div>';
       for (var i = 0; i < paragraphs.length; i++) {
-        html += '<p class="ai-result-text">' + escapeHtml(paragraphs[i]) + '</p>';
+        var line = paragraphs[i];
+        if (line.match(/^[-•]\\s/)) {
+          // Bullet list item
+          html += '<div class="ai-result-text" style="padding-left:12px;margin-bottom:2px">' + renderMarkdown(line) + '</div>';
+        } else {
+          html += '<p class="ai-result-text">' + renderMarkdown(line) + '</p>';
+        }
       }
       html += '<div style="margin-top:8px">';
       html += '<button class="ai-btn-reanalyze" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">Re-analyze</button>';
@@ -1754,6 +1806,7 @@ export function renderDashboardHtml(): string {
       var html = '';
       html += '<div class="flow-intel-section">';
       html += '<div class="flow-intel-title">FLOW INTELLIGENCE</div>';
+      html += '<div class="flow-intel-desc" style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px">Breakdown of capital flows by wallet type</div>';
       html += '<div class="flow-intel-grid">';
       html += flowIntelRow('Smart Traders', fi.smart_trader_net_flow_usd, fi.smart_trader_wallet_count, '');
       html += flowIntelRow('Public Figures', fi.public_figure_net_flow_usd, fi.public_figure_wallet_count, '');
@@ -1770,6 +1823,7 @@ export function renderDashboardHtml(): string {
     }
 
     function flowIntelRow(label, netFlow, walletCount, note) {
+      if (!netFlow || netFlow === 0) return '';
       var isPositive = netFlow >= 0;
       var color = isPositive ? 'var(--color-positive)' : 'var(--color-negative)';
       var indicator = '';
@@ -1825,6 +1879,7 @@ export function renderDashboardHtml(): string {
         { value: 'pumping', label: '\\uD83D\\uDE80 Pumping' },
         { value: 'mixed', label: '\\u25D0 Mixed' },
         { value: 'distributing', label: '\\u26A0\\uFE0F Selling' },
+        { value: '__selling', label: '\\u26A0\\uFE0F All Selling' },
       ];
       signalSelect.innerHTML = '';
       var activeSignals = {};
@@ -1854,7 +1909,14 @@ export function renderDashboardHtml(): string {
       for (var i = 0; i < rows.length; i++) {
         var show = true;
         if (chainFilter && rows[i].getAttribute('data-chain') !== chainFilter) show = false;
-        if (signalFilter && rows[i].getAttribute('data-signal') !== signalFilter) show = false;
+        if (signalFilter) {
+          if (signalFilter === '__selling') {
+            var sig = rows[i].getAttribute('data-signal');
+            if (sig !== 'mixed' && sig !== 'distributing') show = false;
+          } else {
+            if (rows[i].getAttribute('data-signal') !== signalFilter) show = false;
+          }
+        }
         if (narrativeFilter && rows[i].getAttribute('data-narrative') !== narrativeFilter) show = false;
         rows[i].style.display = show ? '' : 'none';
         if (show) visibleCount++;
@@ -1923,7 +1985,7 @@ export function renderDashboardHtml(): string {
       } else if (group === 'pumping') {
         signalSelect.value = 'pumping';
       } else if (group === 'selling') {
-        signalSelect.value = 'mixed';
+        signalSelect.value = '__selling';
       }
 
       // Clear narrative filter
@@ -1949,6 +2011,13 @@ export function renderDashboardHtml(): string {
 
       var chartDom = document.getElementById('sankey-chart');
       if (!chartDom) return;
+
+      // Dispose previous instance to prevent memory leak
+      var existingInstance = echarts.getInstanceByDom(chartDom);
+      if (existingInstance) {
+        existingInstance.dispose();
+      }
+
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
 
       var outflows = narratives.filter(function(n) { return n.totalNetflow24h < -100; });
@@ -1972,8 +2041,90 @@ export function renderDashboardHtml(): string {
         return;
       }
 
-      var nodeAlign = outflows.length === 0 ? 'left' : 'justify';
+      // If no outflows, render horizontal bar chart instead
+      if (outflows.length === 0 && inflows.length > 0) {
+        // Sort by netflow desc
+        inflows.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
 
+        var barData = inflows.map(function(n) {
+          return {
+            name: n.displayName,
+            value: n.totalNetflow24h,
+            tokenCount: n.tokenCount
+          };
+        });
+
+        chart.setOption({
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            backgroundColor: '#2a2d3a',
+            borderColor: '#3a3d4a',
+            textStyle: { color: '#e8e9ed', fontSize: 13 },
+            padding: [10, 14],
+            extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);',
+            formatter: function(params) {
+              var d = params[0];
+              return '<strong>' + d.name + '</strong><br/>Netflow: <strong>' + formatUsdAbs(d.value) + '</strong>';
+            }
+          },
+          grid: { top: 30, bottom: 30, left: 120, right: 60 },
+          xAxis: {
+            type: 'value',
+            axisLabel: {
+              color: '#5a5e72',
+              fontSize: 11,
+              formatter: function(v) { return formatUsdAbs(v); }
+            },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+            axisLine: { lineStyle: { color: '#2a2d3a' } }
+          },
+          yAxis: {
+            type: 'category',
+            data: barData.map(function(d) { return d.name; }),
+            inverse: true,
+            axisLabel: { color: '#e8e9ed', fontSize: 12, fontWeight: 500 },
+            axisLine: { lineStyle: { color: '#2a2d3a' } },
+            axisTick: { show: false }
+          },
+          series: [{
+            type: 'bar',
+            data: barData.map(function(d) {
+              return {
+                value: d.value,
+                itemStyle: {
+                  color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                    { offset: 0, color: 'rgba(52, 211, 153, 0.3)' },
+                    { offset: 1, color: 'rgba(52, 211, 153, 0.8)' }
+                  ]),
+                  borderRadius: [0, 4, 4, 0]
+                }
+              };
+            }),
+            barWidth: '60%',
+            label: {
+              show: true,
+              position: 'right',
+              color: '#34d399',
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+              formatter: function(p) { return formatUsdAbs(p.value); }
+            }
+          }]
+        });
+
+        chart.on('click', function(params) {
+          if (params.name) {
+            filterTableByNarrative(params.name);
+          }
+        });
+
+        window.addEventListener('resize', function() { chart.resize(); });
+        return;
+      }
+
+      // Normal Sankey when we have both inflows and outflows
       var nodes = [];
       var links = [];
 
@@ -2024,7 +2175,7 @@ export function renderDashboardHtml(): string {
           type: 'sankey',
           layout: 'none',
           emphasis: { focus: 'adjacency' },
-          nodeAlign: nodeAlign,
+          nodeAlign: 'justify',
           nodeGap: 20,
           nodeWidth: 24,
           layoutIterations: 32,
