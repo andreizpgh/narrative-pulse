@@ -56,9 +56,12 @@ export function renderDashboardHtml(): string {
 
     .header {
       padding: 24px 24px 20px;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       margin-bottom: 24px;
       text-align: left;
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(129, 140, 248, 0.06) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
     .header-top {
@@ -130,12 +133,13 @@ export function renderDashboardHtml(): string {
       color: var(--text-primary);
       font-size: 0.85rem;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.2s ease;
     }
 
     .btn-scan:hover {
-      background: var(--bg-card-hover);
+      background: rgba(52, 211, 153, 0.15);
       border-color: var(--color-positive);
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
     }
 
     .btn-scan:disabled {
@@ -163,11 +167,12 @@ export function renderDashboardHtml(): string {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       text-align: center;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, transform 0.15s ease;
     }
 
     .signal-card:hover {
       border-color: rgba(139, 143, 163, 0.3);
+      transform: translateY(-2px);
     }
 
     .signal-card-icon {
@@ -233,16 +238,18 @@ export function renderDashboardHtml(): string {
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8fa3' d='M3 4.5L6 8l3-3.5H3z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 8px center;
-      transition: border-color 0.15s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .filter-select:hover {
       border-color: rgba(139, 143, 163, 0.4);
+      box-shadow: 0 0 8px rgba(139, 143, 163, 0.08);
     }
 
     .filter-select:focus {
       outline: none;
       border-color: var(--color-positive);
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
     }
 
     .filter-count {
@@ -283,6 +290,7 @@ export function renderDashboardHtml(): string {
       padding: 24px;
       margin-bottom: 24px;
       border: 1px solid var(--border-color);
+      border-top: 2px solid rgba(52, 211, 153, 0.3);
     }
 
     .section-title {
@@ -525,6 +533,44 @@ export function renderDashboardHtml(): string {
     .screener-badge.diverging {
       background: rgba(56, 189, 248, 0.15);
       color: #38bdf8;
+    }
+
+    /* ── Custom Tooltips ────────────────────────── */
+
+    .screener-badge, .narrative-pill, .chain-badge {
+      position: relative;
+    }
+
+    .screener-badge::after, .narrative-pill::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: #2a2d3a;
+      color: #e8e9ed;
+      font-size: 0.72rem;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+    }
+
+    .screener-badge::after {
+      max-width: 240px;
+      white-space: normal;
+      text-align: center;
+    }
+
+    .screener-badge:hover::after, .narrative-pill:hover::after {
+      opacity: 1;
     }
 
     /* ── Chain Badges ───────────────────────────── */
@@ -1248,13 +1294,13 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
       html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainBadge(t.chain) + '</td>';
-      html += '<td><span class="narrative-pill" title="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
+      html += '<td><span class="narrative-pill" data-tooltip="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
       html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-      html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
+      html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span></td>';
       html += '</tr>';
 
       // Expanded detail row
@@ -1543,6 +1589,11 @@ export function renderDashboardHtml(): string {
         tooltip: {
           trigger: 'item',
           triggerOn: 'mousemove',
+          backgroundColor: '#2a2d3a',
+          borderColor: '#3a3d4a',
+          textStyle: { color: '#e8e9ed', fontSize: 13 },
+          padding: [10, 14],
+          extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);',
           formatter: function(params) {
             if (params.dataType === 'edge') {
               var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
