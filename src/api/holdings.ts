@@ -8,6 +8,7 @@ import { nansenPost } from "./client.js";
 import type { NansenResponse } from "./client.js";
 import type { HoldingsEntry } from "../types.js";
 import { config } from "../config.js";
+import { normalizeAddress } from "../utils/normalize.js";
 
 // ============================================================
 // Constants
@@ -35,9 +36,10 @@ function dedupeByAddress(
   const map = new Map<string, HoldingsEntry>();
 
   for (const entry of entries) {
-    const existing = map.get(entry.token_address);
+    const key = normalizeAddress(entry.token_address);
+    const existing = map.get(key);
     if (existing === undefined || entry.value_usd > existing.value_usd) {
-      map.set(entry.token_address, entry);
+      map.set(key, entry);
     }
   }
 
