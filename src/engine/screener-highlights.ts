@@ -2,9 +2,11 @@
 // Screener Highlights — Top Smart Money Active Tokens
 // Extracts the most active tokens from token-screener data.
 // Always produces rich output (~500 screener entries → top 30 highlights).
+// Cross-references with netflow data for enriched signals.
 // ============================================================
 
-import type { TokenScreenerEntry, ScreenerHighlight } from "../types.js";
+import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry } from "../types.js";
+import { normalizeAddress } from "../utils/normalize.js";
 
 // ============================================================
 // Constants
@@ -38,12 +40,31 @@ function isStructuralNoise(symbol: string): boolean {
 // Classification thresholds (buy/sell ratio)
 // ============================================================
 
-function classifyToken(buySellRatio: number, netflowUsd: number, priceChangePct: number): ScreenerHighlight["classification"] {
-  if (priceChangePct > 30) return "pumping"; // Protect from calling a +116% token "accumulation"
+function classifyToken(
+  buySellRatio: number,
+  netflowUsd: number,
+  priceChangePct: number,
+  netflow7dUsd?: number
+): ScreenerHighlight["classification"] {
+  // 1. Pumping: price already surged >30%
+  if (priceChangePct > 30) return "pumping";
+
+  // 2. Diverging: SM accumulating but price hasn't moved (divergence signal)
+  //    Only when we have 7d netflow data showing sustained accumulation
+  if (netflow7dUsd !== undefined && netflow7dUsd > 5000 && priceChangePct >= -5 && priceChangePct <= 10) {
+    return "diverging";
+  }
+
+  // 3. Heavy accumulation: strong buy dominance
   if (buySellRatio >= 3.0) return "heavy_accumulation";
+
+  // 4. Accumulating: moderate buy dominance
   if (buySellRatio >= 1.5) return "accumulating";
-  // Positive netflow but low ratio — mixed signal (SM net inflow but sellers > buyers by volume)
+
+  // 5. Mixed: positive netflow but low ratio
   if (netflowUsd > 0) return "mixed";
+
+  // 6. Distributing: net outflow
   return "distributing";
 }
 
@@ -78,10 +99,31 @@ function scoreEntry(entry: TokenScreenerEntry): number {
  * Extract top Smart Money active tokens from screener data.
  * Returns up to 30 highlights sorted by a composite score
  * combining buy/sell ratio and netflow magnitude.
+ *
+ * Optionally cross-references with netflow data to enrich highlights
+ * with sector, narrative, and 7d/30d netflow information.
  */
 export function extractScreenerHighlights(
-  screenerData: Map<string, TokenScreenerEntry>
+  screenerData: Map<string, TokenScreenerEntry>,
+  netflowEntries?: NetflowEntry[]
 ): ScreenerHighlight[] {
+  // Build netflow lookup for cross-referencing
+  const netflowByAddress = new Map<string, NetflowEntry>();
+  const netflowBySymbolChain = new Map<string, NetflowEntry>();
+
+  if (netflowEntries) {
+    for (const entry of netflowEntries) {
+      const normKey = normalizeAddress(entry.token_address);
+      if (!netflowByAddress.has(normKey)) {
+        netflowByAddress.set(normKey, entry);
+      }
+      const symbolKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+      if (!netflowBySymbolChain.has(symbolKey)) {
+        netflowBySymbolChain.set(symbolKey, entry);
+      }
+    }
+  }
+
   const candidates: ScreenerHighlight[] = [];
 
   for (const entry of screenerData.values()) {
@@ -89,7 +131,7 @@ export function extractScreenerHighlights(
     if (entry.volume < MIN_VOLUME_USD) continue;
 
     // Skip entries with no trader activity
-    if (entry.nof_buyers === 0 && entry.nof_sellers === 0) continue;
+    if ((entry.nof_buyers ?? 0) === 0 && (entry.nof_sellers ?? 0) === 0) continue;
 
     const buyVolume = entry.buy_volume ?? 0;
     const sellVolume = entry.sell_volume ?? 0;
@@ -105,7 +147,13 @@ export function extractScreenerHighlights(
     const priceChangePct = (entry.price_change ?? 0) * 100;
     if (Math.abs(priceChangePct) < 0.5) continue;
 
-    candidates.push({
+    // Cross-reference with netflow data
+    const normAddr = normalizeAddress(entry.token_address);
+    const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    const netflowMatch = netflowByAddress.get(normAddr)
+      ?? netflowBySymbolChain.get(symbolChainKey);
+
+    const highlight: ScreenerHighlight = {
       token_symbol: entry.token_symbol,
       token_address: entry.token_address,
       chain: entry.chain,
@@ -120,8 +168,26 @@ export function extractScreenerHighlights(
       nofBuyers: entry.nof_buyers ?? 0,
       nofSellers: entry.nof_sellers ?? 0,
       volume: entry.volume ?? 0,
-      classification: classifyToken(buySellRatio, entry.netflow, priceChangePct),
-    });
+      classification: classifyToken(
+        buySellRatio,
+        entry.netflow,
+        priceChangePct,
+        netflowMatch?.net_flow_7d_usd
+      ),
+    };
+
+    // Enrich with netflow data if matched
+    if (netflowMatch) {
+      highlight.tokenSectors = netflowMatch.token_sectors;
+      highlight.narrativeKey = netflowMatch.token_sectors.length > 0
+        ? netflowMatch.token_sectors[0]
+        : undefined;
+      highlight.netflow7dUsd = netflowMatch.net_flow_7d_usd;
+      highlight.netflow30dUsd = netflowMatch.net_flow_30d_usd;
+      highlight.traderCount = netflowMatch.trader_count;
+    }
+
+    candidates.push(highlight);
   }
 
   // Sort by composite score descending
