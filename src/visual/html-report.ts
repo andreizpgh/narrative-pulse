@@ -798,7 +798,7 @@ function generateHtml(data: HtmlReportData): string {
 
     <!-- Footer -->
     <div class="footer">
-      Narrative Pulse &mdash; Powered by Nansen Smart Money Data
+      Narrative Pulse &mdash; Powered by Nansen API (4 endpoints) + DexScreener &middot; ~300 credits/scan
     </div>
   </div>
 
@@ -843,6 +843,10 @@ function generateHtml(data: HtmlReportData): string {
       var div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
+    }
+
+    function stripEmoji(str) {
+      return str.replace(/[\\u{1F600}-\\u{1F64F}\\u{1F300}-\\u{1F5FF}\\u{1F680}-\\u{1F6FF}\\u{1F1E0}-\\u{1F1FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}\\u{FE00}-\\u{FE0F}\\u{1F900}-\\u{1F9FF}\\u{1FA00}-\\u{1FA6F}\\u{1FA70}-\\u{1FAFF}\\u{200D}\\u{20E3}\\u{E0020}-\\u{E007F}\\u2713\\u2717\\u2714\\u2716\\u2605\\u2606\\u25BA\\u25BC\\u25B2}]/gu, '').trim();
     }
 
     function slugify(name) {
@@ -988,7 +992,7 @@ function generateHtml(data: HtmlReportData): string {
         var screenerCls = topScreener.netflowUsd >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
         highlightHtml += '<div class="highlight-card">';
         highlightHtml += '<div class="highlight-label">Top SM Activity</div>';
-        highlightHtml += '<div class="highlight-value">$' + escapeHtml(topScreener.token_symbol) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
+        highlightHtml += '<div class="highlight-value">$' + escapeHtml(stripEmoji(topScreener.token_symbol)) + ' <span style="color:' + screenerCls + '">' + formatUsd(topScreener.netflowUsd) + '</span></div>';
         var totalTraders = topScreener.nofBuyers + topScreener.nofSellers;
         var traderText = totalTraders > 0 ? totalTraders + ' SM traders' : 'Active';
         highlightHtml += '<div class="highlight-sub">' + traderText + ' \\u00B7 ' + formatPercent(topScreener.priceChange) + ' 24h</div>';
@@ -1212,10 +1216,10 @@ function generateHtml(data: HtmlReportData): string {
           html += ' data-sort-1="' + t.netflow24hUsd + '"';
           html += ' data-sort-2="' + t.priceChange + '"';
           html += ' data-sort-3="' + (t.marketCapUsd || 0) + '"';
-          html += ' data-sort-4="' + catSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+          html += ' data-sort-4="' + catSortOrder + '-' + escapeHtml(stripEmoji(t.token_symbol)).toLowerCase() + '"';
           html += '>';
 
-          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+          html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainBadge(t.chain) + '</td>';
           html += '<td class="mono ' + tNetflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
           html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
           html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
@@ -1324,7 +1328,7 @@ function generateHtml(data: HtmlReportData): string {
         var pressureText = !t.buyPressure || t.buyPressure <= 0 ? '\\u2014' : t.buyPressure.toFixed(1) + 'x';
 
         html += '<tr>';
-        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
+        html += '<td>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + '<span class="early-badge" title="SM accumulating before significant price move">EARLY SIGNAL</span></td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflow24hUsd) + '</td>';
         html += '<td class="mono ' + priceCls + '">' + formatPercent(t.priceChange24h) + '</td>';
         html += '<td class="mono">' + formatMcap(t.volume24h) + '</td>';
@@ -1402,9 +1406,9 @@ function generateHtml(data: HtmlReportData): string {
         html += ' data-sort-3="' + t.buySellRatio + '"';
         html += ' data-sort-4="' + t.priceChange + '"';
         html += ' data-sort-5="' + (t.marketCapUsd || 0) + '"';
-        html += ' data-sort-6="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
+        html += ' data-sort-6="' + signalSortOrder + '-' + escapeHtml(stripEmoji(t.token_symbol)).toLowerCase() + '"';
         html += '>';
-        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(t.token_symbol) + '</strong>') + chainBadge(t.chain) + '</td>';
+        html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainBadge(t.chain) + '</td>';
         html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
         html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
         html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
