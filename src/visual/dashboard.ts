@@ -363,8 +363,16 @@ export function renderDashboardHtml(): string {
 
     /* ── Expandable Rows ────────────────────────── */
 
-    .token-table tbody tr.expandable-row { cursor: pointer; }
-    .token-table tbody tr.expandable-row:hover { background: var(--bg-card-hover); }
+    .token-table tbody tr.expandable-row {
+      cursor: pointer;
+      transition: background 0.15s ease, border-left 0.15s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .token-table tbody tr.expandable-row:hover {
+      background: var(--bg-card-hover);
+      border-left-color: rgba(129, 140, 248, 0.4);
+    }
 
     .expand-arrow {
       display: inline-block;
@@ -383,9 +391,18 @@ export function renderDashboardHtml(): string {
       display: none;
       background: var(--bg-card-alt);
       border-bottom: 1px solid var(--border-color);
+      border-left: 2px solid rgba(129, 140, 248, 0.3);
     }
 
-    .expanded-detail.visible { display: table-row; }
+    .expanded-detail.visible {
+      display: table-row;
+      animation: fadeSlideIn 0.2s ease;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
 
     .expanded-detail td {
       padding: 16px 20px !important;
@@ -1393,11 +1410,22 @@ export function renderDashboardHtml(): string {
         rows[i].style.display = show ? '' : 'none';
         if (show) visibleCount++;
 
-        // Collapse all expanded details on filter change
+        // Also show/hide paired expanded-detail rows
         var next = rows[i].nextElementSibling;
         if (next && next.classList.contains('expanded-detail')) {
-          next.style.display = 'none';
+          if (!show) {
+            next.style.display = 'none';
+          } else {
+            // Don't force display — let CSS .visible class control it
+            // Only set display back to '' if it was hidden by filter
+            if (next.style.display === 'none') {
+              next.style.display = '';
+            }
+          }
+          // Remove visible class to collapse on filter change
           next.classList.remove('visible');
+          var arrow = rows[i].querySelector('.expand-arrow');
+          if (arrow) arrow.classList.remove('open');
         }
       }
 
