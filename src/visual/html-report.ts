@@ -577,6 +577,11 @@ function generateHtml(data: HtmlReportData): string {
       letter-spacing: 0.04em;
     }
 
+    .screener-badge.pumping {
+      background: rgba(236, 72, 153, 0.18);
+      color: #ec4899;
+    }
+
     .screener-badge.heavy-accumulation {
       background: rgba(52, 211, 153, 0.18);
       color: var(--color-positive);
@@ -1358,20 +1363,24 @@ function generateHtml(data: HtmlReportData): string {
         var sellPct = 100 - buyPct;
         var ratioText = t.buySellRatio >= 99 ? '99x+' : t.buySellRatio.toFixed(1) + 'x';
 
-        var badgeClass = t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
+        var badgeClass = t.classification === 'pumping' ? 'pumping' :
+                         t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
                          t.classification === 'accumulating' ? 'accumulating' :
                          t.classification === 'mixed' ? 'mixed' : 'distributing';
-        var badgeText = t.classification === 'heavy_accumulation' ? 'HEAVY ACCUM' :
-                        t.classification === 'accumulating' ? 'ACCUM' :
-                        t.classification === 'mixed' ? 'MIXED' : 'DIST';
-        var badgeTooltip = t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
+        var badgeText = t.classification === 'pumping' ? '🚀 PUMPING' :
+                        t.classification === 'heavy_accumulation' ? '🔥 HEAVY ACCUM' :
+                        t.classification === 'accumulating' ? '👀 ACCUM' :
+                        t.classification === 'mixed' ? '◐ MIXED' : '⚠️ DIST';
+        var badgeTooltip = t.classification === 'pumping' ? 'Warning: High SM buying ratio but token already pumped > 30%' :
+                           t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
                            t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
                            t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
 
-        // Sort order for signal: heavy_accumulation=0, accumulating=1, mixed=2, distributing=3
-        var signalSortOrder = t.classification === 'heavy_accumulation' ? 0 :
-                              t.classification === 'accumulating' ? 1 :
-                              t.classification === 'mixed' ? 2 : 3;
+        // Sort order for signal: pumping=0, heavy_accumulation=1, accumulating=2, mixed=3, distributing=4
+        var signalSortOrder = t.classification === 'pumping' ? 0 :
+                              t.classification === 'heavy_accumulation' ? 1 :
+                              t.classification === 'accumulating' ? 2 :
+                              t.classification === 'mixed' ? 3 : 4;
 
         var detailId = 'screener-detail-' + idx;
 

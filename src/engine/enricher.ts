@@ -197,8 +197,8 @@ export function detectEarlySignals(
     // Filter: SM accumulating
     if (token.netflow24hUsd <= thresholds.minNetflowUsd) continue;
 
-    // Filter: price hasn't pumped yet
-    if (token.priceChange24h >= thresholds.maxPriceChangePercent) continue;
+    // Filter: price is in consolidation (-10% to +10%)
+    if (token.priceChange24h < -10 || token.priceChange24h > 10) continue;
 
     // Filter: strong buy pressure
     const sells = Math.max(token.sells24h, 1);

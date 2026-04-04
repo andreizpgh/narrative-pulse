@@ -335,13 +335,15 @@ function renderScreenerHighlights(highlights: ScreenerHighlight[]): void {
         ? chalk.yellow(ratioText)
         : chalk.red(ratioText);
 
-    const signalLabel = t.classification === "heavy_accumulation"
-      ? chalk.green.bold("🔥 HEAVY ACCUM")
-      : t.classification === "accumulating"
-        ? chalk.yellow("👀 ACCUMULATING")
-        : t.classification === "mixed"
-          ? chalk.gray("◐ MIXED")
-          : chalk.red("⚠️ DISTRIBUTING");
+    const signalLabel = t.classification === "pumping"
+      ? chalk.magenta.bold("🚀 PUMPING")
+      : t.classification === "heavy_accumulation"
+        ? chalk.green.bold("🔥 HEAVY ACCUM")
+        : t.classification === "accumulating"
+          ? chalk.yellow("👀 ACCUMULATING")
+          : t.classification === "mixed"
+            ? chalk.gray("◐ MIXED")
+            : chalk.red("⚠️ DISTRIBUTING");
 
     const chainLabel = t.chain.toUpperCase();
 

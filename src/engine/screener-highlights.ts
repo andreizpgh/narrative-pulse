@@ -18,25 +18,28 @@ const MIN_VOLUME_USD = 10_000; // $10K minimum volume to filter noise
 // Huge volume, zero trading signal — must exclude from highlights
 // ============================================================
 
-const STABLECOIN_PATTERNS = [
+const STRUCTURAL_NOISE_PATTERNS = [
   "USDT", "USDC", "DAI", "TUSD", "BUSD", "FRAX", "LUSD", "USDD",
   "GUSD", "USDP", "SUSD", "PYUSD", "FDUSD", "EURA", "USDV",
   "WETH", "WBTC", "WBNB", "WSTETH", "WAVAX", "WMATIC",
   "CBETH", "RETH", "WEETH", "SDETH",
   // Nansen-specific wrapped names
   "SUSDS", "SYRUPUSDC", "RLUSD", "MWETH",
+  // Liquid Staking and Yield wrappers
+  "JUPSOL", "JITOSOL", "BGSOL", "MSOL", "IETHV2", "WTAO", "WSTUSR", "EZETH",
 ];
 
-function isStablecoin(symbol: string): boolean {
+function isStructuralNoise(symbol: string): boolean {
   const upper = symbol.toUpperCase();
-  return STABLECOIN_PATTERNS.includes(upper);
+  return STRUCTURAL_NOISE_PATTERNS.includes(upper);
 }
 
 // ============================================================
 // Classification thresholds (buy/sell ratio)
 // ============================================================
 
-function classifyToken(buySellRatio: number, netflowUsd: number): ScreenerHighlight["classification"] {
+function classifyToken(buySellRatio: number, netflowUsd: number, priceChangePct: number): ScreenerHighlight["classification"] {
+  if (priceChangePct > 30) return "pumping"; // Protect from calling a +116% token "accumulation"
   if (buySellRatio >= 3.0) return "heavy_accumulation";
   if (buySellRatio >= 1.5) return "accumulating";
   // Positive netflow but low ratio — mixed signal (SM net inflow but sellers > buyers by volume)
@@ -95,8 +98,8 @@ export function extractScreenerHighlights(
     // Only include tokens with meaningful SM activity
     if (Math.abs(entry.netflow) < 100) continue;
 
-    // Skip stablecoins and wrappers — huge volume, zero trading signal
-    if (isStablecoin(entry.token_symbol)) continue;
+    // Skip structural noise — huge volume, zero trading signal
+    if (isStructuralNoise(entry.token_symbol)) continue;
 
     // Skip near-zero price movement (likely stablecoins not caught by name)
     const priceChangePct = (entry.price_change ?? 0) * 100;
@@ -117,7 +120,7 @@ export function extractScreenerHighlights(
       nofBuyers: entry.nof_buyers ?? 0,
       nofSellers: entry.nof_sellers ?? 0,
       volume: entry.volume ?? 0,
-      classification: classifyToken(buySellRatio, entry.netflow),
+      classification: classifyToken(buySellRatio, entry.netflow, priceChangePct),
     });
   }
 
