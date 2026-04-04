@@ -28,6 +28,154 @@ interface ApiResponse {
 }
 
 // ============================================================
+// AI Analysis — LLM Proxy Helpers
+// ============================================================
+
+/** Supported LLM providers for AI analysis proxy. */
+type AiProvider = "openai" | "anthropic" | "openrouter";
+
+interface AiAnalysisRequest {
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  tokenData: Record<string, unknown>;
+}
+
+/**
+ * Build a structured analysis prompt from token Smart Money data.
+ * The prompt asks the LLM to act as a crypto analyst and produce
+ * a concise, actionable assessment (3-5 sentences).
+ */
+function buildAnalysisPrompt(td: Record<string, unknown>): string {
+  const fi = td.flowIntelligence as Record<string, unknown> | undefined;
+
+  const flowSection = fi
+    ? `Flow Intelligence:
+- Smart Traders: ${fmtK(fi.smart_trader_net_flow_usd)} (${fi.smart_trader_wallet_count ?? 0} wallets)
+- Whales: ${fmtK(fi.whale_net_flow_usd)} (${fi.whale_wallet_count ?? 0} wallets)
+- Exchanges: ${fmtK(fi.exchange_net_flow_usd)} (${fi.exchange_wallet_count ?? 0} wallets)
+- Fresh Wallets: ${fmtK(fi.fresh_wallets_net_flow_usd)} (${fi.fresh_wallets_wallet_count ?? 0} wallets)`
+    : "";
+
+  return `You are a crypto analyst AI. Analyze this token's Smart Money data and provide a concise, actionable assessment (3-5 sentences max).
+
+Token: ${td.token_symbol}
+Chain: ${td.chain}
+Price: ${td.priceUsd ?? "N/A"}
+Market Cap: ${fmtM(td.marketCapUsd)}
+Price Change 24h: ${fmtPct(td.priceChange)}
+SM Netflow 24h: ${fmtK(td.netflowUsd)}
+SM Netflow 7d: ${fmtK(td.netflow7dUsd)}
+Buy/Sell Ratio: ${td.buySellRatio ?? "N/A"}x
+Buy Volume: ${fmtK(td.buyVolume)}
+Sell Volume: ${fmtK(td.sellVolume)}
+Classification: ${td.classification ?? "N/A"}
+Narrative: ${td.narrativeKey ?? "N/A"}
+${flowSection}
+
+Focus on: What does the Smart Money activity suggest? Is this accumulation or distribution? Any divergence signals? What's the risk/reward? Keep it concise and actionable.`;
+}
+
+// ── Number formatting helpers ────────────────────────────────
+
+function fmtM(value: unknown): string {
+  if (typeof value !== "number") return "N/A";
+  return `$${(value / 1e6).toFixed(1)}M`;
+}
+
+function fmtK(value: unknown): string {
+  if (typeof value !== "number") return "N/A";
+  return `$${(value / 1e3).toFixed(1)}K`;
+}
+
+function fmtPct(value: unknown): string {
+  if (typeof value !== "number") return "N/A";
+  return `${value.toFixed(1)}%`;
+}
+
+// ── LLM Provider Callers ─────────────────────────────────────
+
+interface OpenAIResponse {
+  choices: Array<{ message: { content: string } }>;
+}
+
+async function callOpenAI(apiKey: string, model: string, prompt: string): Promise<string> {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 500,
+      temperature: 0.3,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenAI API error (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as OpenAIResponse;
+  return data.choices[0]?.message?.content ?? "No analysis generated.";
+}
+
+interface AnthropicResponse {
+  content: Array<{ type: string; text: string }>;
+}
+
+async function callAnthropic(apiKey: string, model: string, prompt: string): Promise<string> {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 500,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Anthropic API error (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as AnthropicResponse;
+  return data.content[0]?.text ?? "No analysis generated.";
+}
+
+async function callOpenRouter(apiKey: string, model: string, prompt: string): Promise<string> {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 500,
+      temperature: 0.3,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenRouter API error (${response.status}): ${error}`);
+  }
+
+  const data = (await response.json()) as OpenAIResponse;
+  return data.choices[0]?.message?.content ?? "No analysis generated.";
+}
+
+// ============================================================
 // Helpers
 // ============================================================
 
@@ -42,9 +190,10 @@ function log(message: string): void {
 /**
  * Start the Narrative Pulse web dashboard server.
  *
- * - GET /        → Dashboard HTML (no embedded data)
- * - GET /api/scan  → Latest ScanResult as JSON
- * - POST /api/scan → Trigger new scan, return ScanResult
+ * - GET /             → Dashboard HTML (no embedded data)
+ * - GET /api/scan     → Latest ScanResult as JSON
+ * - POST /api/scan    → Trigger new scan, return ScanResult
+ * - POST /api/ai-analyze → Proxy LLM analysis (OpenAI/Anthropic/OpenRouter)
  *
  * Runs an initial scan on startup, then periodically re-scans
  * at the configured interval. Graceful shutdown on SIGINT/SIGTERM.
@@ -120,6 +269,45 @@ export async function startServer(options?: ServerOptions): Promise<void> {
       });
     } finally {
       isScanning = false;
+    }
+  });
+
+  // ── AI Analysis Proxy ───────────────────────────────────
+  // Proxies LLM API calls so the browser can call OpenAI/Anthropic/OpenRouter
+  // without CORS issues. API keys are never stored — used only for the request.
+
+  app.post("/api/ai-analyze", async (req: Request, res: Response) => {
+    try {
+      const { provider, apiKey, model, tokenData } = req.body as Partial<AiAnalysisRequest>;
+
+      if (!provider || !apiKey || !model || !tokenData) {
+        res.status(400).json({ error: "Missing required fields: provider, apiKey, model, tokenData" });
+        return;
+      }
+
+      const prompt = buildAnalysisPrompt(tokenData);
+      let analysis: string;
+
+      switch (provider) {
+        case "openai":
+          analysis = await callOpenAI(apiKey, model, prompt);
+          break;
+        case "anthropic":
+          analysis = await callAnthropic(apiKey, model, prompt);
+          break;
+        case "openrouter":
+          analysis = await callOpenRouter(apiKey, model, prompt);
+          break;
+        default:
+          res.status(400).json({ error: `Unknown provider: ${provider}` });
+          return;
+      }
+
+      res.json({ analysis });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[AI] Analysis failed:", message);
+      res.status(500).json({ error: message });
     }
   });
 
