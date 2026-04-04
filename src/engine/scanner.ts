@@ -6,6 +6,7 @@
 import { fetchNetflows } from "../api/netflows.js";
 import { fetchTokenScreener } from "../api/token-screener.js";
 import { fetchHoldings } from "../api/holdings.js";
+import { fetchFlowIntelligence } from "../api/flow-intelligence.js";
 import { getAndResetStats } from "../api/client.js";
 import { discoverSectors } from "./discovery.js";
 import { aggregateByNarrative, toNarrativeKey } from "./aggregator.js";
@@ -28,6 +29,7 @@ import type {
   EarlySignalToken,
   TokenScreenerEntry,
   ScreenerHighlight,
+  FlowIntelligence,
 } from "../types.js";
 
 // ============================================================
@@ -182,26 +184,52 @@ function stepClassification(
     enrichedMap
   );
 
+  const pumpingCount = classified.filter((t) => t.category === "pumping").length;
   const hotCount = classified.filter((t) => t.category === "hot").length;
   const watchCount = classified.filter((t) => t.category === "watch").length;
   const avoidCount = classified.filter((t) => t.category === "avoid").length;
   log(
-    `Step 7/11: Classifying tokens (${hotCount} hot, ${watchCount} watch, ${avoidCount} avoid)`
+    `Step 7/11: Classifying tokens (${pumpingCount} pumping, ${hotCount} hot, ${watchCount} watch, ${avoidCount} avoid)`
   );
 
   return classified;
 }
 
 function stepScreenerHighlights(
-  screenerData: Map<string, TokenScreenerEntry>
+  screenerData: Map<string, TokenScreenerEntry>,
+  netflowEntries?: NetflowEntry[]
 ): ScreenerHighlight[] {
   log("Step 8/11: Extracting screener highlights...");
-  const highlights = extractScreenerHighlights(screenerData);
+  const highlights = extractScreenerHighlights(screenerData, netflowEntries);
   const heavy = highlights.filter(h => h.classification === "heavy_accumulation").length;
   const accum = highlights.filter(h => h.classification === "accumulating").length;
+  const diverging = highlights.filter(h => h.classification === "diverging").length;
+  const pumping = highlights.filter(h => h.classification === "pumping").length;
+  const mixed = highlights.filter(h => h.classification === "mixed").length;
   const dist = highlights.filter(h => h.classification === "distributing").length;
-  log(`Step 8/11: ${highlights.length} highlights (${heavy} heavy accumulation, ${accum} accumulating, ${dist} distributing)`);
+  log(`Step 8/11: ${highlights.length} highlights (${heavy} heavy accumulation, ${accum} accumulating, ${diverging} diverging, ${pumping} pumping, ${mixed} mixed, ${dist} distributing)`);
   return highlights;
+}
+
+async function stepFlowIntelligence(
+  highlights: ScreenerHighlight[]
+): Promise<Map<string, FlowIntelligence>> {
+  log("Step 8.5: Fetching flow intelligence for top tokens...");
+  try {
+    // Take top N highlights that have chain + address
+    const topTokens = highlights
+      .filter(h => h.token_address && h.chain)
+      .slice(0, config.flowIntelligence.topN)
+      .map(h => ({ chain: h.chain, token_address: h.token_address }));
+
+    const flowData = await fetchFlowIntelligence(topTokens);
+    log(`Step 8.5: Got flow intelligence for ${flowData.size} tokens`);
+    return flowData;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log(`Step 8.5: Flow intelligence failed (${msg}) — continuing without`);
+    return new Map();
+  }
 }
 
 function stepEarlySignals(
@@ -324,7 +352,19 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   assignTopTokens(narratives, classified, tokenNarrativeMap);
 
   // Step 8: Extract screener highlights (HERO section — always rich data)
-  const screenerHighlights = stepScreenerHighlights(screenerData);
+  const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries);
+
+  // Step 8.5: Fetch flow intelligence for top highlights
+  const flowData = await stepFlowIntelligence(screenerHighlights);
+  // Merge flow intelligence into highlights
+  let flowIntelligenceCount = 0;
+  for (const highlight of screenerHighlights) {
+    const flow = flowData.get(highlight.token_address);
+    if (flow) {
+      highlight.flowIntelligence = flow;
+      flowIntelligenceCount++;
+    }
+  }
 
   // Step 9: Detect early signals
   const earlySignals = stepEarlySignals(enrichedTokens, narratives, tokenNarrativeMap);
@@ -359,6 +399,7 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
     screenerHighlights,
     enrichedTokens,
     holdingsCount,
+    flowIntelligenceCount,
     apiCallsUsed: stats.apiCalls,
     creditsUsed: stats.creditsUsed,
   };
