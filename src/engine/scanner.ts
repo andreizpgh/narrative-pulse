@@ -30,6 +30,7 @@ import type {
   TokenScreenerEntry,
   ScreenerHighlight,
   FlowIntelligence,
+  HoldingsEntry,
 } from "../types.js";
 
 // ============================================================
@@ -125,16 +126,16 @@ async function stepFetchScreener(): Promise<Map<string, TokenScreenerEntry>> {
   return screenerData;
 }
 
-async function stepFetchHoldings(): Promise<number> {
+async function stepFetchHoldings(): Promise<Map<string, HoldingsEntry>> {
   log("Step 3/11: Fetching Smart Money holdings...");
   try {
     const holdings = await fetchHoldings(config.chains);
     log(`Step 3/11: Got ${holdings.size} holdings entries`);
-    return holdings.size;
+    return holdings;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     log(`Step 3/11: Holdings fetch failed (${msg}) — continuing without`);
-    return 0;
+    return new Map();
   }
 }
 
@@ -335,7 +336,8 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   const screenerData = await stepFetchScreener();
 
   // Step 3: Fetch Smart Money holdings (graceful degradation)
-  const holdingsCount = await stepFetchHoldings();
+  const holdingsData = await stepFetchHoldings();
+  const holdingsCount = holdingsData.size;
 
   // Step 4: Enrich with DexScreener (graceful — failures return empty array)
   const enrichedTokens = await stepEnrich(netflowEntries, screenerData);
@@ -386,6 +388,26 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
       if (match.liquidity) h.liquidity = match.liquidity;
       if (match.fdv) h.fdv = match.fdv;
     }
+  }
+
+  // Step 7.6: Cross-reference screener highlights with holdings data for sectors
+  // Holdings contains a different set of tokens than netflow, with token_sectors on each entry.
+  // This fills gaps where highlights have no narrative after the enriched data cross-reference.
+  if (holdingsData.size > 0) {
+    let holdingsMatchCount = 0;
+    for (const h of screenerHighlights) {
+      if (h.tokenSectors && h.tokenSectors.length > 0) continue;
+
+      const normAddr = normalizeAddress(h.token_address);
+      const match = holdingsData.get(normAddr);
+
+      if (match && match.token_sectors && match.token_sectors.length > 0) {
+        h.tokenSectors = match.token_sectors;
+        h.narrativeKey = match.token_sectors[0];
+        holdingsMatchCount++;
+      }
+    }
+    log(`Holdings cross-reference: ${holdingsMatchCount} highlights enriched with sectors`);
   }
 
   // Step 8.5: Fetch flow intelligence for top highlights

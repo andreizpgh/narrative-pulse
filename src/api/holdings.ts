@@ -14,7 +14,7 @@ import { config } from "../config.js";
 // ============================================================
 
 const ENDPOINT = "/smart-money/holdings";
-// Limit to 1 page (50 credits) — we only use holdings count, not detailed data
+// Limit to 1 page (50 credits) — used for screener highlights sector enrichment
 const MAX_PAGES = 1;
 
 // ============================================================
