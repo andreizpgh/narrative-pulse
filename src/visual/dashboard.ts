@@ -3,13 +3,14 @@
 // data from /api/scan and renders an interactive dashboard.
 // No embedded data; all data comes via JavaScript fetch().
 //
-// V2: Unified table, signal overview, filters, flow intelligence,
-//     narrative flows as compact table, Sankey click-to-filter.
+// V3: Coherent Nansen-inspired layout — Sankey above table,
+//     chain dots, no $ prefix, AI analysis placeholder,
+//     auto-refresh interval control.
 // ============================================================
 
 /**
  * Returns a complete HTML string for the dynamic dashboard.
- * The page polls /api/scan every 60 seconds and re-renders.
+ * The page polls /api/scan at a configurable interval and re-renders.
  */
 export function renderDashboardHtml(): string {
   return `<!DOCTYPE html>
@@ -55,20 +56,17 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 24px 24px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      margin-bottom: 24px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 20px;
       text-align: left;
-      background: linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(129, 140, 248, 0.06) 100%);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
     }
 
     .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .header-brand {
@@ -167,12 +165,11 @@ export function renderDashboardHtml(): string {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       text-align: center;
-      transition: border-color 0.2s ease, transform 0.15s ease;
+      transition: border-color 0.25s ease;
     }
 
     .signal-card:hover {
-      border-color: rgba(139, 143, 163, 0.3);
-      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
     }
 
     .signal-card-icon {
@@ -290,7 +287,8 @@ export function renderDashboardHtml(): string {
       padding: 24px;
       margin-bottom: 24px;
       border: 1px solid var(--border-color);
-      border-top: 2px solid rgba(52, 211, 153, 0.3);
+      border-top: 2px solid transparent;
+      border-image: linear-gradient(90deg, rgba(52,211,153,0.5), rgba(129,140,248,0.5), rgba(52,211,153,0.5)) 1;
     }
 
     .section-title {
@@ -310,10 +308,10 @@ export function renderDashboardHtml(): string {
 
     #sankey-chart {
       width: 100%;
-      height: 450px;
+      height: 280px;
     }
 
-    .sankey-card { margin-bottom: 32px; }
+    .sankey-card { margin-bottom: 24px; }
     .sankey-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; text-align: center; }
 
     /* ── Section Headers ────────────────────────── */
@@ -360,7 +358,7 @@ export function renderDashboardHtml(): string {
       color: var(--text-primary);
     }
 
-    .token-table tbody tr { transition: background 0.15s ease; }
+    .token-table tbody tr { transition: background 0.2s ease; }
     .token-table tbody tr:hover { background: var(--bg-card-hover); }
     .token-table tbody tr:last-child td { border-bottom: none; }
 
@@ -373,13 +371,11 @@ export function renderDashboardHtml(): string {
 
     .token-table tbody tr.expandable-row {
       cursor: pointer;
-      transition: background 0.15s ease, border-left 0.15s ease;
-      border-left: 2px solid transparent;
+      transition: background 0.2s ease;
     }
 
     .token-table tbody tr.expandable-row:hover {
-      background: var(--bg-card-hover);
-      border-left-color: rgba(129, 140, 248, 0.4);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .expand-arrow {
@@ -390,7 +386,7 @@ export function renderDashboardHtml(): string {
       vertical-align: middle;
       transition: transform 0.2s ease;
       color: var(--text-muted);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
     }
 
     .expand-arrow.open { transform: rotate(90deg); }
@@ -535,65 +531,6 @@ export function renderDashboardHtml(): string {
       color: #38bdf8;
     }
 
-    /* ── Custom Tooltips ────────────────────────── */
-
-    .screener-badge, .narrative-pill, .chain-badge {
-      position: relative;
-    }
-
-    .screener-badge::after, .narrative-pill::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 6px 10px;
-      border-radius: 6px;
-      background: #2a2d3a;
-      color: #e8e9ed;
-      font-size: 0.72rem;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: 0;
-      white-space: nowrap;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      z-index: 100;
-    }
-
-    .screener-badge::after {
-      max-width: 240px;
-      white-space: normal;
-      text-align: center;
-    }
-
-    .screener-badge:hover::after, .narrative-pill:hover::after {
-      opacity: 1;
-    }
-
-    /* ── Chain Badges ───────────────────────────── */
-
-    .chain-badge {
-      display: inline-block;
-      font-size: 0.6rem;
-      font-weight: 600;
-      padding: 1px 5px;
-      border-radius: 3px;
-      background: rgba(139, 143, 163, 0.15);
-      color: var(--text-secondary);
-      margin-left: 4px;
-      vertical-align: middle;
-      text-transform: uppercase;
-    }
-
-    .chain-ethereum { background: rgba(98, 126, 234, 0.2); color: #627eea; }
-    .chain-solana { background: rgba(156, 106, 222, 0.2); color: #9c6ade; }
-    .chain-base { background: rgba(0, 170, 255, 0.2); color: #00aaff; }
-    .chain-bnb { background: rgba(243, 186, 47, 0.2); color: #f3ba2f; }
-    .chain-arbitrum { background: rgba(40, 160, 240, 0.2); color: #28a0f0; }
-
     /* ── Narrative Pill ─────────────────────────── */
 
     .narrative-pill {
@@ -683,56 +620,54 @@ export function renderDashboardHtml(): string {
       margin-left: auto;
     }
 
-    /* ── Narrative Flows Table ──────────────────── */
+    /* ── AI Analysis Section ────────────────────── */
 
-    .narrative-flows-section {
-      margin-bottom: 32px;
-    }
+    .ai-analysis-section { margin-top: 12px; }
 
-    .narrative-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.88rem;
-    }
-
-    .narrative-table thead th {
-      text-align: left;
-      padding: 10px 12px;
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--border-color);
-      background: var(--bg-card-alt);
-    }
-
-    .narrative-table tbody td {
-      padding: 10px 12px;
-      border-bottom: 1px solid rgba(42, 45, 58, 0.5);
-      color: var(--text-primary);
-    }
-
-    .narrative-table tbody tr {
+    .ai-analysis-blur {
+      position: relative;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px dashed rgba(129, 140, 248, 0.3);
       cursor: pointer;
-      transition: background 0.15s ease;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
     }
 
-    .narrative-table tbody tr:hover { background: var(--bg-card-hover); }
-    .narrative-table tbody tr:last-child td { border-bottom: none; }
-
-    .narrative-table .mono { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; }
-
-    .dot-indicator {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      vertical-align: middle;
+    .ai-analysis-blur:hover {
+      border-color: rgba(129, 140, 248, 0.5);
     }
 
-    .dot-positive { background: var(--color-positive); }
-    .dot-negative { background: var(--color-negative); }
+    .ai-analysis-blur::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg,
+        rgba(129, 140, 248, 0.08) 0%,
+        rgba(52, 211, 153, 0.06) 50%,
+        rgba(129, 140, 248, 0.08) 100%);
+      background-size: 200% 200%;
+      animation: aiShimmer 3s ease-in-out infinite;
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+
+    @keyframes aiShimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .ai-analysis-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ai-analysis-icon { font-size: 1.1rem; }
+    .ai-analysis-text { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+    .ai-analysis-hint { font-size: 0.72rem; color: var(--text-muted); }
 
     /* ── Card utility ───────────────────────────── */
 
@@ -793,13 +728,10 @@ export function renderDashboardHtml(): string {
       .signal-overview { grid-template-columns: repeat(2, 1fr); }
       .card { padding: 16px; }
       .main-section-card { padding: 16px; }
-      #sankey-chart { height: 350px; }
+      #sankey-chart { height: 250px; }
       .token-table { font-size: 0.78rem; }
       .token-table thead th,
       .token-table tbody td { padding: 8px 6px; }
-      .narrative-table { font-size: 0.78rem; }
-      .narrative-table thead th,
-      .narrative-table tbody td { padding: 8px 6px; }
       .filter-bar { flex-direction: column; align-items: flex-start; }
       .flow-intel-row { flex-wrap: wrap; gap: 4px; }
       .flow-intel-label { flex: 0 0 auto; }
@@ -823,6 +755,13 @@ export function renderDashboardHtml(): string {
           <span class="dot"></span> Scanning...
         </span>
         <button class="btn-scan" id="btn-scan" onclick="triggerScan()">Rescan</button>
+        <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.78rem;padding:4px 24px 4px 8px">
+          <option value="0">Manual</option>
+          <option value="300000">5 min</option>
+          <option value="600000">10 min</option>
+          <option value="900000" selected>15 min</option>
+          <option value="1800000">30 min</option>
+        </select>
         <span class="credits-text" id="credits-text"></span>
       </div>
     </header>
@@ -921,10 +860,12 @@ export function renderDashboardHtml(): string {
       el.textContent = 'Updated ' + minutesAgo(lastScanTime);
     }
 
-    function chainBadge(chain) {
-      var cls = 'chain-badge chain-' + chain;
-      var labels = { ethereum: 'ETH', solana: 'SOL', base: 'BASE', bnb: 'BNB', arbitrum: 'ARB' };
-      return '<span class="' + cls + '">' + (labels[chain] || chain) + '</span>';
+    function chainDot(chain) {
+      var colors = { ethereum: '#627eea', solana: '#9c6ade', base: '#00aaff', bnb: '#f3ba2f', arbitrum: '#28a0f0' };
+      var labels = { ethereum: 'Ethereum', solana: 'Solana', base: 'Base', bnb: 'BNB', arbitrum: 'Arbitrum' };
+      var color = colors[chain] || '#8b8fa3';
+      var label = labels[chain] || chain;
+      return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-left:6px;vertical-align:middle" title="' + label + '"></span>';
     }
 
     function dexScreenerUrl(chain, address) {
@@ -1138,9 +1079,8 @@ export function renderDashboardHtml(): string {
       var main = document.getElementById('main-content');
       var html = '';
       html += renderSignalOverview(data.screenerHighlights);
-      html += renderMainTable(data.screenerHighlights);
       html += renderSankeySection(data.narratives);
-      html += renderNarrativeFlows(data.narratives);
+      html += renderMainTable(data.screenerHighlights);
       main.innerHTML = html;
       initFilters(data.screenerHighlights);
       setTimeout(function() { renderSankeyChart(data.narratives); }, 50);
@@ -1189,6 +1129,17 @@ export function renderDashboardHtml(): string {
       html += '</div>';
       html += '</div>';
       html += '<div class="signal-explanation">\\u24D8 From 500+ tokens across 5 chains. Top ' + total + ' by composite score: buy/sell ratio, netflow, and SM trader activity.</div>';
+      return html;
+    }
+
+    // ── Sankey Section ─────────────────────────────────────
+
+    function renderSankeySection(narratives) {
+      var html = '<div class="card sankey-card" id="sankey-section">';
+      html += '<div class="card-title">Capital Flow Map</div>';
+      html += '<div id="sankey-chart" style="width:100%;height:280px"></div>';
+      html += '<div class="sankey-hint">Click a narrative to filter the table below</div>';
+      html += '</div>';
       return html;
     }
 
@@ -1293,55 +1244,80 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-6="' + (t.marketCapUsd || 0) + '"';
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
-      html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>$' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainBadge(t.chain) + '</td>';
-      html += '<td><span class="narrative-pill" data-tooltip="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
+      html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainDot(t.chain) + '</td>';
+      html += '<td><span class="narrative-pill" title="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
       html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-      html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span></td>';
+      html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
       html += '</tr>';
 
       // Expanded detail row
       html += '<tr class="expanded-detail" id="' + detailId + '"><td colspan="8">';
-      html += renderExpandedDetail(t);
+      html += renderExpandedDetail(t, detailId);
       html += '</td></tr>';
 
       return html;
     }
 
-    function renderExpandedDetail(t) {
+    function renderExpandedDetail(t, detailId) {
       var html = '';
 
-      // Row 1: Price, MCap, FDV, Liq, Vol 24h
-      html += '<div class="detail-grid" style="margin-bottom:10px">';
-      html += '<div><div class="detail-item-label">Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
-      html += '<div><div class="detail-item-label">Market Cap</div><div class="detail-item-value">' + formatMcap(t.marketCapUsd) + '</div></div>';
-      html += '<div><div class="detail-item-label">FDV</div><div class="detail-item-value">' + (t.fdv ? formatMcap(t.fdv) : '\\u2014') + '</div></div>';
-      html += '<div><div class="detail-item-label">Liquidity</div><div class="detail-item-value">' + (t.liquidity ? formatUsdAbs(t.liquidity) : '\\u2014') + '</div></div>';
-      html += '<div><div class="detail-item-label">Volume 24h</div><div class="detail-item-value">' + formatVolume(t.volume) + '</div></div>';
-      html += '</div>';
+      // Row 1: Price, MCap, FDV, Liq, Vol 24h (only show if present)
+      var items = [];
 
-      // Row 2: Netflow 24h, 7d, 30d
+      if (t.priceUsd) {
+        items.push({ label: 'Price', value: '$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2) });
+      }
+      if (t.marketCapUsd) {
+        items.push({ label: 'Market Cap', value: formatMcap(t.marketCapUsd) });
+      }
+      if (t.fdv) {
+        items.push({ label: 'FDV', value: formatMcap(t.fdv) });
+      }
+      if (t.liquidity) {
+        items.push({ label: 'Liquidity', value: formatUsdAbs(t.liquidity) });
+      }
+      if (t.volume) {
+        items.push({ label: 'Volume 24h', value: formatVolume(t.volume) });
+      }
+
+      if (items.length > 0) {
+        html += '<div class="detail-grid" style="margin-bottom:10px">';
+        for (var i = 0; i < items.length; i++) {
+          html += '<div><div class="detail-item-label">' + items[i].label + '</div><div class="detail-item-value">' + items[i].value + '</div></div>';
+        }
+        html += '</div>';
+      }
+
+      // Row 2: Netflow 24h (always), 7d and 30d only if non-zero
       html += '<div class="detail-grid" style="margin-bottom:10px">';
       var nf24Cls = t.netflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
       html += '<div><div class="detail-item-label">Netflow 24h</div><div class="detail-item-value ' + nf24Cls + '">' + formatUsd(t.netflowUsd) + '</div></div>';
       var nf7d = t.netflow7dUsd ?? 0;
-      var nf7dCls = nf7d >= 0 ? 'netflow-positive' : 'netflow-negative';
-      html += '<div><div class="detail-item-label">Netflow 7d</div><div class="detail-item-value ' + nf7dCls + '">' + formatUsd(nf7d) + '</div></div>';
+      if (nf7d !== 0) {
+        var nf7dCls = nf7d >= 0 ? 'netflow-positive' : 'netflow-negative';
+        html += '<div><div class="detail-item-label">Netflow 7d</div><div class="detail-item-value ' + nf7dCls + '">' + formatUsd(nf7d) + '</div></div>';
+      }
       var nf30d = t.netflow30dUsd ?? 0;
-      var nf30dCls = nf30d >= 0 ? 'netflow-positive' : 'netflow-negative';
-      html += '<div><div class="detail-item-label">Netflow 30d</div><div class="detail-item-value ' + nf30dCls + '">' + formatUsd(nf30d) + '</div></div>';
+      if (nf30d !== 0) {
+        var nf30dCls = nf30d >= 0 ? 'netflow-positive' : 'netflow-negative';
+        html += '<div><div class="detail-item-label">Netflow 30d</div><div class="detail-item-value ' + nf30dCls + '">' + formatUsd(nf30d) + '</div></div>';
+      }
       html += '</div>';
 
-      // Row 3: Buy Vol, Sell Vol, Ratio
+      // Row 3: Buy Vol, Sell Vol, Ratio (always show), SM Traders (only if > 0)
       html += '<div class="detail-grid" style="margin-bottom:8px">';
       html += '<div><div class="detail-item-label">Buy Volume</div><div class="detail-item-value netflow-positive">' + formatVolume(t.buyVolume) + '</div></div>';
       html += '<div><div class="detail-item-label">Sell Volume</div><div class="detail-item-value netflow-negative">' + formatVolume(t.sellVolume) + '</div></div>';
       var ratioText = t.buySellRatio >= 99 ? '99x+' : t.buySellRatio.toFixed(1) + 'x';
       html += '<div><div class="detail-item-label">Buy/Sell Ratio</div><div class="detail-item-value">' + ratioText + '</div></div>';
-      html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + (t.traderCount || ((t.nofBuyers || 0) + (t.nofSellers || 0))) + '</div></div>';
+      var smCount = t.traderCount || 0;
+      if (smCount > 0) {
+        html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + smCount + '</div></div>';
+      }
       html += '</div>';
 
       // Flow Intelligence (optional)
@@ -1349,10 +1325,26 @@ export function renderDashboardHtml(): string {
         html += renderFlowIntelligence(t.flowIntelligence);
       }
 
+      // AI Analysis placeholder
+      html += '<div class="ai-analysis-section">';
+      html += '<div class="ai-analysis-blur" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">';
+      html += '<div class="ai-analysis-content">';
+      html += '<span class="ai-analysis-icon">\\uD83E\\uDD16</span>';
+      html += '<span class="ai-analysis-text">AI Analysis</span>';
+      html += '<span class="ai-analysis-hint">Click to analyze with AI</span>';
+      html += '</div></div></div>';
+
       // DexScreener link
       html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
 
       return html;
+    }
+
+    function triggerAiAnalysis(detailId) {
+      var el = document.getElementById('ai-' + detailId);
+      if (!el) return;
+      // TODO: AI analysis integration
+      el.innerHTML = '<div style="padding:12px;font-size:0.82rem;color:var(--text-secondary)">AI analysis coming soon. Connect your API key in settings to enable.</div>';
     }
 
     function renderFlowIntelligence(fi) {
@@ -1423,12 +1415,12 @@ export function renderDashboardHtml(): string {
 
       // Populate signal options
       var signalLabels = {
-        pumping: '🚀 Pumping',
-        heavy_accumulation: '🔥 Hot',
-        accumulating: '👀 Watch',
-        diverging: '📊 Diverging',
-        mixed: '◐ Mixed',
-        distributing: '⚠️ Distributing'
+        pumping: '\\uD83D\\uDE80 Pumping',
+        heavy_accumulation: '\\uD83D\\uDD25 Hot',
+        accumulating: '\\uD83D\\uDC40 Watch',
+        diverging: '\\uD83D\\uDCCA Diverging',
+        mixed: '\\u25D0 Mixed',
+        distributing: '\\u26A0\\uFE0F Distributing'
       };
       var signalOrder = ['pumping', 'heavy_accumulation', 'accumulating', 'diverging', 'mixed', 'distributing'];
       signalSelect.innerHTML = '<option value="">All Signals</option>';
@@ -1509,17 +1501,6 @@ export function renderDashboardHtml(): string {
       applyFilters();
       var clearBtn = document.getElementById('clear-narrative-filter');
       if (clearBtn) clearBtn.style.display = 'none';
-    }
-
-    // ── Sankey Section ─────────────────────────────────────
-
-    function renderSankeySection(narratives) {
-      var html = '<div class="card sankey-card" id="sankey-section">';
-      html += '<div class="card-title">Capital Flow Map</div>';
-      html += '<div id="sankey-chart" style="width:100%;height:450px"></div>';
-      html += '<div class="sankey-hint">Click a narrative to filter the table above</div>';
-      html += '</div>';
-      return html;
     }
 
     // ── Sankey Chart ───────────────────────────────────────
@@ -1632,56 +1613,6 @@ export function renderDashboardHtml(): string {
       window.addEventListener('resize', function() { chart.resize(); });
     }
 
-    // ── Narrative Flows ────────────────────────────────────
-
-    function renderNarrativeFlows(narratives) {
-      if (!narratives || narratives.length === 0) return '';
-
-      // Filter: show all narratives with 2+ tokens (classifier is strict, may not produce topTokens)
-      var filtered = narratives.filter(function(n) {
-        return n.tokenCount >= 2;
-      });
-
-      if (filtered.length === 0) return '';
-
-      var html = '<div class="narrative-flows-section">';
-      html += '<h3 class="section-heading">Narrative Flows</h3>';
-      html += '<div class="section-body">';
-      html += '<table class="narrative-table">';
-      html += '<thead><tr>';
-      html += '<th>Narrative</th>';
-      html += '<th>24h Flow</th>';
-      html += '<th>7d Flow</th>';
-      html += '<th>Tokens</th>';
-      html += '<th>Signal</th>';
-      html += '</tr></thead><tbody>';
-
-      for (var i = 0; i < filtered.length; i++) {
-        var n = filtered[i];
-        var nf24Cls = n.totalNetflow24h >= 0 ? 'netflow-positive' : 'netflow-negative';
-        var nf7dCls = n.totalNetflow7d >= 0 ? 'netflow-positive' : 'netflow-negative';
-        var dotCls = n.isHot ? 'dot-positive' : 'dot-negative';
-
-        // Top token
-        var topTokenSymbol = '\\u2014';
-        if (n.topTokens && n.topTokens.length > 0) {
-          topTokenSymbol = '$' + escapeHtml(stripEmoji(n.topTokens[0].token_symbol));
-        }
-
-        html += '<tr onclick="filterTableByNarrative(\\'' + escapeHtml(n.displayName).replace(/'/g, "\\'") + '\\')" title="Click to filter table by ' + escapeHtml(n.displayName) + '">';
-        html += '<td><strong>' + escapeHtml(n.displayName) + '</strong></td>';
-        html += '<td class="mono ' + nf24Cls + '">' + formatUsd(n.totalNetflow24h) + '</td>';
-        html += '<td class="mono ' + nf7dCls + '">' + (n.totalNetflow7d ? formatUsd(n.totalNetflow7d) : '\\u2014') + '</td>';
-        html += '<td class="mono">' + n.tokenCount + '</td>';
-        html += '<td><span class="dot-indicator ' + dotCls + '"></span> <span style="font-size:0.78rem;color:var(--text-secondary)">' + topTokenSymbol + '</span></td>';
-        html += '</tr>';
-      }
-
-      html += '</tbody></table>';
-      html += '</div></div>';
-      return html;
-    }
-
     // ── Empty State ────────────────────────────────────────
 
     function renderEmpty() {
@@ -1695,19 +1626,38 @@ export function renderDashboardHtml(): string {
     // ── Auto-Refresh ───────────────────────────────────────
 
     function startAutoRefresh() {
-      // Poll every 60 seconds
-      refreshTimerId = setInterval(function() {
-        fetchData()
-          .then(function(data) {
-            handleData(data);
-          })
-          .catch(function(err) {
-            console.error('Auto-refresh failed:', err);
-          });
-      }, 60000);
+      var intervalSelect = document.getElementById('refresh-interval');
+      var ms = intervalSelect ? parseInt(intervalSelect.value) : 900000;
+
+      if (ms > 0) {
+        refreshTimerId = setInterval(function() {
+          fetchData()
+            .then(function(data) {
+              handleData(data);
+            })
+            .catch(function(err) {
+              console.error('Auto-refresh failed:', err);
+            });
+        }, ms);
+      }
 
       // Update "X min ago" text every 30 seconds
       updateAgoTimerId = setInterval(updateAgoText, 30000);
+    }
+
+    function setRefreshInterval(ms) {
+      if (refreshTimerId) clearInterval(refreshTimerId);
+      if (parseInt(ms) > 0) {
+        refreshTimerId = setInterval(function() {
+          fetchData()
+            .then(function(data) {
+              handleData(data);
+            })
+            .catch(function(err) {
+              console.error('Auto-refresh failed:', err);
+            });
+        }, parseInt(ms));
+      }
     }
 
     // ── Init ───────────────────────────────────────────────
@@ -1722,7 +1672,7 @@ export function renderDashboardHtml(): string {
         var main = document.getElementById('main-content');
         main.innerHTML = '<div class="error-state">' +
           '<p style="font-size:1.2rem;margin-bottom:12px;">Unable to load data</p>' +
-          '<p>Retrying in 60 seconds...</p>' +
+          '<p>Retrying... Check connection.</p>' +
           '</div>';
         startAutoRefresh();
       });
