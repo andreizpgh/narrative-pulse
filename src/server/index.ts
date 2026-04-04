@@ -32,12 +32,13 @@ interface ApiResponse {
 // ============================================================
 
 /** Supported LLM providers for AI analysis proxy. */
-type AiProvider = "openai" | "anthropic" | "openrouter";
+type AiProvider = "openai" | "anthropic" | "openrouter" | "custom";
 
 interface AiAnalysisRequest {
   provider: AiProvider;
   apiKey: string;
   model: string;
+  baseUrl?: string;
   tokenData: Record<string, unknown>;
 }
 
@@ -100,27 +101,39 @@ interface OpenAIResponse {
 }
 
 async function callOpenAI(apiKey: string, model: string, prompt: string): Promise<string> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 500,
-      temperature: 0.3,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 500,
+        temperature: 0.3,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${error}`);
+    }
+
+    const data = (await response.json()) as OpenAIResponse;
+    return data.choices[0]?.message?.content ?? "No analysis generated.";
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("OpenAI API request timed out after 30 seconds");
+    }
+    throw err;
   }
-
-  const data = (await response.json()) as OpenAIResponse;
-  return data.choices[0]?.message?.content ?? "No analysis generated.";
 }
 
 interface AnthropicResponse {
@@ -128,51 +141,105 @@ interface AnthropicResponse {
 }
 
 async function callAnthropic(apiKey: string, model: string, prompt: string): Promise<string> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 500,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 500,
+        messages: [{ role: "user", content: prompt }],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Anthropic API error (${response.status}): ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Anthropic API error (${response.status}): ${error}`);
+    }
+
+    const data = (await response.json()) as AnthropicResponse;
+    return data.content[0]?.text ?? "No analysis generated.";
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Anthropic API request timed out after 30 seconds");
+    }
+    throw err;
   }
-
-  const data = (await response.json()) as AnthropicResponse;
-  return data.content[0]?.text ?? "No analysis generated.";
 }
 
 async function callOpenRouter(apiKey: string, model: string, prompt: string): Promise<string> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 500,
-      temperature: 0.3,
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 500,
+        temperature: 0.3,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenRouter API error (${response.status}): ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenRouter API error (${response.status}): ${error}`);
+    }
+
+    const data = (await response.json()) as OpenAIResponse;
+    return data.choices[0]?.message?.content ?? "No analysis generated.";
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("OpenRouter API request timed out after 30 seconds");
+    }
+    throw err;
   }
+}
 
-  const data = (await response.json()) as OpenAIResponse;
-  return data.choices[0]?.message?.content ?? "No analysis generated.";
+async function callCustom(baseUrl: string, apiKey: string, model: string, prompt: string): Promise<string> {
+  const url = baseUrl.replace(/\/+$/, "") + "/chat/completions";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], max_tokens: 500, temperature: 0.3 }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Custom API error (${response.status}): ${error}`);
+    }
+    const data = (await response.json()) as OpenAIResponse;
+    return data.choices[0]?.message?.content ?? "No analysis generated.";
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Custom API request timed out after 30 seconds");
+    }
+    throw err;
+  }
 }
 
 // ============================================================
@@ -278,7 +345,7 @@ export async function startServer(options?: ServerOptions): Promise<void> {
 
   app.post("/api/ai-analyze", async (req: Request, res: Response) => {
     try {
-      const { provider, apiKey, model, tokenData } = req.body as Partial<AiAnalysisRequest>;
+      const { provider, apiKey, model, baseUrl, tokenData } = req.body as Partial<AiAnalysisRequest>;
 
       if (!provider || !apiKey || !model || !tokenData) {
         res.status(400).json({ error: "Missing required fields: provider, apiKey, model, tokenData" });
@@ -298,6 +365,14 @@ export async function startServer(options?: ServerOptions): Promise<void> {
         case "openrouter":
           analysis = await callOpenRouter(apiKey, model, prompt);
           break;
+        case "custom": {
+          if (!baseUrl) {
+            res.status(400).json({ error: "Custom provider requires baseUrl" });
+            return;
+          }
+          analysis = await callCustom(baseUrl, apiKey, model, prompt);
+          break;
+        }
         default:
           res.status(400).json({ error: `Unknown provider: ${provider}` });
           return;
