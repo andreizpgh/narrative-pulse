@@ -620,7 +620,7 @@ export function renderDashboardHtml(): string {
       margin-left: auto;
     }
 
-    /* ── AI Analysis Section ────────────────────── */
+    /* ── AI Analysis ──────────────────────────────── */
 
     .ai-analysis-section { margin-top: 12px; }
 
@@ -631,7 +631,7 @@ export function renderDashboardHtml(): string {
       border: 1px dashed rgba(129, 140, 248, 0.3);
       cursor: pointer;
       overflow: hidden;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.25s ease;
     }
 
     .ai-analysis-blur:hover {
@@ -668,6 +668,170 @@ export function renderDashboardHtml(): string {
     .ai-analysis-icon { font-size: 1.1rem; }
     .ai-analysis-text { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
     .ai-analysis-hint { font-size: 0.72rem; color: var(--text-muted); }
+
+    /* AI Setup Form */
+
+    .ai-setup {
+      padding: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-card-alt);
+    }
+
+    .ai-setup-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .ai-setup-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .ai-setup-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .ai-field label {
+      display: block;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .ai-input {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 0.82rem;
+      transition: border-color 0.2s ease;
+    }
+
+    .ai-input:focus {
+      outline: none;
+      border-color: rgba(129, 140, 248, 0.5);
+    }
+
+    .ai-btn-save {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(129, 140, 248, 0.2);
+      color: #a5b4fc;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .ai-btn-save:hover {
+      background: rgba(129, 140, 248, 0.3);
+    }
+
+    /* AI Loading */
+
+    .ai-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .ai-loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border-color);
+      border-top-color: rgba(129, 140, 248, 0.8);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* AI Result */
+
+    .ai-result {
+      padding: 14px 16px;
+      border: 1px solid rgba(129, 140, 248, 0.2);
+      border-radius: 8px;
+      background: rgba(129, 140, 248, 0.04);
+    }
+
+    .ai-result-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .ai-result-icon { font-size: 0.95rem; }
+
+    .ai-result-provider {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    .ai-result-text {
+      font-size: 0.82rem;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+
+    .ai-btn-reanalyze {
+      padding: 4px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-right: 6px;
+    }
+
+    .ai-btn-reanalyze:hover {
+      border-color: rgba(129, 140, 248, 0.3);
+      color: #a5b4fc;
+    }
+
+    /* AI Error */
+
+    .ai-error {
+      padding: 12px 16px;
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 8px;
+      background: rgba(248, 113, 113, 0.04);
+    }
+
+    .ai-error-text {
+      font-size: 0.8rem;
+      color: var(--color-negative);
+      margin-bottom: 10px;
+    }
+
+    .ai-error-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Responsive: stack AI setup fields on mobile */
+    @media (max-width: 768px) {
+      .ai-setup-grid { grid-template-columns: 1fr; }
+    }
 
     /* ── Card utility ───────────────────────────── */
 
@@ -1326,7 +1490,7 @@ export function renderDashboardHtml(): string {
       }
 
       // AI Analysis placeholder
-      html += '<div class="ai-analysis-section">';
+      html += '<div class="ai-analysis-section" id="ai-' + detailId + '">';
       html += '<div class="ai-analysis-blur" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">';
       html += '<div class="ai-analysis-content">';
       html += '<span class="ai-analysis-icon">\\uD83E\\uDD16</span>';
@@ -1340,11 +1504,160 @@ export function renderDashboardHtml(): string {
       return html;
     }
 
+    // ── AI Analysis ──────────────────────────────────────
+
+    var AI_CONFIG_KEY = 'narrative_pulse_ai_config';
+
+    function getAiConfig() {
+      try {
+        var stored = localStorage.getItem(AI_CONFIG_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (e) { return null; }
+    }
+
+    function saveAiConfig(config) {
+      try {
+        localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(config));
+      } catch (e) { /* ignore */ }
+    }
+
     function triggerAiAnalysis(detailId) {
+      var config = getAiConfig();
+      if (!config || !config.apiKey) {
+        showAiSetup(detailId);
+      } else {
+        runAiAnalysis(detailId, config);
+      }
+    }
+
+    function showAiSetup(detailId) {
       var el = document.getElementById('ai-' + detailId);
       if (!el) return;
-      // TODO: AI analysis integration
-      el.innerHTML = '<div style="padding:12px;font-size:0.82rem;color:var(--text-secondary)">AI analysis coming soon. Connect your API key in settings to enable.</div>';
+
+      var existingConfig = getAiConfig() || {};
+
+      el.innerHTML = '<div class="ai-setup">' +
+        '<div class="ai-setup-title">\\uD83E\\uDD16 AI Analysis Setup</div>' +
+        '<div class="ai-setup-desc">Connect your LLM provider to analyze tokens with AI. Your API key is stored locally in this browser only.</div>' +
+        '<div class="ai-setup-grid">' +
+          '<div class="ai-field"><label>Provider</label>' +
+            '<select id="ai-provider" class="filter-select" style="width:100%">' +
+              '<option value="openai"' + (existingConfig.provider === 'openai' ? ' selected' : '') + '>OpenAI</option>' +
+              '<option value="anthropic"' + (existingConfig.provider === 'anthropic' ? ' selected' : '') + '>Anthropic</option>' +
+              '<option value="openrouter"' + (existingConfig.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="ai-field"><label>API Key</label>' +
+            '<input type="password" id="ai-key" class="ai-input" placeholder="sk-..." value="' + escapeHtml(existingConfig.apiKey || '') + '">' +
+          '</div>' +
+          '<div class="ai-field"><label>Model</label>' +
+            '<input type="text" id="ai-model" class="ai-input" placeholder="gpt-4o-mini" value="' + escapeHtml(existingConfig.model || '') + '">' +
+          '</div>' +
+        '</div>' +
+        '<div class="ai-setup-actions">' +
+          '<button class="ai-btn-save" onclick="saveAiAndAnalyze(\\'' + detailId + '\\')">Save & Analyze</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function saveAiAndAnalyze(detailId) {
+      var provider = document.getElementById('ai-provider');
+      var key = document.getElementById('ai-key');
+      var model = document.getElementById('ai-model');
+      if (!provider || !key || !model) return;
+
+      var apiKey = key.value.trim();
+      var modelVal = model.value.trim();
+
+      if (!apiKey) {
+        key.style.borderColor = 'var(--color-negative)';
+        return;
+      }
+      if (!modelVal) {
+        var defaults = { openai: 'gpt-4o-mini', anthropic: 'claude-sonnet-4-20250514', openrouter: 'anthropic/claude-sonnet-4' };
+        modelVal = defaults[provider.value] || 'gpt-4o-mini';
+      }
+
+      var config = { provider: provider.value, apiKey: apiKey, model: modelVal };
+      saveAiConfig(config);
+      runAiAnalysis(detailId, config);
+    }
+
+    function runAiAnalysis(detailId, config) {
+      var el = document.getElementById('ai-' + detailId);
+      if (!el) return;
+
+      // Build tokenData from the highlight object (stored in currentData)
+      var idx = parseInt(detailId.replace('detail-', ''));
+      var highlights = currentData ? currentData.screenerHighlights : [];
+      var tokenData = highlights[idx] || null;
+      if (!tokenData) {
+        el.innerHTML = '<div class="ai-error"><div class="ai-error-text">Token data not available. Try rescanning.</div></div>';
+        return;
+      }
+
+      // Show loading
+      el.innerHTML = '<div class="ai-loading">' +
+        '<div class="ai-loading-spinner"></div>' +
+        '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+        '</div>';
+
+      // Call API
+      fetch('/api/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: config.provider,
+          apiKey: config.apiKey,
+          model: config.model,
+          tokenData: tokenData
+        })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showAiError(detailId, data.error);
+        } else {
+          showAiResult(detailId, data.analysis, config);
+        }
+      })
+      .catch(function(err) {
+        showAiError(detailId, err.message || 'Network error');
+      });
+    }
+
+    function showAiResult(detailId, analysis, config) {
+      var el = document.getElementById('ai-' + detailId);
+      if (!el) return;
+
+      var paragraphs = analysis.split('\\n').filter(function(p) { return p.trim(); });
+      var html = '<div class="ai-result">';
+      html += '<div class="ai-result-header">';
+      html += '<span class="ai-result-icon">\\uD83E\\uDD16</span>';
+      html += '<span class="ai-result-provider">' + escapeHtml(config.provider + ' / ' + config.model) + '</span>';
+      html += '<button class="ai-btn-reanalyze" style="margin-left:auto" onclick="showAiSetup(\\'' + detailId + '\\')">Settings</button>';
+      html += '</div>';
+      for (var i = 0; i < paragraphs.length; i++) {
+        html += '<p class="ai-result-text">' + escapeHtml(paragraphs[i]) + '</p>';
+      }
+      html += '<div style="margin-top:8px">';
+      html += '<button class="ai-btn-reanalyze" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">Re-analyze</button>';
+      html += '</div>';
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    function showAiError(detailId, message) {
+      var el = document.getElementById('ai-' + detailId);
+      if (!el) return;
+
+      el.innerHTML = '<div class="ai-error">' +
+        '<div class="ai-error-text">' + escapeHtml(message) + '</div>' +
+        '<div class="ai-error-actions">' +
+          '<button class="ai-btn-reanalyze" onclick="showAiSetup(\\'' + detailId + '\\')">Change Settings</button>' +
+          '<button class="ai-btn-reanalyze" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">Retry</button>' +
+        '</div>' +
+      '</div>';
     }
 
     function renderFlowIntelligence(fi) {
