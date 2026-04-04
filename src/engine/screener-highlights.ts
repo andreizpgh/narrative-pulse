@@ -143,9 +143,8 @@ export function extractScreenerHighlights(
     // Skip structural noise — huge volume, zero trading signal
     if (isStructuralNoise(entry.token_symbol)) continue;
 
-    // Skip near-zero price movement (likely stablecoins not caught by name)
+    // Price change for classification (not filtered — structural noise filter handles stablecoins)
     const priceChangePct = (entry.price_change ?? 0) * 100;
-    if (Math.abs(priceChangePct) < 0.5) continue;
 
     // Cross-reference with netflow data
     const normAddr = normalizeAddress(entry.token_address);
