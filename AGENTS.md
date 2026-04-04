@@ -6,7 +6,7 @@
 
 **Contest**: Nansen CLI Build Challenge, Week 3. **Deadline**: April 5, 2026. **Goal**: 1st place.
 
-> **Full context**: See `CONTEXT.md` for complete project history, known issues, and next steps.
+> **Full context**: See `docs/CONTEXT.md` for complete project history, known issues, and next steps.
 
 ## 2. Architecture (V2 — 26 source files)
 
