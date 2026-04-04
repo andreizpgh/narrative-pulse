@@ -354,6 +354,40 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   // Step 8: Extract screener highlights (HERO section — always rich data)
   const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries);
 
+  // Step 7.5: Cross-reference screener highlights with enriched data
+  // EnrichedTokenData has tokenSectors, fdv, liquidity from netflow + DexScreener merge
+  const enrichedByAddress = new Map<string, EnrichedTokenData>();
+  const enrichedBySymbolChain = new Map<string, EnrichedTokenData>();
+  for (const et of enrichedTokens) {
+    const normAddr = normalizeAddress(et.token_address);
+    if (!enrichedByAddress.has(normAddr)) {
+      enrichedByAddress.set(normAddr, et);
+    }
+    const symKey = `${et.token_symbol.toLowerCase()}:${et.chain}`;
+    if (!enrichedBySymbolChain.has(symKey)) {
+      enrichedBySymbolChain.set(symKey, et);
+    }
+  }
+
+  for (const h of screenerHighlights) {
+    // Skip if already enriched by netflow cross-reference
+    if (h.tokenSectors && h.tokenSectors.length > 0) continue;
+
+    const normAddr = normalizeAddress(h.token_address);
+    const symKey = `${h.token_symbol.toLowerCase()}:${h.chain}`;
+    const match = enrichedByAddress.get(normAddr) ?? enrichedBySymbolChain.get(symKey);
+
+    if (match) {
+      if (match.tokenSectors && match.tokenSectors.length > 0) {
+        h.tokenSectors = match.tokenSectors;
+        h.narrativeKey = match.tokenSectors[0];
+      }
+      if (match.netflow7dUsd) h.netflow7dUsd = match.netflow7dUsd;
+      if (match.liquidity) h.liquidity = match.liquidity;
+      if (match.fdv) h.fdv = match.fdv;
+    }
+  }
+
   // Step 8.5: Fetch flow intelligence for top highlights
   const flowData = await stepFlowIntelligence(screenerHighlights);
   // Merge flow intelligence into highlights

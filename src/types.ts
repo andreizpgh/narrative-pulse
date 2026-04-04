@@ -170,6 +170,9 @@ export interface ScreenerHighlight {
   traderCount?: number;          // SM trader count from netflow
   // Flow Intelligence (optional — top-5 tokens only)
   flowIntelligence?: FlowIntelligence;
+  // DexScreener enrichment (cross-referenced from EnrichedTokenData)
+  fdv?: number;
+  liquidity?: number;
 }
 
 // ============================================================

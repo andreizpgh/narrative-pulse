@@ -1318,8 +1318,8 @@ export function renderDashboardHtml(): string {
       html += '<div class="detail-grid" style="margin-bottom:10px">';
       html += '<div><div class="detail-item-label">Price</div><div class="detail-item-value">' + (t.priceUsd ? ('$' + t.priceUsd.toFixed(t.priceUsd < 1 ? 6 : t.priceUsd < 100 ? 4 : 2)) : '\\u2014') + '</div></div>';
       html += '<div><div class="detail-item-label">Market Cap</div><div class="detail-item-value">' + formatMcap(t.marketCapUsd) + '</div></div>';
-      html += '<div><div class="detail-item-label">FDV</div><div class="detail-item-value">' + '\\u2014' + '</div></div>';
-      html += '<div><div class="detail-item-label">Liquidity</div><div class="detail-item-value">' + '\\u2014' + '</div></div>';
+      html += '<div><div class="detail-item-label">FDV</div><div class="detail-item-value">' + (t.fdv ? formatMcap(t.fdv) : '\\u2014') + '</div></div>';
+      html += '<div><div class="detail-item-label">Liquidity</div><div class="detail-item-value">' + (t.liquidity ? formatUsdAbs(t.liquidity) : '\\u2014') + '</div></div>';
       html += '<div><div class="detail-item-label">Volume 24h</div><div class="detail-item-value">' + formatVolume(t.volume) + '</div></div>';
       html += '</div>';
 

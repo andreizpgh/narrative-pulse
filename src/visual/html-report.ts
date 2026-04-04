@@ -86,6 +86,30 @@ interface HtmlReportScreenerHighlight {
   nofSellers: number;
   volume: number;
   classification: string;
+  // Enriched fields from netflow cross-reference
+  tokenSectors?: string[];
+  narrativeKey?: string;
+  netflow7dUsd?: number;
+  netflow30dUsd?: number;
+  traderCount?: number;
+  // Flow Intelligence
+  flowIntelligence?: {
+    smart_trader_net_flow_usd: number;
+    smart_trader_wallet_count: number;
+    public_figure_net_flow_usd: number;
+    public_figure_wallet_count: number;
+    whale_net_flow_usd: number;
+    whale_wallet_count: number;
+    top_pnl_net_flow_usd: number;
+    top_pnl_wallet_count: number;
+    exchange_net_flow_usd: number;
+    exchange_wallet_count: number;
+    fresh_wallets_net_flow_usd: number;
+    fresh_wallets_wallet_count: number;
+  };
+  // DexScreener enrichment
+  fdv?: number;
+  liquidity?: number;
 }
 
 interface HtmlReportData {
@@ -183,6 +207,15 @@ function toHtmlScreenerHighlight(h: ScreenerHighlight): HtmlReportScreenerHighli
     nofSellers: h.nofSellers,
     volume: h.volume,
     classification: h.classification,
+    // Enriched fields
+    tokenSectors: h.tokenSectors,
+    narrativeKey: h.narrativeKey,
+    netflow7dUsd: h.netflow7dUsd,
+    netflow30dUsd: h.netflow30dUsd,
+    traderCount: h.traderCount,
+    flowIntelligence: h.flowIntelligence,
+    fdv: h.fdv,
+    liquidity: h.liquidity,
   };
 }
 
