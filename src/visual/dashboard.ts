@@ -791,7 +791,7 @@ export function renderDashboardHtml(): string {
 
     <!-- Footer -->
     <div class="footer">
-      Powered by Nansen API (4 endpoints) + DexScreener &middot; ~220 credits/scan
+      Powered by Nansen API (4 endpoints) + DexScreener &middot; ~300 credits/scan
     </div>
   </div>
 
@@ -1621,7 +1621,7 @@ export function renderDashboardHtml(): string {
         html += '<td><strong>' + escapeHtml(n.displayName) + '</strong></td>';
         html += '<td class="mono ' + nf24Cls + '">' + formatUsd(n.totalNetflow24h) + '</td>';
         html += '<td class="mono ' + nf7dCls + '">' + (n.totalNetflow7d ? formatUsd(n.totalNetflow7d) : '\\u2014') + '</td>';
-        html += '<td class="mono">' + n.topTokens.length + ' <span style="color:var(--text-muted);font-size:0.75rem">(' + n.tokenCount + ')</span></td>';
+        html += '<td class="mono">' + n.tokenCount + '</td>';
         html += '<td><span class="dot-indicator ' + dotCls + '"></span> <span style="font-size:0.78rem;color:var(--text-secondary)">' + topTokenSymbol + '</span></td>';
         html += '</tr>';
       }
