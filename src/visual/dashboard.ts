@@ -531,6 +531,20 @@ export function renderDashboardHtml(): string {
       color: #38bdf8;
     }
 
+    .diverge-sub {
+      display: inline-block;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      margin-left: 4px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     /* ── Narrative Pill ─────────────────────────── */
 
     .narrative-pill {
@@ -1253,44 +1267,54 @@ export function renderDashboardHtml(): string {
     // ── Signal Overview ────────────────────────────────────
 
     function renderSignalOverview(highlights) {
-      var counts = { heavy_accumulation: 0, accumulating: 0, diverging: 0, pumping: 0 };
+      var counts = { hot: 0, accumulating: 0, diverging: 0, pumping: 0, selling: 0 };
       if (highlights && highlights.length > 0) {
         for (var i = 0; i < highlights.length; i++) {
           var c = highlights[i].classification;
-          if (c === 'heavy_accumulation') counts.heavy_accumulation++;
+          if (c === 'heavy_accumulation') counts.hot++;
+          else if (c === 'diverging') { counts.accumulating++; counts.diverging++; }
           else if (c === 'accumulating') counts.accumulating++;
-          else if (c === 'diverging') counts.diverging++;
           else if (c === 'pumping') counts.pumping++;
+          else counts.selling++; // mixed + distributing
         }
       }
 
       var total = highlights ? highlights.length : 0;
       var html = '';
       html += '<div class="signal-overview">';
+
+      // HOT card
       html += '<div class="signal-card">';
       html += '<div class="signal-card-icon">\\uD83D\\uDD25</div>';
-      html += '<div class="signal-card-value">' + counts.heavy_accumulation + '</div>';
+      html += '<div class="signal-card-value">' + counts.hot + '</div>';
       html += '<div class="signal-card-label">HOT</div>';
-      html += '<div class="signal-card-hint">Strong SM flow, rising price</div>';
+      html += '<div class="signal-card-hint">Strong SM buying, price rising</div>';
       html += '</div>';
+
+      // ACCUMULATING card (includes diverging)
       html += '<div class="signal-card">';
       html += '<div class="signal-card-icon">\\uD83D\\uDC40</div>';
       html += '<div class="signal-card-value">' + counts.accumulating + '</div>';
-      html += '<div class="signal-card-label">WATCH</div>';
-      html += '<div class="signal-card-hint">SM accumulating, price flat</div>';
+      html += '<div class="signal-card-label">ACCUMULATING</div>';
+      html += '<div class="signal-card-hint">' + (counts.diverging > 0 ? counts.diverging + ' with divergence signal' : 'SM buying, price stable') + '</div>';
       html += '</div>';
-      html += '<div class="signal-card">';
-      html += '<div class="signal-card-icon">\\uD83D\\uDCCA</div>';
-      html += '<div class="signal-card-value">' + counts.diverging + '</div>';
-      html += '<div class="signal-card-label">DIVERGE</div>';
-      html += '<div class="signal-card-hint">SM in, price hasn\\'t moved</div>';
-      html += '</div>';
+
+      // PUMPING card
       html += '<div class="signal-card">';
       html += '<div class="signal-card-icon">\\uD83D\\uDE80</div>';
       html += '<div class="signal-card-value">' + counts.pumping + '</div>';
       html += '<div class="signal-card-label">PUMPING</div>';
-      html += '<div class="signal-card-hint">Price surged >30%</div>';
+      html += '<div class="signal-card-hint">Price surged &gt;30%</div>';
       html += '</div>';
+
+      // SELLING card
+      html += '<div class="signal-card">';
+      html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
+      html += '<div class="signal-card-value">' + counts.selling + '</div>';
+      html += '<div class="signal-card-label">SELLING</div>';
+      html += '<div class="signal-card-hint">SM outflow or low conviction</div>';
+      html += '</div>';
+
       html += '</div>';
       html += '<div class="signal-explanation">\\u24D8 From 500+ tokens across 5 chains. Top ' + total + ' by composite score: buy/sell ratio, netflow, and SM trader activity.</div>';
       return html;
@@ -1415,7 +1439,11 @@ export function renderDashboardHtml(): string {
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-      html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span></td>';
+      html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span>';
+      if (t.classification === 'diverging') {
+        html += ' <span class="diverge-sub" title="Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence">DIVERGE</span>';
+      }
+      html += '</td>';
       html += '</tr>';
 
       // Expanded detail row
@@ -1726,21 +1754,25 @@ export function renderDashboardHtml(): string {
         chainSelect.innerHTML += '<option value="' + escapeHtml(ck) + '">' + (chainLabels[ck] || ck) + '</option>';
       }
 
-      // Populate signal options
-      var signalLabels = {
-        pumping: '\\uD83D\\uDE80 Pumping',
-        heavy_accumulation: '\\uD83D\\uDD25 Hot',
-        accumulating: '\\uD83D\\uDC40 Watch',
-        diverging: '\\uD83D\\uDCCA Diverging',
-        mixed: '\\u25D0 Mixed',
-        distributing: '\\u26A0\\uFE0F Distributing'
-      };
-      var signalOrder = ['pumping', 'heavy_accumulation', 'accumulating', 'diverging', 'mixed', 'distributing'];
-      signalSelect.innerHTML = '<option value="">All Signals</option>';
-      for (var s = 0; s < signalOrder.length; s++) {
-        var sk = signalOrder[s];
-        if (signals[sk]) {
-          signalSelect.innerHTML += '<option value="' + escapeHtml(sk) + '">' + (signalLabels[sk] || sk) + '</option>';
+      // Populate signal options — grouped into 4 display categories
+      var signalOptions = [
+        { value: '', label: 'All Signals' },
+        { value: 'heavy_accumulation', label: '\\uD83D\\uDD25 Hot' },
+        { value: 'accumulating', label: '\\uD83D\\uDC40 Accumulating' },
+        { value: 'diverging', label: '\\uD83D\\uDCCA Diverging' },
+        { value: 'pumping', label: '\\uD83D\\uDE80 Pumping' },
+        { value: 'mixed', label: '\\u25D0 Mixed' },
+        { value: 'distributing', label: '\\u26A0\\uFE0F Selling' },
+      ];
+      signalSelect.innerHTML = '';
+      var activeSignals = {};
+      for (var s = 0; s < highlights.length; s++) {
+        if (highlights[s].classification) activeSignals[highlights[s].classification] = true;
+      }
+      for (var s = 0; s < signalOptions.length; s++) {
+        var opt = signalOptions[s];
+        if (!opt.value || activeSignals[opt.value]) {
+          signalSelect.innerHTML += '<option value="' + escapeHtml(opt.value) + '">' + opt.label + '</option>';
         }
       }
 
