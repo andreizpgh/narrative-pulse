@@ -979,7 +979,7 @@ export function renderDashboardHtml(): string {
 
     <!-- Footer -->
     <div class="footer">
-      Powered by Nansen API (4 endpoints) + DexScreener &middot; ~300 credits/scan
+      Powered by Nansen API (5 endpoints) + DexScreener &middot; ~300 credits/scan
     </div>
   </div>
 
@@ -1011,7 +1011,7 @@ export function renderDashboardHtml(): string {
     }
 
     function formatMcap(value) {
-      if (value <= 0) return '\\u2014';
+      if (!value || value <= 0) return '\\u2014';
       if (value >= 1e9) return '$' + (value / 1e9).toFixed(1) + 'B';
       if (value >= 1e6) return '$' + (value / 1e6).toFixed(1) + 'M';
       if (value >= 1e3) return '$' + (value / 1e3).toFixed(1) + 'K';
@@ -1019,7 +1019,7 @@ export function renderDashboardHtml(): string {
     }
 
     function formatPercent(value) {
-      if (value === 0) return '\\u2014';
+      if (!value || value === 0) return '\\u2014';
       var sign = value >= 0 ? '+' : '-';
       return sign + Math.abs(value).toFixed(1) + '%';
     }
@@ -1036,7 +1036,7 @@ export function renderDashboardHtml(): string {
     }
 
     function stripEmoji(str) {
-      return str.replace(/[\\u{1F600}-\\u{1F64F}\\u{1F300}-\\u{1F5FF}\\u{1F680}-\\u{1F6FF}\\u{1F1E0}-\\u{1F1FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}\\u{FE00}-\\u{FE0F}\\u{1F900}-\\u{1F9FF}\\u{1FA00}-\\u{1FA6F}\\u{1FA70}-\\u{1FAFF}\\u{200D}\\u{20E3}\\u{E0020}-\\u{E007F}\\u2713\\u2717\\u2714\\u2716\\u2605\\u2606\\u25BA\\u25BC\\u25B2}]/gu, '').trim();
+      return str.replace(/[\\u{1F600}-\\u{1F64F}\\u{1F300}-\\u{1F5FF}\\u{1F680}-\\u{1F6FF}\\u{1F1E0}-\\u{1F1FF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}\\u{FE00}-\\u{FE0F}\\u{1F900}-\\u{1F9FF}\\u{1FA00}-\\u{1FA6F}\\u{1FA70}-\\u{1FAFF}\\u{200D}\\u{20E3}\\u{E0020}-\\u{E007F}\\u2713\\u2717\\u2714\\u2716\\u2605\\u2606\\u25BA\\u25BC\\u25B2]/gu, '').trim();
     }
 
     function slugify(name) {
@@ -1322,7 +1322,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-overview">';
 
       // HOT card
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\'hot\')" style="cursor:pointer">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'hot\\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDD25</div>';
       html += '<div class="signal-card-value">' + counts.hot + '</div>';
       html += '<div class="signal-card-label">HOT</div>';
@@ -1330,7 +1330,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // ACCUMULATING card (includes diverging)
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\'accumulating\')" style="cursor:pointer">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'accumulating\\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDC40</div>';
       html += '<div class="signal-card-value">' + counts.accumulating + '</div>';
       html += '<div class="signal-card-label">ACCUMULATING</div>';
@@ -1338,7 +1338,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // PUMPING card
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\'pumping\')" style="cursor:pointer">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'pumping\\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDE80</div>';
       html += '<div class="signal-card-value">' + counts.pumping + '</div>';
       html += '<div class="signal-card-label">PUMPING</div>';
@@ -1346,7 +1346,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // SELLING card
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\'selling\')" style="cursor:pointer">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'selling\\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
       html += '<div class="signal-card-value">' + counts.selling + '</div>';
       html += '<div class="signal-card-label">SELLING</div>';
