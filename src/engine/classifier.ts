@@ -8,11 +8,12 @@ import type {
 } from "../types.js";
 import { normalizeAddress } from "../utils/normalize.js";
 
-/** Sort order for token categories: hot first, watch second, avoid last. */
+/** Sort order for token categories: pumping first, then hot, watch, avoid. */
 export const CATEGORY_ORDER: Record<TokenCategory, number> = {
-  hot: 0,
-  watch: 1,
-  avoid: 2,
+  pumping: 0,
+  hot: 1,
+  watch: 2,
+  avoid: 3,
 };
 
 /**
@@ -131,11 +132,16 @@ function determineCategory(
 ): TokenCategory | null {
   // Use enriched data when available, otherwise screener
   // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
-  const priceChange = enriched?.priceChange24h ?? (screener.price_change * 100);
+  const priceChange = enriched?.priceChange24h ?? ((screener.price_change ?? 0) * 100);
   const buyVolume = enriched?.buys24h ?? screener.buy_volume;
   const sellVolume = enriched?.sells24h ?? screener.sell_volume;
 
-  // Hot: SM accumulates AND price already rising
+  // Pumping: price already surged >30%, don't call it "hot"
+  if (priceChange > 30) {
+    return "pumping";
+  }
+
+  // Hot: SM accumulates AND price rising (but not pumping)
   if (
     netflow.net_flow_24h_usd > thresholds.hot.minNetflowUsd &&
     priceChange > thresholds.hot.minPriceChange &&
@@ -170,6 +176,9 @@ function determineCategoryNetflowOnly(
 ): TokenCategory | null {
   // If we have enriched data, use it for better classification
   if (enriched) {
+    // Pumping check first
+    if (enriched.priceChange24h > 30) return "pumping";
+
     const buyVolume = enriched.buys24h;
     const sellVolume = Math.max(enriched.sells24h, 1);
 
