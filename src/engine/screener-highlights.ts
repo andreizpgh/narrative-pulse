@@ -130,9 +130,6 @@ export function extractScreenerHighlights(
     // Skip low-volume noise
     if (entry.volume < MIN_VOLUME_USD) continue;
 
-    // Skip entries with no trader activity
-    if ((entry.nof_buyers ?? 0) === 0 && (entry.nof_sellers ?? 0) === 0) continue;
-
     const buyVolume = entry.buy_volume ?? 0;
     const sellVolume = entry.sell_volume ?? 0;
     const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
