@@ -26,4 +26,7 @@ export const config: Config = {
     minBuySellRatio: 1.5,
     minVolumeUsd: 50_000,
   },
+  flowIntelligence: {
+    topN: 5,
+  },
 };

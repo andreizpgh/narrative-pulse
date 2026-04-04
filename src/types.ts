@@ -21,16 +21,22 @@ export interface TokenScreenerEntry {
   token_address: string;
   token_symbol: string;
   price_usd: number;
-  price_change: number;
-  market_cap_usd: number;
+  price_change: number | null; // CAN BE NULL (confirmed from API)
+  market_cap_usd: number | null; // CAN BE NULL
   volume: number;
   buy_volume: number;
   sell_volume: number;
   netflow: number;
   nof_traders: number;
-  nof_buyers: number;
-  nof_sellers: number;
-  liquidity: number;
+  // These fields do NOT exist in the API response — keeping for backward compat but they will be 0/undefined
+  nof_buyers?: number;
+  nof_sellers?: number;
+  liquidity: number | null; // CAN BE NULL
+  fdv?: number;
+  fdv_mc_ratio?: number;
+  inflow_fdv_ratio?: number;
+  outflow_fdv_ratio?: number;
+  token_age_days?: number;
 }
 
 export interface HoldingsEntry {
@@ -63,7 +69,7 @@ export interface NarrativeSummary {
   isHot: boolean; // Is the narrative hot overall?
 }
 
-export type TokenCategory = "hot" | "watch" | "avoid";
+export type TokenCategory = "hot" | "watch" | "avoid" | "pumping";
 
 export interface ClassifiedToken {
   token_symbol: string;
@@ -103,6 +109,7 @@ export interface ScanResult {
   screenerHighlights: ScreenerHighlight[];
   enrichedTokens: EnrichedTokenData[];
   holdingsCount: number; // number of unique tokens in SM holdings
+  flowIntelligenceCount: number; // number of tokens with flow intelligence data
   apiCallsUsed: number;
   creditsUsed: number;
 }
@@ -118,6 +125,28 @@ export interface NarrativeRotation {
 // Screener Highlight — Top Smart Money Active Tokens
 // ============================================================
 
+export interface FlowIntelligence {
+  token_address: string;
+  smart_trader_net_flow_usd: number;
+  smart_trader_avg_flow_usd: number;
+  smart_trader_wallet_count: number;
+  public_figure_net_flow_usd: number;
+  public_figure_avg_flow_usd: number;
+  public_figure_wallet_count: number;
+  whale_net_flow_usd: number;
+  whale_avg_flow_usd: number;
+  whale_wallet_count: number;
+  top_pnl_net_flow_usd: number;
+  top_pnl_avg_flow_usd: number;
+  top_pnl_wallet_count: number;
+  exchange_net_flow_usd: number;
+  exchange_avg_flow_usd: number;
+  exchange_wallet_count: number;
+  fresh_wallets_net_flow_usd: number;
+  fresh_wallets_avg_flow_usd: number;
+  fresh_wallets_wallet_count: number;
+}
+
 export interface ScreenerHighlight {
   token_symbol: string;
   token_address: string;
@@ -132,7 +161,15 @@ export interface ScreenerHighlight {
   nofBuyers: number;
   nofSellers: number;
   volume: number;
-  classification: "heavy_accumulation" | "accumulating" | "mixed" | "distributing" | "pumping";
+  classification: "heavy_accumulation" | "accumulating" | "mixed" | "distributing" | "pumping" | "diverging";
+  // From netflow cross-reference (optional — may not match)
+  tokenSectors?: string[];       // Full sector list from netflow (e.g. ["AI Agents", "Artificial Intelligence", "DeSci"])
+  narrativeKey?: string;         // Primary sector for grouping
+  netflow7dUsd?: number;         // 7-day netflow from netflow endpoint
+  netflow30dUsd?: number;        // 30-day netflow from netflow endpoint
+  traderCount?: number;          // SM trader count from netflow
+  // Flow Intelligence (optional — top-5 tokens only)
+  flowIntelligence?: FlowIntelligence;
 }
 
 // ============================================================
@@ -166,6 +203,9 @@ export interface Config {
     maxPriceChangePercent: number;
     minBuySellRatio: number;
     minVolumeUsd: number;
+  };
+  flowIntelligence: {
+    topN: number; // How many top tokens to get flow intelligence for
   };
 }
 
