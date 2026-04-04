@@ -56,50 +56,58 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 16px 24px;
+      padding: 14px 24px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
-      text-align: left;
     }
 
-    .header-top {
+    .header-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 4px;
     }
 
     .header-brand {
-      font-size: 1.4rem;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .header-title {
+      font-size: 1.1rem;
       font-weight: 800;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.02em;
       color: #ffffff;
     }
 
-    .header-brand-sub {
-      font-size: 0.82rem;
-      font-weight: 400;
-      color: var(--text-secondary);
-      margin-left: 12px;
+    .header-sep {
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
 
-    .header-date {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+    .header-tagline {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
     }
 
     .header-actions {
       display: flex;
-      justify-content: center;
       align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-top: 10px;
+      gap: 12px;
     }
 
-    .status-text {
-      font-size: 0.82rem;
+    .header-meta {
+      font-size: 0.75rem;
       color: var(--text-muted);
+    }
+
+    .header-credits {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-color);
     }
 
     .scan-indicator {
@@ -143,11 +151,6 @@ export function renderDashboardHtml(): string {
     .btn-scan:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-    }
-
-    .credits-text {
-      font-size: 0.75rem;
-      color: var(--text-muted);
     }
 
     /* ── Signal Overview ─────────────────────────── */
@@ -278,6 +281,28 @@ export function renderDashboardHtml(): string {
       color: var(--text-primary);
     }
 
+    .chain-legend {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0 10px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .chain-legend-label {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-right: 2px;
+    }
+
+    .chain-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
     /* ── Main Section Card ──────────────────────── */
 
     .main-section-card {
@@ -389,7 +414,7 @@ export function renderDashboardHtml(): string {
       font-size: 0.65rem;
     }
 
-    .expand-arrow.open { transform: rotate(90deg); }
+    .expand-arrow.open { transform: rotate(90deg); transform-origin: center center; }
 
     .expanded-detail {
       display: none;
@@ -920,27 +945,27 @@ export function renderDashboardHtml(): string {
   <div class="container">
     <!-- Header -->
     <header class="header" id="report-header">
-      <div class="header-top">
-        <div>
-          <span class="header-brand">NARRATIVE PULSE</span>
-          <span class="header-brand-sub">Smart Money Intelligence</span>
+      <div class="header-row">
+        <div class="header-brand">
+          <span class="header-title">NARRATIVE PULSE</span>
+          <span class="header-sep">&middot;</span>
+          <span class="header-tagline">Smart Money Intelligence</span>
         </div>
-        <div class="header-date" id="header-date"></div>
-      </div>
-      <div class="header-actions">
-        <span class="status-text" id="last-updated">Loading...</span>
-        <span class="scan-indicator" id="scan-indicator" style="display:none">
-          <span class="dot"></span> Scanning...
-        </span>
-        <button class="btn-scan" id="btn-scan" onclick="triggerScan()">Rescan</button>
-        <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.78rem;padding:4px 24px 4px 8px">
-          <option value="0">Manual</option>
-          <option value="300000">5 min</option>
-          <option value="600000">10 min</option>
-          <option value="900000" selected>15 min</option>
-          <option value="1800000">30 min</option>
-        </select>
-        <span class="credits-text" id="credits-text"></span>
+        <div class="header-actions">
+          <span class="header-meta" id="header-ago">Updated — ago</span>
+          <span class="scan-indicator" id="scan-indicator" style="display:none">
+            <span class="dot"></span> Scanning...
+          </span>
+          <button class="btn-scan" id="btn-scan" onclick="triggerScan()">Rescan</button>
+          <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.75rem;padding:4px 24px 4px 8px">
+            <option value="0">Manual</option>
+            <option value="300000">5 min</option>
+            <option value="600000">10 min</option>
+            <option value="900000" selected>15 min</option>
+            <option value="1800000">30 min</option>
+          </select>
+          <span class="header-credits" id="header-credits">300 credits</span>
+        </div>
       </div>
     </header>
 
@@ -1028,11 +1053,20 @@ export function renderDashboardHtml(): string {
       return mins + ' min ago';
     }
 
+    function hasNonZeroFlow(fi) {
+      return (fi.smart_trader_net_flow_usd !== 0) ||
+             (fi.public_figure_net_flow_usd !== 0) ||
+             (fi.whale_net_flow_usd !== 0) ||
+             (fi.top_pnl_net_flow_usd !== 0) ||
+             (fi.exchange_net_flow_usd !== 0) ||
+             (fi.fresh_wallets_net_flow_usd !== 0);
+    }
+
     function updateAgoText() {
-      var el = document.getElementById('last-updated');
+      var el = document.getElementById('header-ago');
       if (!el) return;
       if (!lastScanTime) {
-        el.textContent = 'No data yet';
+        el.textContent = 'Updated — ago';
         return;
       }
       el.textContent = 'Updated ' + minutesAgo(lastScanTime);
@@ -1233,16 +1267,20 @@ export function renderDashboardHtml(): string {
     // ── Header Rendering ───────────────────────────────────
 
     function renderHeader(data) {
-      // Date
-      var dateStr = data.timestamp
-        ? new Date(data.timestamp).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
-        : 'N/A';
-      document.getElementById('header-date').textContent = dateStr;
+      // "Updated X min ago"
+      var agoEl = document.getElementById('header-ago');
+      if (agoEl) {
+        if (data.timestamp) {
+          agoEl.textContent = 'Updated ' + minutesAgo(data.timestamp);
+        } else {
+          agoEl.textContent = 'Updated — ago';
+        }
+      }
 
       // Credits
-      var creditsEl = document.getElementById('credits-text');
+      var creditsEl = document.getElementById('header-credits');
       if (creditsEl && data.creditsUsed) {
-        creditsEl.textContent = data.creditsUsed + ' credits used';
+        creditsEl.textContent = data.creditsUsed + ' credits';
       }
     }
 
@@ -1284,7 +1322,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-overview">';
 
       // HOT card
-      html += '<div class="signal-card">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\'hot\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDD25</div>';
       html += '<div class="signal-card-value">' + counts.hot + '</div>';
       html += '<div class="signal-card-label">HOT</div>';
@@ -1292,7 +1330,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // ACCUMULATING card (includes diverging)
-      html += '<div class="signal-card">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\'accumulating\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDC40</div>';
       html += '<div class="signal-card-value">' + counts.accumulating + '</div>';
       html += '<div class="signal-card-label">ACCUMULATING</div>';
@@ -1300,7 +1338,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // PUMPING card
-      html += '<div class="signal-card">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\'pumping\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDE80</div>';
       html += '<div class="signal-card-value">' + counts.pumping + '</div>';
       html += '<div class="signal-card-label">PUMPING</div>';
@@ -1308,7 +1346,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // SELLING card
-      html += '<div class="signal-card">';
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\'selling\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
       html += '<div class="signal-card-value">' + counts.selling + '</div>';
       html += '<div class="signal-card-label">SELLING</div>';
@@ -1348,6 +1386,16 @@ export function renderDashboardHtml(): string {
       html += '<span class="filter-narrative-active" id="clear-narrative-filter">Narrative: <strong id="narrative-filter-name"></strong> <a onclick="clearNarrativeFilter()">\\u2715 Clear</a></span>';
       html += '</div>';
       html += '<div class="filter-count" id="visible-count"></div>';
+      html += '</div>';
+
+      // Chain legend
+      html += '<div class="chain-legend">';
+      html += '<span class="chain-legend-label">Chains:</span>';
+      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#627eea;margin-right:3px"></span>ETH</span>';
+      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#9c6ade;margin-right:3px"></span>SOL</span>';
+      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#00aaff;margin-right:3px"></span>BASE</span>';
+      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f3ba2f;margin-right:3px"></span>BNB</span>';
+      html += '<span class="chain-legend-item"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#28a0f0;margin-right:3px"></span>ARB</span>';
       html += '</div>';
 
       html += '<table class="token-table" id="' + tableId + '">';
@@ -1513,7 +1561,7 @@ export function renderDashboardHtml(): string {
       html += '</div>';
 
       // Flow Intelligence (optional)
-      if (t.flowIntelligence) {
+      if (t.flowIntelligence && hasNonZeroFlow(t.flowIntelligence)) {
         html += renderFlowIntelligence(t.flowIntelligence);
       }
 
@@ -1569,10 +1617,11 @@ export function renderDashboardHtml(): string {
         '<div class="ai-setup-desc">Connect your LLM provider to analyze tokens with AI. Your API key is stored locally in this browser only.</div>' +
         '<div class="ai-setup-grid">' +
           '<div class="ai-field"><label>Provider</label>' +
-            '<select id="ai-provider" class="filter-select" style="width:100%">' +
+            '<select id="ai-provider" class="filter-select" style="width:100%" onchange="toggleCustomUrl()">' +
               '<option value="openai"' + (existingConfig.provider === 'openai' ? ' selected' : '') + '>OpenAI</option>' +
               '<option value="anthropic"' + (existingConfig.provider === 'anthropic' ? ' selected' : '') + '>Anthropic</option>' +
               '<option value="openrouter"' + (existingConfig.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option>' +
+              '<option value="custom"' + (existingConfig.provider === 'custom' ? ' selected' : '') + '>Custom (OpenAI Compatible)</option>' +
             '</select>' +
           '</div>' +
           '<div class="ai-field"><label>API Key</label>' +
@@ -1581,6 +1630,9 @@ export function renderDashboardHtml(): string {
           '<div class="ai-field"><label>Model</label>' +
             '<input type="text" id="ai-model" class="ai-input" placeholder="gpt-4o-mini" value="' + escapeHtml(existingConfig.model || '') + '">' +
           '</div>' +
+        '</div>' +
+        '<div class="ai-field" id="ai-base-url-field" style="display:' + (existingConfig.provider === 'custom' ? 'grid' : 'none') + ';margin-bottom:12px"><label>Base URL</label>' +
+          '<input type="text" id="ai-base-url" class="ai-input" placeholder="https://api.example.com/v1" value="' + escapeHtml(existingConfig.baseUrl || '') + '">' +
         '</div>' +
         '<div class="ai-setup-actions">' +
           '<button class="ai-btn-save" onclick="saveAiAndAnalyze(\\'' + detailId + '\\')">Save & Analyze</button>' +
@@ -1602,13 +1654,22 @@ export function renderDashboardHtml(): string {
         return;
       }
       if (!modelVal) {
-        var defaults = { openai: 'gpt-4o-mini', anthropic: 'claude-sonnet-4-20250514', openrouter: 'anthropic/claude-sonnet-4' };
+        var defaults = { openai: 'gpt-4o-mini', anthropic: 'claude-sonnet-4-20250514', openrouter: 'anthropic/claude-sonnet-4', custom: 'gpt-4o-mini' };
         modelVal = defaults[provider.value] || 'gpt-4o-mini';
       }
 
-      var config = { provider: provider.value, apiKey: apiKey, model: modelVal };
+      var baseUrlEl = document.getElementById('ai-base-url');
+      var baseUrl = baseUrlEl ? baseUrlEl.value.trim() : '';
+      var config = { provider: provider.value, apiKey: apiKey, model: modelVal, baseUrl: baseUrl };
       saveAiConfig(config);
       runAiAnalysis(detailId, config);
+    }
+
+    function toggleCustomUrl() {
+      var provider = document.getElementById('ai-provider');
+      var field = document.getElementById('ai-base-url-field');
+      if (!provider || !field) return;
+      field.style.display = provider.value === 'custom' ? 'grid' : 'none';
     }
 
     function runAiAnalysis(detailId, config) {
@@ -1638,6 +1699,7 @@ export function renderDashboardHtml(): string {
           provider: config.provider,
           apiKey: config.apiKey,
           model: config.model,
+          baseUrl: config.baseUrl || undefined,
           tokenData: tokenData
         })
       })
@@ -1846,6 +1908,34 @@ export function renderDashboardHtml(): string {
       applyFilters();
       var clearBtn = document.getElementById('clear-narrative-filter');
       if (clearBtn) clearBtn.style.display = 'none';
+    }
+
+    function filterBySignalGroup(group) {
+      var signalSelect = document.getElementById('filter-signal');
+      if (!signalSelect) return;
+
+      if (group === 'all') {
+        signalSelect.value = '';
+      } else if (group === 'hot') {
+        signalSelect.value = 'heavy_accumulation';
+      } else if (group === 'accumulating') {
+        signalSelect.value = 'accumulating';
+      } else if (group === 'pumping') {
+        signalSelect.value = 'pumping';
+      } else if (group === 'selling') {
+        signalSelect.value = 'mixed';
+      }
+
+      // Clear narrative filter
+      narrativeFilter = null;
+      var clearBtn = document.getElementById('clear-narrative-filter');
+      if (clearBtn) clearBtn.style.display = 'none';
+
+      applyFilters();
+
+      // Scroll to table
+      var tableSection = document.getElementById('main-table');
+      if (tableSection) tableSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ── Sankey Chart ───────────────────────────────────────
