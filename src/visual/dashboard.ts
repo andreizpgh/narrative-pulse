@@ -1554,9 +1554,9 @@ export function renderDashboardHtml(): string {
     function renderNarrativeFlows(narratives) {
       if (!narratives || narratives.length === 0) return '';
 
-      // Filter: only show narratives with tokenCount >= 2 and some classified tokens
+      // Filter: show all narratives with 2+ tokens (classifier is strict, may not produce topTokens)
       var filtered = narratives.filter(function(n) {
-        return n.tokenCount >= 2 && n.topTokens && n.topTokens.length > 0;
+        return n.tokenCount >= 2;
       });
 
       if (filtered.length === 0) return '';
