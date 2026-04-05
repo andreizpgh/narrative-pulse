@@ -449,6 +449,21 @@ export function renderDashboardHtml(): string {
       font-size: 0.82rem;
     }
 
+    .expanded-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 24px;
+      align-items: start;
+    }
+
+    .expanded-right {
+      min-height: 100%;
+    }
+
+    .expanded-footer {
+      margin-top: 10px;
+    }
+
     .detail-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -805,24 +820,47 @@ export function renderDashboardHtml(): string {
       background: rgba(129, 140, 248, 0.3);
     }
 
-    /* AI Loading */
+    /* AI Loading — Skeleton Pulse */
 
     .ai-loading {
+      padding: 12px;
+    }
+
+    .ai-loading-header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px;
-      font-size: 0.82rem;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .ai-loading-icon { font-size: 1rem; }
+
+    .ai-loading-text {
+      font-size: 0.78rem;
       color: var(--text-secondary);
     }
 
-    .ai-loading-spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border-color);
-      border-top-color: rgba(129, 140, 248, 0.8);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .ai-skeleton {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ai-skeleton-bar {
+      height: 10px;
+      border-radius: 4px;
+      background: linear-gradient(90deg,
+        rgba(129, 140, 248, 0.08) 0%,
+        rgba(129, 140, 248, 0.2) 50%,
+        rgba(129, 140, 248, 0.08) 100%);
+      background-size: 200% 100%;
+      animation: skeletonPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes skeletonPulse {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
 
     /* AI Result */
@@ -964,6 +1002,7 @@ export function renderDashboardHtml(): string {
       .filter-bar { flex-direction: column; align-items: flex-start; }
       .flow-intel-row { flex-wrap: wrap; gap: 4px; }
       .flow-intel-label { flex: 0 0 auto; }
+      .expanded-layout { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1536,6 +1575,9 @@ export function renderDashboardHtml(): string {
     function renderExpandedDetail(t, detailId) {
       var html = '';
 
+      html += '<div class="expanded-layout">';
+      html += '<div class="expanded-left">';
+
       // Row 1: Price, MCap, FDV, Liq, Vol 24h (only show if present)
       var items = [];
 
@@ -1596,7 +1638,10 @@ export function renderDashboardHtml(): string {
         html += renderFlowIntelligence(t.flowIntelligence);
       }
 
-      // AI Analysis placeholder
+      html += '</div>'; // end expanded-left
+
+      // Right column: AI Analysis
+      html += '<div class="expanded-right">';
       html += '<div class="ai-analysis-section" id="ai-' + detailId + '">';
       html += '<div class="ai-analysis-blur" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">';
       html += '<div class="ai-analysis-content">';
@@ -1604,9 +1649,14 @@ export function renderDashboardHtml(): string {
       html += '<span class="ai-analysis-text">AI Analysis</span>';
       html += '<span class="ai-analysis-hint">Click to analyze with AI</span>';
       html += '</div></div></div>';
+      html += '</div>'; // end expanded-right
 
-      // DexScreener link
+      html += '</div>'; // end expanded-layout
+
+      // Footer: DexScreener link
+      html += '<div class="expanded-footer">';
       html += '<a class="detail-link" href="' + dexScreenerUrl(t.chain, t.token_address) + '" target="_blank" rel="noopener">View on DexScreener \\u2197</a>';
+      html += '</div>';
 
       return html;
     }
@@ -1722,14 +1772,28 @@ export function renderDashboardHtml(): string {
         currentContent.classList.add('ai-fade-out');
         setTimeout(function() {
           el.innerHTML = '<div class="ai-loading ai-fade-in">' +
-            '<div class="ai-loading-spinner"></div>' +
-            '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+            '<div class="ai-loading-header">' +
+            '<span class="ai-loading-icon">\\uD83E\\uDD16</span>' +
+            '<span class="ai-loading-text">Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+            '</div>' +
+            '<div class="ai-skeleton">' +
+            '<div class="ai-skeleton-bar" style="width:90%"></div>' +
+            '<div class="ai-skeleton-bar" style="width:75%"></div>' +
+            '<div class="ai-skeleton-bar" style="width:60%"></div>' +
+            '</div>' +
             '</div>';
         }, 250);
       } else {
         el.innerHTML = '<div class="ai-loading ai-fade-in">' +
-          '<div class="ai-loading-spinner"></div>' +
-          '<span>Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+          '<div class="ai-loading-header">' +
+          '<span class="ai-loading-icon">\\uD83E\\uDD16</span>' +
+          '<span class="ai-loading-text">Analyzing with ' + escapeHtml(config.provider) + '...</span>' +
+          '</div>' +
+          '<div class="ai-skeleton">' +
+          '<div class="ai-skeleton-bar" style="width:90%"></div>' +
+          '<div class="ai-skeleton-bar" style="width:75%"></div>' +
+          '<div class="ai-skeleton-bar" style="width:60%"></div>' +
+          '</div>' +
           '</div>';
       }
 
@@ -1759,39 +1823,77 @@ export function renderDashboardHtml(): string {
     }
 
     function renderMarkdown(text) {
-      // First escape HTML for safety
+      // Escape HTML
       var html = escapeHtml(text);
-      // Bold: **text** → <strong>text</strong>
-      html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
-      // Italic: *text* → <em>text</em>  (single asterisk, not double)
-      html = html.replace(/(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)/g, '<em>$1</em>');
-      return html;
+
+      // Process line by line
+      var lines = html.split('\\n');
+      var result = [];
+      var inUl = false;
+      var inOl = false;
+
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) continue;
+
+        // Headers: ### or ## or #
+        if (line.match(/^#{1,3}\\s/)) {
+          if (inUl) { result.push('</ul>'); inUl = false; }
+          if (inOl) { result.push('</ol>'); inOl = false; }
+          var headerText = line.replace(/^#{1,3}\\s/, '');
+          result.push('<div style="font-weight:700;font-size:0.85rem;margin:6px 0 3px">' + headerText + '</div>');
+          continue;
+        }
+
+        // Bullet list: - item or • item
+        if (line.match(/^[-•]\\s/)) {
+          if (inOl) { result.push('</ol>'); inOl = false; }
+          if (!inUl) { result.push('<ul style="margin:4px 0;padding-left:18px">'); inUl = true; }
+          var itemText = line.replace(/^[-•]\\s/, '');
+          itemText = itemText.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+          itemText = itemText.replace(/(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)/g, '<em>$1</em>');
+          result.push('<li style="margin-bottom:2px;font-size:0.8rem;line-height:1.5">' + itemText + '</li>');
+          continue;
+        }
+
+        // Numbered list: 1. item
+        if (line.match(/^\\d+\\.\\s/)) {
+          if (inUl) { result.push('</ul>'); inUl = false; }
+          if (!inOl) { result.push('<ol style="margin:4px 0;padding-left:18px">'); inOl = true; }
+          var olItem = line.replace(/^\\d+\\.\\s/, '');
+          olItem = olItem.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+          olItem = olItem.replace(/(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)/g, '<em>$1</em>');
+          result.push('<li style="margin-bottom:2px;font-size:0.8rem;line-height:1.5">' + olItem + '</li>');
+          continue;
+        }
+
+        // Regular paragraph — close any open list
+        if (inUl) { result.push('</ul>'); inUl = false; }
+        if (inOl) { result.push('</ol>'); inOl = false; }
+        line = line.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+        line = line.replace(/(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)/g, '<em>$1</em>');
+        result.push('<p style="margin:3px 0;font-size:0.8rem;line-height:1.5">' + line + '</p>');
+      }
+
+      if (inUl) result.push('</ul>');
+      if (inOl) result.push('</ol>');
+
+      return result.join('');
     }
 
     function showAiResult(detailId, analysis, config) {
       var el = document.getElementById('ai-' + detailId);
       if (!el) return;
-
-      var paragraphs = analysis.split('\\n').filter(function(p) { return p.trim(); });
       var html = '<div class="ai-result ai-fade-in">';
       html += '<div class="ai-result-header">';
       html += '<span class="ai-result-icon">\\uD83E\\uDD16</span>';
       html += '<span class="ai-result-provider">' + escapeHtml(config.provider + ' / ' + config.model) + '</span>';
       html += '<button class="ai-btn-reanalyze" style="margin-left:auto" onclick="showAiSetup(\\'' + detailId + '\\')">Settings</button>';
       html += '</div>';
-      for (var i = 0; i < paragraphs.length; i++) {
-        var line = paragraphs[i];
-        if (line.match(/^[-•]\\s/)) {
-          // Bullet list item
-          html += '<div class="ai-result-text" style="padding-left:12px;margin-bottom:2px">' + renderMarkdown(line) + '</div>';
-        } else {
-          html += '<p class="ai-result-text">' + renderMarkdown(line) + '</p>';
-        }
-      }
+      html += '<div class="ai-result-body">' + renderMarkdown(analysis) + '</div>';
       html += '<div style="margin-top:8px">';
       html += '<button class="ai-btn-reanalyze" onclick="triggerAiAnalysis(\\'' + detailId + '\\')">Re-analyze</button>';
-      html += '</div>';
-      html += '</div>';
+      html += '</div></div>';
       el.innerHTML = html;
     }
 
@@ -1809,21 +1911,40 @@ export function renderDashboardHtml(): string {
     }
 
     function renderFlowIntelligence(fi) {
+      var categories = [
+        { label: 'Smart Traders', value: fi.smart_trader_net_flow_usd, wallets: fi.smart_trader_wallet_count },
+        { label: 'Public Figures', value: fi.public_figure_net_flow_usd, wallets: fi.public_figure_wallet_count },
+        { label: 'Whales', value: fi.whale_net_flow_usd, wallets: fi.whale_wallet_count },
+        { label: 'Top PnL Traders', value: fi.top_pnl_net_flow_usd, wallets: fi.top_pnl_wallet_count },
+        { label: 'Exchanges', value: fi.exchange_net_flow_usd, wallets: fi.exchange_wallet_count, note: fi.exchange_net_flow_usd < 0 ? 'Leaving exchanges' : '' },
+        { label: 'Fresh Wallets', value: fi.fresh_wallets_net_flow_usd, wallets: fi.fresh_wallets_wallet_count, note: fi.fresh_wallets_net_flow_usd > 0 ? 'New participants' : '' }
+      ];
+
+      var nonZero = categories.filter(function(c) { return c.value && c.value !== 0; });
+
+      if (nonZero.length === 0) return '';
+
+      if (nonZero.length === 1) {
+        // Compact single-line summary
+        var c = nonZero[0];
+        var color = c.value >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+        var walletText = (c.wallets && c.wallets > 0) ? ' (' + c.wallets + ' wallets)' : '';
+        return '<div style="margin-top:8px;padding:8px 12px;background:rgba(15,17,23,0.6);border:1px solid var(--border-color);border-radius:6px;font-size:0.78rem">' +
+          '<span style="color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:0.68rem">Flow Intel</span> ' +
+          '<span style="color:' + color + ';font-weight:600">' + escapeHtml(c.label) + ': ' + formatUsd(c.value) + '</span>' +
+          '<span style="color:var(--text-muted)">' + walletText + '</span>' +
+          (c.note ? '<span style="color:var(--text-muted);font-style:italic;margin-left:8px">' + c.note + '</span>' : '') +
+          '</div>';
+      }
+
+      // Full grid for 2+ categories
       var html = '';
       html += '<div class="flow-intel-section">';
       html += '<div class="flow-intel-title">FLOW INTELLIGENCE</div>';
-      html += '<div class="flow-intel-desc" style="font-size:0.68rem;color:var(--text-muted);margin-bottom:6px">Breakdown of capital flows by wallet type</div>';
       html += '<div class="flow-intel-grid">';
-      html += flowIntelRow('Smart Traders', fi.smart_trader_net_flow_usd, fi.smart_trader_wallet_count, '');
-      html += flowIntelRow('Public Figures', fi.public_figure_net_flow_usd, fi.public_figure_wallet_count, '');
-      html += flowIntelRow('Whales', fi.whale_net_flow_usd, fi.whale_wallet_count, '');
-      html += flowIntelRow('Top PnL Traders', fi.top_pnl_net_flow_usd, fi.top_pnl_wallet_count, '');
-      // Exchanges: special interpretation
-      var exchangeNote = fi.exchange_net_flow_usd < 0 ? 'Tokens leaving exchanges' : 'Tokens entering exchanges';
-      html += flowIntelRow('Exchanges', fi.exchange_net_flow_usd, fi.exchange_wallet_count, exchangeNote);
-      // Fresh Wallets: special interpretation
-      var freshNote = fi.fresh_wallets_net_flow_usd > 0 ? 'New retail participants' : '';
-      html += flowIntelRow('Fresh Wallets', fi.fresh_wallets_net_flow_usd, fi.fresh_wallets_wallet_count, freshNote);
+      for (var i = 0; i < categories.length; i++) {
+        html += flowIntelRow(categories[i].label, categories[i].value, categories[i].wallets, categories[i].note || '');
+      }
       html += '</div></div>';
       return html;
     }
