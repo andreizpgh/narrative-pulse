@@ -1582,7 +1582,7 @@ export function renderDashboardHtml(): string {
     // ── Signal Overview ────────────────────────────────────
 
     function renderSignalOverview(highlights) {
-      var counts = { hot: 0, accumulating: 0, diverging: 0, pumping: 0, selling: 0 };
+      var counts = { hot: 0, accumulating: 0, diverging: 0, pumping: 0, mixed: 0, selling: 0 };
       if (highlights && highlights.length > 0) {
         for (var i = 0; i < highlights.length; i++) {
           var c = highlights[i].classification;
@@ -1590,7 +1590,8 @@ export function renderDashboardHtml(): string {
           else if (c === 'diverging') counts.diverging++;
           else if (c === 'accumulating') counts.accumulating++;
           else if (c === 'pumping') counts.pumping++;
-          else counts.selling++; // mixed + distributing
+          else if (c === 'mixed') counts.mixed++;
+          else counts.selling++; // distributing only
         }
       }
 
@@ -1603,7 +1604,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-icon">\\uD83D\\uDD25</div>';
       html += '<div class="signal-card-value">' + counts.hot + '</div>';
       html += '<div class="signal-card-label">HOT</div>';
-      html += '<div class="signal-card-hint">Strong SM buying, price rising</div>';
+      html += '<div class="signal-card-hint">Strong SM buying (3x+ ratio)</div>';
       html += '</div>';
 
       // ACCUMULATING card
@@ -1622,7 +1623,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-hint">Price surged &gt;30%</div>';
       html += '</div>';
 
-      // 4th card: DIVERGING (when present) or SELLING (fallback)
+      // 4th card: DIVERGING > MIXED > SELLING (priority order)
       if (counts.diverging > 0) {
         html += '<div class="signal-card" onclick="filterBySignalGroup(\\'diverging\\')" style="cursor:pointer">';
         html += '<div class="signal-card-icon">\\uD83D\\uDCCA</div>';
@@ -1630,12 +1631,19 @@ export function renderDashboardHtml(): string {
         html += '<div class="signal-card-label">DIVERGING</div>';
         html += '<div class="signal-card-hint">SM accumulating, price flat</div>';
         html += '</div>';
+      } else if (counts.mixed > 0) {
+        html += '<div class="signal-card" onclick="filterBySignalGroup(\\'mixed\\')" style="cursor:pointer">';
+        html += '<div class="signal-card-icon">\\u25D0</div>';
+        html += '<div class="signal-card-value">' + counts.mixed + '</div>';
+        html += '<div class="signal-card-label">MIXED</div>';
+        html += '<div class="signal-card-hint">SM inflow, low conviction</div>';
+        html += '</div>';
       } else {
         html += '<div class="signal-card" onclick="filterBySignalGroup(\\'selling\\')" style="cursor:pointer">';
         html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
         html += '<div class="signal-card-value">' + counts.selling + '</div>';
         html += '<div class="signal-card-label">SELLING</div>';
-        html += '<div class="signal-card-hint">SM outflow or low conviction</div>';
+        html += '<div class="signal-card-hint">Net outflow from SM</div>';
         html += '</div>';
       }
 
@@ -1721,12 +1729,12 @@ export function renderDashboardHtml(): string {
                        t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
                        t.classification === 'diverging' ? 'diverging' :
                        t.classification === 'accumulating' ? 'accumulating' :
-                        t.classification === 'mixed' ? 'distributing' : 'distributing';
+                        t.classification === 'mixed' ? 'mixed' : 'distributing';
       var badgeText = t.classification === 'pumping' ? '\\uD83D\\uDE80 PUMPING' :
                       t.classification === 'heavy_accumulation' ? '\\uD83D\\uDD25 HEAVY ACCUM' :
                       t.classification === 'diverging' ? '\\uD83D\\uDCCA DIVERGING' :
                       t.classification === 'accumulating' ? '\\uD83D\\uDC40 ACCUM' :
-                       t.classification === 'mixed' ? '\\u26A0\\uFE0F SELLING' : '\\u26A0\\uFE0F SELLING';
+                       t.classification === 'mixed' ? '\\u25D0 MIXED' : '\\u26A0\\uFE0F SELLING';
       var badgeTooltip = t.classification === 'pumping' ? 'High SM buying ratio but token already pumped > 30% — caution' :
                          t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
                          t.classification === 'diverging' ? 'Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence' :
@@ -2262,7 +2270,7 @@ export function renderDashboardHtml(): string {
         if (signalFilter) {
           if (signalFilter === '__selling') {
             var sig = rows[i].getAttribute('data-signal');
-            if (sig !== 'mixed' && sig !== 'distributing') show = false;
+            if (sig !== 'distributing') show = false;
           } else {
             if (rows[i].getAttribute('data-signal') !== signalFilter) show = false;
           }
@@ -2279,17 +2287,18 @@ export function renderDashboardHtml(): string {
         if (next && next.classList.contains('expanded-detail')) {
           if (!show) {
             next.style.display = 'none';
+            // Only collapse expanded rows when hidden by filter
+            next.classList.remove('visible');
+            var arrow = rows[i].querySelector('.expand-arrow');
+            if (arrow) arrow.classList.remove('open');
           } else {
             // Don't force display — let CSS .visible class control it
             // Only set display back to '' if it was hidden by filter
             if (next.style.display === 'none') {
               next.style.display = '';
             }
+            // Preserve expanded state when parent row remains visible
           }
-          // Remove visible class to collapse on filter change
-          next.classList.remove('visible');
-          var arrow = rows[i].querySelector('.expand-arrow');
-          if (arrow) arrow.classList.remove('open');
         }
       }
 
@@ -2341,6 +2350,8 @@ export function renderDashboardHtml(): string {
         signalSelect.value = 'diverging';
       } else if (group === 'selling') {
         signalSelect.value = '__selling';
+      } else if (group === 'mixed') {
+        signalSelect.value = 'mixed';
       }
 
       // Clear narrative filter
@@ -2374,6 +2385,7 @@ export function renderDashboardHtml(): string {
       }
 
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
+      chartDom.style.cursor = 'pointer';
 
       // Take top 10 narratives by absolute netflow (no $100 threshold)
       var sorted = narratives.slice().sort(function(a, b) {

@@ -77,8 +77,8 @@ function classifyToken(
     return "diverging";
   }
 
-  // 3. Heavy accumulation: strong buy dominance
-  if (buySellRatio >= 3.0) return "heavy_accumulation";
+  // 3. Heavy accumulation: strong buy dominance AND price not crashing
+  if (buySellRatio >= 3.0 && priceChangePct >= -5) return "heavy_accumulation";
 
   // 4. Accumulating: moderate buy dominance
   if (buySellRatio >= 1.5) return "accumulating";
