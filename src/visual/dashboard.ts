@@ -1395,7 +1395,13 @@ export function renderDashboardHtml(): string {
 
     function renderSankeySection(narratives) {
       var html = '<div class="card sankey-card" id="sankey-section">';
-      html += '<div class="card-title">Capital Flow Map</div>';
+      html += '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">';
+      html += '<div class="card-title" style="margin-bottom:0">Capital Flow Map</div>';
+      html += '<div style="display:flex;gap:16px;font-size:0.72rem;color:var(--text-secondary)">';
+      html += '<span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#34d399"></span> SM Inflow</span>';
+      html += '<span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f87171"></span> SM Outflow</span>';
+      html += '</div>';
+      html += '</div>';
       html += '<div id="sankey-chart" style="width:100%;height:280px"></div>';
       html += '<div class="sankey-hint">Click a narrative to filter the table below</div>';
       html += '</div>';
@@ -2020,178 +2026,113 @@ export function renderDashboardHtml(): string {
 
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
 
-      var outflows = narratives.filter(function(n) { return n.totalNetflow24h < -100; });
-      var inflows = narratives.filter(function(n) { return n.totalNetflow24h > 100; });
+      // Take top 10 narratives by absolute netflow (no $100 threshold)
+      var sorted = narratives.slice().sort(function(a, b) {
+        return Math.abs(b.totalNetflow24h) - Math.abs(a.totalNetflow24h);
+      });
+      var topNarratives = sorted.slice(0, 10);
 
-      // Update hint text
+      if (topNarratives.length === 0) {
+        var section = document.getElementById('sankey-section');
+        if (section) section.style.display = 'none';
+        return;
+      }
+
+      // Sort ascending so outflows (negative) appear at top, inflows (positive) at bottom
+      topNarratives.sort(function(a, b) { return a.totalNetflow24h - b.totalNetflow24h; });
+
+      // Count inflows and outflows for hint text
+      var outflowCount = 0;
+      var inflowCount = 0;
+      for (var k = 0; k < topNarratives.length; k++) {
+        if (topNarratives[k].totalNetflow24h >= 0) inflowCount++;
+        else outflowCount++;
+      }
+
       var hintEl = document.querySelector('#sankey-section .sankey-hint');
       if (hintEl) {
-        if (outflows.length === 0) {
-          hintEl.textContent = 'Smart Money is flowing into narratives. Click a narrative to filter the table.';
-        } else if (inflows.length === 0) {
-          hintEl.textContent = 'Smart Money is exiting these narratives. Click a narrative to filter the table.';
+        if (outflowCount === 0) {
+          hintEl.textContent = 'All Smart Money flows are inflows. Click a narrative to filter the table.';
+        } else if (inflowCount === 0) {
+          hintEl.textContent = 'All Smart Money flows are outflows. Click a narrative to filter the table.';
         } else {
-          hintEl.textContent = 'Outflows \\u2192 Smart Money \\u2192 Inflows. Click a narrative to filter the table.';
+          hintEl.textContent = inflowCount + ' inflows, ' + outflowCount + ' outflows. Click a narrative to filter the table.';
         }
       }
 
-      if (outflows.length === 0 && inflows.length === 0) {
-        sankeySection = document.getElementById('sankey-section');
-        if (sankeySection) sankeySection.style.display = 'none';
-        return;
-      }
-
-      // If no outflows, render horizontal bar chart instead
-      if (outflows.length === 0 && inflows.length > 0) {
-        // Sort by netflow desc
-        inflows.sort(function(a, b) { return b.totalNetflow24h - a.totalNetflow24h; });
-
-        var barData = inflows.map(function(n) {
-          return {
-            name: n.displayName,
-            value: n.totalNetflow24h,
-            tokenCount: n.tokenCount
-          };
-        });
-
-        chart.setOption({
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            backgroundColor: '#2a2d3a',
-            borderColor: '#3a3d4a',
-            textStyle: { color: '#e8e9ed', fontSize: 13 },
-            padding: [10, 14],
-            extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);',
-            formatter: function(params) {
-              var d = params[0];
-              return '<strong>' + d.name + '</strong><br/>Netflow: <strong>' + formatUsdAbs(d.value) + '</strong>';
-            }
-          },
-          grid: { top: 30, bottom: 30, left: 120, right: 60 },
-          xAxis: {
-            type: 'value',
-            axisLabel: {
-              color: '#5a5e72',
-              fontSize: 11,
-              formatter: function(v) { return formatUsdAbs(v); }
-            },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
-            axisLine: { lineStyle: { color: '#2a2d3a' } }
-          },
-          yAxis: {
-            type: 'category',
-            data: barData.map(function(d) { return d.name; }),
-            inverse: true,
-            axisLabel: { color: '#e8e9ed', fontSize: 12, fontWeight: 500 },
-            axisLine: { lineStyle: { color: '#2a2d3a' } },
-            axisTick: { show: false }
-          },
-          series: [{
-            type: 'bar',
-            data: barData.map(function(d) {
-              return {
-                value: d.value,
-                itemStyle: {
-                  color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                    { offset: 0, color: 'rgba(52, 211, 153, 0.3)' },
-                    { offset: 1, color: 'rgba(52, 211, 153, 0.8)' }
-                  ]),
-                  borderRadius: [0, 4, 4, 0]
-                }
-              };
-            }),
-            barWidth: '60%',
-            label: {
-              show: true,
-              position: 'right',
-              color: '#34d399',
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-              formatter: function(p) { return formatUsdAbs(p.value); }
-            }
-          }]
-        });
-
-        chart.on('click', function(params) {
-          if (params.name) {
-            filterTableByNarrative(params.name);
-          }
-        });
-
-        window.addEventListener('resize', function() { chart.resize(); });
-        return;
-      }
-
-      // Normal Sankey when we have both inflows and outflows
-      var nodes = [];
-      var links = [];
-
-      nodes.push({ name: 'Smart Money', itemStyle: { color: '#818cf8' } });
-
-      outflows.forEach(function(n) {
-        nodes.push({ name: n.displayName, itemStyle: { color: '#f87171' } });
-        var rawValue = Math.abs(n.totalNetflow24h);
-        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
-        links.push({
-          source: n.displayName, target: 'Smart Money', value: displayValue,
-          _rawValue: rawValue,
-          lineStyle: { color: 'rgba(248, 113, 113, 0.5)' }
-        });
-      });
-
-      inflows.forEach(function(n) {
-        nodes.push({ name: n.displayName, itemStyle: { color: '#34d399' } });
-        var rawValue = Math.abs(n.totalNetflow24h);
-        var displayValue = Math.max(Math.pow(rawValue, 0.4), 5);
-        links.push({
-          source: 'Smart Money', target: n.displayName, value: displayValue,
-          _rawValue: rawValue,
-          lineStyle: { color: 'rgba(52, 211, 153, 0.5)' }
-        });
-      });
+      var names = topNarratives.map(function(n) { return n.displayName; });
 
       chart.setOption({
         tooltip: {
-          trigger: 'item',
-          triggerOn: 'mousemove',
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
           backgroundColor: '#2a2d3a',
           borderColor: '#3a3d4a',
           textStyle: { color: '#e8e9ed', fontSize: 13 },
           padding: [10, 14],
           extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);',
           formatter: function(params) {
-            if (params.dataType === 'edge') {
-              var realValue = params.data._rawValue != null ? params.data._rawValue : params.data.value;
-              var direction = params.data.source === 'Smart Money' ? 'Inflow' : 'Outflow';
-              return params.data.source + ' \\u2192 ' + params.data.target +
-                '<br/>' + direction + ': <strong>' + formatUsdAbs(realValue) + '</strong>';
-            }
-            return '<strong>' + params.name + '</strong>';
+            var d = params[0];
+            var direction = d.value >= 0 ? 'Inflow' : 'Outflow';
+            return '<strong>' + d.name + '</strong><br/>SM ' + direction + ': <strong>' + formatUsdAbs(d.value) + '</strong>';
           }
         },
+        grid: { top: 10, bottom: 30, left: 130, right: 80 },
+        xAxis: {
+          type: 'value',
+          axisLabel: {
+            color: '#5a5e72',
+            fontSize: 11,
+            formatter: function(v) { return formatUsdAbs(v); }
+          },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+          axisLine: { show: true, lineStyle: { color: '#4a4d5a', width: 1 } }
+        },
+        yAxis: {
+          type: 'category',
+          data: names,
+          inverse: false,
+          axisLabel: { color: '#e8e9ed', fontSize: 12, fontWeight: 500 },
+          axisLine: { lineStyle: { color: '#2a2d3a' } },
+          axisTick: { show: false }
+        },
         series: [{
-          type: 'sankey',
-          layout: 'none',
-          emphasis: { focus: 'adjacency' },
-          nodeAlign: 'justify',
-          nodeGap: 20,
-          nodeWidth: 24,
-          layoutIterations: 32,
-          top: 55,
-          bottom: 30,
-          left: 80,
-          right: 120,
-          label: { fontSize: 13, color: '#e8e9ed', fontWeight: 500, overflow: 'none', position: 'right' },
-          lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.4 },
-          data: nodes,
-          links: links
+          type: 'bar',
+          barMaxWidth: 24,
+          label: {
+            show: true,
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+            formatter: function(p) { return formatUsdAbs(p.value); }
+          },
+          data: topNarratives.map(function(n) {
+            var isInflow = n.totalNetflow24h >= 0;
+            return {
+              value: n.totalNetflow24h,
+              itemStyle: {
+                color: isInflow
+                  ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                      { offset: 0, color: 'rgba(52, 211, 153, 0.3)' },
+                      { offset: 1, color: 'rgba(52, 211, 153, 0.8)' }
+                    ])
+                  : new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                      { offset: 0, color: 'rgba(248, 113, 113, 0.3)' },
+                      { offset: 1, color: 'rgba(248, 113, 113, 0.8)' }
+                    ]),
+                borderRadius: isInflow ? [0, 4, 4, 0] : [4, 0, 0, 4]
+              },
+              label: {
+                position: isInflow ? 'right' : 'left',
+                color: isInflow ? '#34d399' : '#f87171'
+              }
+            };
+          })
         }]
       });
 
       chart.on('click', function(params) {
-        if (params.dataType === 'node' && params.name !== 'Smart Money') {
+        if (params.name) {
           filterTableByNarrative(params.name);
         }
       });
