@@ -4,7 +4,7 @@
 // Free, no auth, 300 req/min. Batch up to 30 addresses per request.
 // ============================================================
 
-import type { DexScreenerPair } from "../types.js";
+import type { DexScreenerPair, DexScreenerTokenProfile } from "../types.js";
 import { config } from "../config.js";
 import { normalizeAddress } from "../utils/normalize.js";
 
@@ -250,4 +250,66 @@ export async function fetchDexScreenerData(
   );
 
   return result;
+}
+
+// ============================================================
+// Token Profile Descriptions
+// ============================================================
+
+const profileCache = new Map<string, DexScreenerTokenProfile>();
+let profileCacheExpiresAt = 0;
+const PROFILE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Fetch latest token profiles from DexScreener and cache descriptions.
+ * Returns a Map<normalized_address, profile>.
+ * The feed is ~50 recent profiles — we poll it and cache by address.
+ * Graceful degradation: returns empty map on failure.
+ */
+export async function fetchTokenProfiles(): Promise<Map<string, DexScreenerTokenProfile>> {
+  if (Date.now() < profileCacheExpiresAt && profileCache.size > 0) {
+    return new Map(profileCache);
+  }
+
+  try {
+    const url = `${DEXSCREENER_CONFIG.baseUrl}/token-profiles/latest/v1`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DEXSCREENER_CONFIG.timeoutMs);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      log(`Token profiles fetch failed: HTTP ${response.status}`);
+      return new Map(profileCache);
+    }
+
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) {
+      return new Map(profileCache);
+    }
+
+    const profiles: DexScreenerTokenProfile[] = data as DexScreenerTokenProfile[];
+    profileCache.clear();
+
+    for (const profile of profiles) {
+      if (profile.tokenAddress) {
+        const normAddr = normalizeAddress(profile.tokenAddress);
+        profileCache.set(normAddr, profile);
+      }
+    }
+
+    profileCacheExpiresAt = Date.now() + PROFILE_CACHE_TTL_MS;
+    log(`Fetched ${profiles.length} token profiles (descriptions cached for ${profileCache.size} tokens)`);
+    return new Map(profileCache);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log(`Token profiles fetch failed: ${msg}`);
+    return new Map(profileCache);
+  }
 }

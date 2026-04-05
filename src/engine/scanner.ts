@@ -16,6 +16,7 @@ import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
 import { enrichTokenData, detectEarlySignals } from "./enricher.js";
 import { extractScreenerHighlights } from "./screener-highlights.js";
 import { classifyByHeuristic } from "./narrative-heuristic.js";
+import { fetchDexScreenerData, fetchTokenProfiles } from "../api/dexscreener.js";
 import { config } from "../config.js";
 import { normalizeAddress } from "../utils/normalize.js";
 import type {
@@ -32,6 +33,7 @@ import type {
   ScreenerHighlight,
   FlowIntelligence,
   HoldingsEntry,
+  DexScreenerTokenProfile,
 } from "../types.js";
 
 // ============================================================
@@ -153,6 +155,19 @@ async function stepEnrich(
     const msg = error instanceof Error ? error.message : String(error);
     log(`Step 4/11: DexScreener enrichment failed (${msg}) — continuing without enrichment`);
     return [];
+  }
+}
+
+async function stepFetchTokenProfiles(): Promise<Map<string, DexScreenerTokenProfile>> {
+  log("Step 4.5: Fetching token profile descriptions...");
+  try {
+    const profiles = await fetchTokenProfiles();
+    log(`Step 4.5: Got ${profiles.size} token profiles`);
+    return profiles;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log(`Step 4.5: Token profiles failed (${msg}) — continuing without`);
+    return new Map();
   }
 }
 
@@ -343,6 +358,9 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   // Step 4: Enrich with DexScreener (graceful — failures return empty array)
   const enrichedTokens = await stepEnrich(netflowEntries, screenerData);
 
+  // Step 4.5: Fetch token profile descriptions (graceful degradation)
+  const tokenProfiles = await stepFetchTokenProfiles();
+
   // Step 5: Discover sectors
   const sectors = stepDiscovery(netflowEntries);
 
@@ -437,6 +455,27 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   }
   if (heuristicMatches > 0) {
     log(`Heuristic classifier: ${heuristicMatches} highlights enriched with sectors`);
+  }
+
+  // Enrich highlights with token profile descriptions
+  if (tokenProfiles.size > 0) {
+    let profileMatches = 0;
+    for (const h of screenerHighlights) {
+      const normAddr = normalizeAddress(h.token_address);
+      const profile = tokenProfiles.get(normAddr);
+      if (profile) {
+        if (profile.description) {
+          h.tokenDescription = profile.description;
+        }
+        if (profile.icon) {
+          h.tokenIcon = profile.icon;
+        }
+        profileMatches++;
+      }
+    }
+    if (profileMatches > 0) {
+      log(`Token profiles: ${profileMatches} highlights enriched with descriptions`);
+    }
   }
 
   // Step 8.5: Fetch flow intelligence for top highlights

@@ -173,6 +173,9 @@ export interface ScreenerHighlight {
   // DexScreener enrichment (cross-referenced from EnrichedTokenData)
   fdv?: number;
   liquidity?: number;
+  // Token profile from DexScreener (optional — feed-based, may not match)
+  tokenDescription?: string;
+  tokenIcon?: string;
 }
 
 // ============================================================
@@ -258,6 +261,23 @@ export interface DexScreenerPair {
   fdv: number | null;
   marketCap: number | null;
   pairCreatedAt: number | null;
+}
+
+// ============================================================
+// DexScreener Token Profile Types
+// ============================================================
+
+export interface DexScreenerTokenProfile {
+  chainId: string;
+  tokenAddress: string;
+  icon?: string;
+  header?: string;
+  description?: string;
+  links?: Array<{
+    type?: string;
+    label?: string;
+    url: string;
+  }>;
 }
 
 // ============================================================

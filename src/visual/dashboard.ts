@@ -773,6 +773,20 @@ export function renderDashboardHtml(): string {
       margin-left: auto;
     }
 
+    .token-description {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      background: rgba(15, 17, 23, 0.5);
+      border-radius: 6px;
+      border-left: 2px solid rgba(129, 140, 248, 0.3);
+      max-height: 3em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* ── AI Analysis ──────────────────────────────── */
 
     .ai-analysis-section { margin-top: 12px; min-height: 120px; display: flex; flex-direction: column; }
@@ -1775,6 +1789,17 @@ export function renderDashboardHtml(): string {
         html += '<div><div class="detail-item-label">SM Traders</div><div class="detail-item-value">' + smCount + '</div></div>';
       }
       html += '</div>';
+
+      // Token description (from DexScreener profiles, if available)
+      if (t.tokenDescription) {
+        html += '<div class="token-description" title="' + escapeHtml(t.tokenDescription) + '">';
+        var descText = t.tokenDescription;
+        if (descText.length > 200) {
+          descText = descText.substring(0, 197) + '...';
+        }
+        html += escapeHtml(descText);
+        html += '</div>';
+      }
 
       // Flow Intelligence (optional)
       if (t.flowIntelligence && hasNonZeroFlow(t.flowIntelligence)) {
