@@ -39,8 +39,10 @@ import type {
 // Helpers
 // ============================================================
 
+let verboseLogging = true;
+
 function log(message: string): void {
-  console.log(`[Scanner] ${message}`);
+  if (verboseLogging) console.log(`[Scanner] ${message}`);
 }
 
 /**
@@ -338,8 +340,11 @@ async function stepSubNarratives(
  * Steps 3 and 4 (enrichment) gracefully degrade on failure.
  * Step 11 is optional — failures are swallowed gracefully.
  */
-export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanResult> {
+export async function runScan(options?: { skipAgent?: boolean; quiet?: boolean }): Promise<ScanResult> {
   const skipAgent = options?.skipAgent ?? true;
+  const quiet = options?.quiet ?? false;
+  verboseLogging = !quiet;
+
   // Step 1: Fetch netflows (critical)
   const netflowEntries = await stepFetchNetflows();
 
@@ -508,9 +513,13 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   // Save snapshot for next run's rotation tracking
   await saveSnapshot(narratives);
 
+  // Final summary — always log regardless of quiet mode
+  const prevVerbose = verboseLogging;
+  verboseLogging = true;
   log(
     `Scan complete! ${narratives.length} narratives, ${classified.length} classified tokens, ${earlySignals.length} early signals`
   );
+  verboseLogging = prevVerbose;
 
   return result;
 }

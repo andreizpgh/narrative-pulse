@@ -72,15 +72,33 @@ export function getAndResetStats(): { apiCalls: number; creditsUsed: number } {
 let lastRequestTime = 0;
 
 // ============================================================
+// Verbose Logging Control
+// ============================================================
+
+let verboseLogging = true;
+
+/**
+ * Set verbose logging mode. When false, step-by-step API call logs are suppressed.
+ * Errors and warnings are always logged regardless of this setting.
+ */
+export function setVerbose(verbose: boolean): void {
+  verboseLogging = verbose;
+}
+
+// ============================================================
 // Helpers
 // ============================================================
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function log(message: string): void {
+  if (verboseLogging) console.log(`[Nansen] ${message}`);
 }
 
-function log(message: string): void {
+function warn(message: string): void {
   console.log(`[Nansen] ${message}`);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ============================================================
@@ -139,7 +157,7 @@ async function enforceRateLimit(response?: Response): Promise<void> {
     if (remainingHeader !== null) {
       const remaining = parseInt(remainingHeader, 10);
       if (!isNaN(remaining) && remaining <= 1) {
-        log("Rate limit nearly exhausted, waiting 1s...");
+        warn("Rate limit nearly exhausted, waiting 1s...");
         await sleep(1000);
       }
     }
@@ -200,7 +218,7 @@ export async function nansenPost<T>(
       if (status === 429) {
         const retryAfter = response.headers.get("Retry-After");
         const backoffMs = calculateBackoff(attempt, retryAfter);
-        log(`POST ${endpoint} → 429 (rate limited). Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);
+        warn(`POST ${endpoint} → 429 (rate limited). Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);
         lastError = new Error(`Rate limited: 429 on ${endpoint}`);
         await sleep(backoffMs);
         continue;
@@ -209,7 +227,7 @@ export async function nansenPost<T>(
       // Handle 5xx server errors
       if (status >= 500) {
         const backoffMs = calculateBackoff(attempt, null);
-        log(`POST ${endpoint} → ${status} (server error). Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);
+        warn(`POST ${endpoint} → ${status} (server error). Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);
         lastError = new Error(`Server error: ${status} on ${endpoint}`);
         await sleep(backoffMs);
         continue;
@@ -240,7 +258,7 @@ export async function nansenPost<T>(
 
       // Warn if credits exhausted — don't throw, data was returned successfully
       if (creditsRemaining === 0) {
-        log("⚠️ Credits exhausted! No remaining credits. Please top up at https://nansen.ai");
+        warn("⚠️ Credits exhausted! No remaining credits. Please top up at https://nansen.ai");
       }
 
       // Track global stats
@@ -274,8 +292,7 @@ export async function nansenPost<T>(
 
       if (attempt < MAX_RETRIES - 1) {
         const backoffMs = calculateBackoff(attempt, null);
-        log(`POST ${endpoint} failed: ${err.message}. Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);
-        await sleep(backoffMs);
+        warn(`POST ${endpoint} failed: ${err.message}. Retry ${attempt + 1}/${MAX_RETRIES} in ${backoffMs}ms`);        await sleep(backoffMs);
       }
     }
   }

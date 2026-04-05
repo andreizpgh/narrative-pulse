@@ -8,6 +8,7 @@ import express from "express";
 import type { Request, Response } from "express";
 
 import { runScan } from "../engine/scanner.js";
+import { setVerbose } from "../api/client.js";
 import { renderDashboardHtml } from "../visual/dashboard.js";
 import type { ScanResult } from "../types.js";
 
@@ -318,7 +319,9 @@ export async function startServer(options?: ServerOptions): Promise<void> {
       isScanning = true;
       log("Manual scan triggered via API");
 
-      const result = await runScan({ skipAgent });
+      setVerbose(false);
+      const result = await runScan({ skipAgent, quiet: true });
+      setVerbose(true);
       latestScan = result;
       lastScanTime = new Date().toISOString();
 
@@ -399,7 +402,9 @@ export async function startServer(options?: ServerOptions): Promise<void> {
     try {
       isScanning = true;
       log("Running scheduled scan...");
-      const result = await runScan({ skipAgent });
+      setVerbose(false);
+      const result = await runScan({ skipAgent, quiet: true });
+      setVerbose(true);
       latestScan = result;
       lastScanTime = new Date().toISOString();
       log(`Scan complete: ${result.narratives.length} narratives, ${result.earlySignals.length} early signals`);
