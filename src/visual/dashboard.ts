@@ -628,32 +628,21 @@ export function renderDashboardHtml(): string {
       color: var(--text-primary);
     }
 
-    .token-table thead th.sortable::after {
-      content: '\\2195';
+    .sort-arrow {
       margin-left: 4px;
       font-size: 0.7rem;
-      line-height: 1;
       color: var(--text-muted);
       opacity: 0.4;
       transition: opacity 0.15s, color 0.15s;
     }
 
-    .token-table thead th.sortable:hover::after {
+    .token-table thead th.sortable:hover .sort-arrow {
       opacity: 0.8;
       color: var(--text-secondary);
     }
 
-    .token-table thead th.sortable.sort-asc::after {
-      content: '\\2191';
+    .sort-arrow.active {
       opacity: 1;
-      font-size: 0.7rem;
-      color: var(--color-positive);
-    }
-
-    .token-table thead th.sortable.sort-desc::after {
-      content: '\\2193';
-      opacity: 1;
-      font-size: 0.7rem;
       color: var(--color-positive);
     }
 
@@ -1384,12 +1373,23 @@ export function renderDashboardHtml(): string {
       }
       var dir = sortStates[key];
 
-      // Update header classes
-      var headers = table.querySelectorAll('thead th.sortable');
-      headers.forEach(function(th) { th.classList.remove('sort-asc', 'sort-desc'); });
+      // Update arrow spans on ALL headers
+      var allThs = table.querySelectorAll('thead th');
+      for (var i = 0; i < allThs.length; i++) {
+        var arrow = allThs[i].querySelector('.sort-arrow');
+        if (arrow) {
+          arrow.textContent = '\\u2195';
+          arrow.classList.remove('active');
+        }
+      }
+      // Set active arrow
       var activeTh = table.querySelectorAll('thead th')[colIndex];
       if (activeTh) {
-        activeTh.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        var activeArrow = activeTh.querySelector('.sort-arrow');
+        if (activeArrow) {
+          activeArrow.textContent = dir === 'asc' ? '\\u2191' : '\\u2193';
+          activeArrow.classList.add('active');
+        }
       }
 
       // Collect rows (skip expanded-detail rows)
@@ -1676,12 +1676,12 @@ export function renderDashboardHtml(): string {
       html += '<thead><tr>';
       html += '<th data-tooltip="Token symbol and chain">Token</th>';
       html += '<th data-tooltip="Narrative sector">Narrative</th>';
-      html += '<th class="sortable" data-tooltip="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Netflow 24h</th>';
+      html += '<th class="sortable" data-tooltip="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Netflow 24h <span class="sort-arrow">\\u2195</span></th>';
       html += '<th data-tooltip="Visual ratio of buy volume (green) vs sell volume (red)">Buy / Sell</th>';
-      html += '<th class="sortable" data-tooltip="Buy volume divided by sell volume" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Ratio</th>';
-      html += '<th class="sortable" data-tooltip="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Price \\u0394</th>';
-      html += '<th class="sortable" data-tooltip="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 6, \\'number\\')">Market Cap</th>';
-      html += '<th class="sortable" data-tooltip="Signal classification" onclick="sortTable(\\'' + tableId + '\\', 7, \\'text\\')">Signal</th>';
+      html += '<th class="sortable" data-tooltip="Buy volume divided by sell volume" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Ratio <span class="sort-arrow">\\u2195</span></th>';
+      html += '<th class="sortable" data-tooltip="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Price \\u0394 <span class="sort-arrow">\\u2195</span></th>';
+      html += '<th class="sortable" data-tooltip="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 6, \\'number\\')">Market Cap <span class="sort-arrow">\\u2195</span></th>';
+      html += '<th class="sortable" data-tooltip="Signal classification" onclick="sortTable(\\'' + tableId + '\\', 7, \\'text\\')">Signal <span class="sort-arrow">\\u2195</span></th>';
       html += '</tr></thead><tbody>';
 
       if (highlights && highlights.length > 0) {
