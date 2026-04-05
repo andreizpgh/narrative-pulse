@@ -115,6 +115,10 @@ export function renderDashboardHtml(): string {
       color: var(--text-muted);
       font-weight: 400;
       letter-spacing: 0.02em;
+      padding: 0 10px;
+      height: 34px;
+      display: flex;
+      align-items: center;
     }
 
     .header-actions {
@@ -324,6 +328,12 @@ export function renderDashboardHtml(): string {
       background: #1e2230;
       color: #e8e9ed;
       padding: 8px 10px;
+    }
+
+    .header-select {
+      height: 34px;
+      font-size: 0.75rem;
+      padding: 0 28px 0 10px;
     }
 
     /* ── Custom CSS Tooltips ─────────────────────── */
@@ -612,8 +622,6 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable {
       cursor: pointer;
       user-select: none;
-      position: relative;
-      padding-right: 18px;
     }
 
     .token-table thead th.sortable:hover {
@@ -622,10 +630,8 @@ export function renderDashboardHtml(): string {
 
     .token-table thead th.sortable::after {
       content: '\\2195';
-      position: absolute;
-      right: 2px;
-      bottom: 10px;
-      font-size: 0.8rem;
+      margin-left: 4px;
+      font-size: 0.7rem;
       line-height: 1;
       color: var(--text-muted);
       opacity: 0.4;
@@ -640,14 +646,14 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable.sort-asc::after {
       content: '\\2191';
       opacity: 1;
-      font-size: 0.85rem;
+      font-size: 0.7rem;
       color: var(--color-positive);
     }
 
     .token-table thead th.sortable.sort-desc::after {
       content: '\\2193';
       opacity: 1;
-      font-size: 0.85rem;
+      font-size: 0.7rem;
       color: var(--color-positive);
     }
 
@@ -1216,7 +1222,7 @@ export function renderDashboardHtml(): string {
             <span class="dot"></span> Scanning...
           </span>
           <button class="btn-scan" id="btn-scan" onclick="triggerScan()" data-tooltip="Rescan all data (~300 credits)" data-tooltip-pos="bottom">Rescan</button>
-          <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.75rem;padding:0 24px 0 10px;height:34px">
+          <select class="filter-select header-select" id="refresh-interval" onchange="setRefreshInterval(this.value)">
             <option value="0">Manual</option>
             <option value="300000">5 min</option>
             <option value="600000">10 min</option>
