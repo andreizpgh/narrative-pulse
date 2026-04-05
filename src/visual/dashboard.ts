@@ -39,6 +39,15 @@ export function renderDashboardHtml(): string {
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* ── Scrollbar ─────────────────────────────────── */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3d4a; }
+
+    /* ── Selection ─────────────────────────────────── */
+    ::selection { background: rgba(129, 140, 248, 0.3); color: #fff; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg-primary);
@@ -992,17 +1001,49 @@ export function renderDashboardHtml(): string {
       to { transform: rotate(360deg); }
     }
 
+    /* ── Loading shimmer ───────────────────────────── */
+    .loading-shimmer {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 40px;
+      animation: fadeIn 0.3s ease;
+    }
+    .shimmer-line {
+      height: 16px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--bg-card-alt) 25%, var(--bg-card-hover) 50%, var(--bg-card-alt) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+    .shimmer-line.wide { width: 80%; }
+    .shimmer-line.medium { width: 50%; }
+    .shimmer-line.narrow { width: 30%; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
     .error-state { color: var(--color-negative); }
 
     /* ── Footer ─────────────────────────────────── */
 
     .footer {
       text-align: center;
-      padding: 24px;
-      font-size: 0.8rem;
+      padding: 28px 24px;
+      font-size: 0.78rem;
       color: var(--text-muted);
       border-top: 1px solid var(--border-color);
-      margin-top: 32px;
+      margin-top: 40px;
+      letter-spacing: 0.02em;
+    }
+    .footer span {
+      color: var(--text-secondary);
+      font-weight: 500;
     }
 
     /* ── Responsive ─────────────────────────────── */
@@ -1053,15 +1094,21 @@ export function renderDashboardHtml(): string {
 
     <!-- Main content area -->
     <div id="main-content">
-      <div class="loading-state" id="loading-state">
-        <div class="spinner"></div>
-        <p>Loading dashboard data...</p>
+      <div class="loading-shimmer" id="loading-state">
+        <div class="shimmer-line wide"></div>
+        <div class="shimmer-line medium"></div>
+        <div class="shimmer-line wide"></div>
+        <div class="shimmer-line narrow"></div>
+        <div class="shimmer-line medium"></div>
+        <div class="shimmer-line wide"></div>
+        <div class="shimmer-line narrow"></div>
+        <div class="shimmer-line medium"></div>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      Powered by Nansen API (5 endpoints) + DexScreener &middot; ~300 credits/scan
+      Powered by <span>Nansen API</span> (5 endpoints) + <span>DexScreener</span> &middot; ~300 credits/scan
     </div>
   </div>
 
