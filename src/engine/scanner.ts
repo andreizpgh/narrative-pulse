@@ -394,20 +394,33 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   // Holdings contains a different set of tokens than netflow, with token_sectors on each entry.
   // This fills gaps where highlights have no narrative after the enriched data cross-reference.
   if (holdingsData.size > 0) {
-    let holdingsMatchCount = 0;
+    // Build symbol-only lookup for cross-chain matching
+    const holdingsBySymbol = new Map<string, HoldingsEntry>();
+    for (const entry of holdingsData.values()) {
+      const symbolKey = entry.token_symbol.toLowerCase();
+      if (!holdingsBySymbol.has(symbolKey)) {
+        holdingsBySymbol.set(symbolKey, entry);
+      }
+    }
+
+    let holdingsAddrMatches = 0;
+    let holdingsSymbolMatches = 0;
     for (const h of screenerHighlights) {
       if (h.tokenSectors && h.tokenSectors.length > 0) continue;
 
       const normAddr = normalizeAddress(h.token_address);
-      const match = holdingsData.get(normAddr);
+      const matchByAddr = holdingsData.get(normAddr);
+      const matchBySymbol = holdingsBySymbol.get(h.token_symbol.toLowerCase());
+      const match = matchByAddr ?? matchBySymbol;
 
       if (match && match.token_sectors && match.token_sectors.length > 0) {
         h.tokenSectors = match.token_sectors;
         h.narrativeKey = match.token_sectors[0];
-        holdingsMatchCount++;
+        if (matchByAddr) holdingsAddrMatches++;
+        else holdingsSymbolMatches++;
       }
     }
-    log(`Holdings cross-reference: ${holdingsMatchCount} highlights enriched with sectors`);
+    log(`Holdings cross-reference: address=${holdingsAddrMatches}, symbol-only=${holdingsSymbolMatches} highlights enriched with sectors`);
   }
 
   // Step 8.5: Fetch flow intelligence for top highlights

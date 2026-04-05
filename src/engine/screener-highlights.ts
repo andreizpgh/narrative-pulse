@@ -21,8 +21,15 @@ const MIN_VOLUME_USD = 10_000; // $10K minimum volume to filter noise
 // ============================================================
 
 const STRUCTURAL_NOISE_PATTERNS = [
+  // Major stablecoins
   "USDT", "USDC", "DAI", "TUSD", "BUSD", "FRAX", "LUSD", "USDD",
   "GUSD", "USDP", "SUSD", "PYUSD", "FDUSD", "EURA", "USDV",
+  // Additional stablecoins
+  "USDCE", "USDGLO", "USD+", "USDR", "USDX", "USDN", "USDTE",
+  "USDS", "USDY", "USDM", "USDE", "USDBC", "USDAP",
+  "SAI", "MIM", "USTC", "CUSDT", "IUSDT",
+  "AUSD", "XSGD", "EURS", "XEUR", "GBPT", "CNHT",
+  // Wrapped base assets
   "WETH", "WBTC", "WBNB", "WSTETH", "WAVAX", "WMATIC",
   "CBETH", "RETH", "WEETH", "SDETH",
   // Nansen-specific wrapped names
@@ -44,8 +51,17 @@ function classifyToken(
   buySellRatio: number,
   netflowUsd: number,
   priceChangePct: number,
-  netflow7dUsd?: number
+  netflow7dUsd?: number,
+  priceUsd?: number
 ): ScreenerHighlight["classification"] {
+  // 0. Stablecoin guard: near-$1 price + near-zero change → never classify as diverging
+  //    Prevents false "accumulation before pump" signals for stablecoins that slipped through
+  if (priceUsd !== undefined && priceUsd >= 0.95 && priceUsd <= 1.05) {
+    if (Math.abs(priceChangePct) < 0.5) {
+      return "mixed";
+    }
+  }
+
   // 1. Pumping: price already surged >30%
   if (priceChangePct > 30) return "pumping";
 
@@ -110,6 +126,7 @@ export function extractScreenerHighlights(
   // Build netflow lookup for cross-referencing
   const netflowByAddress = new Map<string, NetflowEntry>();
   const netflowBySymbolChain = new Map<string, NetflowEntry>();
+  const netflowBySymbol = new Map<string, NetflowEntry>();
 
   if (netflowEntries) {
     for (const entry of netflowEntries) {
@@ -121,8 +138,18 @@ export function extractScreenerHighlights(
       if (!netflowBySymbolChain.has(symbolKey)) {
         netflowBySymbolChain.set(symbolKey, entry);
       }
+      // Symbol-only index catches cross-chain matches (e.g., ETH in netflow vs SOL in screener)
+      const symbolOnly = entry.token_symbol.toLowerCase();
+      if (!netflowBySymbol.has(symbolOnly)) {
+        netflowBySymbol.set(symbolOnly, entry);
+      }
     }
   }
+
+  // Match rate counters
+  let addressMatches = 0;
+  let symbolChainMatches = 0;
+  let symbolOnlyMatches = 0;
 
   const candidates: ScreenerHighlight[] = [];
 
@@ -140,14 +167,31 @@ export function extractScreenerHighlights(
     // Skip structural noise — huge volume, zero trading signal
     if (isStructuralNoise(entry.token_symbol)) continue;
 
+    // Price-based stablecoin filter: tokens pegged near $1.00 are stablecoins
+    // regardless of symbol (catches unknown/renamed stablecoins)
+    if (entry.price_usd >= 0.99 && entry.price_usd <= 1.01) continue;
+
     // Price change for classification (not filtered — structural noise filter handles stablecoins)
     const priceChangePct = (entry.price_change ?? 0) * 100;
 
-    // Cross-reference with netflow data
+    // Cross-reference with netflow data (3-tier matching):
+    //   1. Exact address match (same chain, same token)
+    //   2. symbol:chain match (same symbol on same chain — different address format)
+    //   3. Symbol-only match (cross-chain, e.g., token on ETH in netflow vs SOL in screener)
     const normAddr = normalizeAddress(entry.token_address);
     const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
-    const netflowMatch = netflowByAddress.get(normAddr)
-      ?? netflowBySymbolChain.get(symbolChainKey);
+    const symbolOnly = entry.token_symbol.toLowerCase();
+
+    const matchByAddress = netflowByAddress.get(normAddr);
+    const matchBySymbolChain = netflowBySymbolChain.get(symbolChainKey);
+    const matchBySymbol = netflowBySymbol.get(symbolOnly);
+
+    const netflowMatch = matchByAddress ?? matchBySymbolChain ?? matchBySymbol;
+
+    // Track match tier for logging
+    if (matchByAddress) addressMatches++;
+    else if (matchBySymbolChain) symbolChainMatches++;
+    else if (matchBySymbol) symbolOnlyMatches++;
 
     const highlight: ScreenerHighlight = {
       token_symbol: entry.token_symbol,
@@ -168,7 +212,8 @@ export function extractScreenerHighlights(
         buySellRatio,
         entry.netflow,
         priceChangePct,
-        netflowMatch?.net_flow_7d_usd
+        netflowMatch?.net_flow_7d_usd,
+        entry.price_usd > 0 ? entry.price_usd : undefined
       ),
     };
 
@@ -195,6 +240,12 @@ export function extractScreenerHighlights(
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_HIGHLIGHTS)
     .map((s) => s.highlight);
+
+  // Log match rate breakdown
+  const sectorPopulated = scored.filter(h => h.tokenSectors && h.tokenSectors.length > 0).length;
+  console.log(
+    `[ScreenerHighlights] Netflow match rates: address=${addressMatches}, symbol:chain=${symbolChainMatches}, symbol-only=${symbolOnlyMatches} | ${sectorPopulated}/${scored.length} highlights with sectors`
+  );
 
   return scored;
 }
