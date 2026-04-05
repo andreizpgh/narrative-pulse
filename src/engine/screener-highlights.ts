@@ -7,6 +7,7 @@
 
 import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry } from "../types.js";
 import { normalizeAddress } from "../utils/normalize.js";
+import { classifyByHeuristic } from "./narrative-heuristic.js";
 
 // ============================================================
 // Constants
@@ -226,6 +227,15 @@ export function extractScreenerHighlights(
       highlight.netflow7dUsd = netflowMatch.net_flow_7d_usd;
       highlight.netflow30dUsd = netflowMatch.net_flow_30d_usd;
       highlight.traderCount = netflowMatch.trader_count;
+    }
+
+    // Heuristic fallback: classify by symbol patterns when no sectors available
+    if (!highlight.tokenSectors || highlight.tokenSectors.length === 0) {
+      const heuristicSectors = classifyByHeuristic(entry.token_symbol);
+      if (heuristicSectors.length > 0) {
+        highlight.tokenSectors = heuristicSectors;
+        highlight.narrativeKey = heuristicSectors[0];
+      }
     }
 
     candidates.push(highlight);

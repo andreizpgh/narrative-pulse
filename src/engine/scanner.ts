@@ -15,6 +15,7 @@ import { generateSubNarratives } from "./sub-narratives.js";
 import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
 import { enrichTokenData, detectEarlySignals } from "./enricher.js";
 import { extractScreenerHighlights } from "./screener-highlights.js";
+import { classifyByHeuristic } from "./narrative-heuristic.js";
 import { config } from "../config.js";
 import { normalizeAddress } from "../utils/normalize.js";
 import type {
@@ -421,6 +422,21 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
       }
     }
     log(`Holdings cross-reference: address=${holdingsAddrMatches}, symbol-only=${holdingsSymbolMatches} highlights enriched with sectors`);
+  }
+
+  // Heuristic fallback for remaining highlights without sectors
+  let heuristicMatches = 0;
+  for (const h of screenerHighlights) {
+    if (h.tokenSectors && h.tokenSectors.length > 0) continue;
+    const heuristicSectors = classifyByHeuristic(h.token_symbol);
+    if (heuristicSectors.length > 0) {
+      h.tokenSectors = heuristicSectors;
+      h.narrativeKey = heuristicSectors[0];
+      heuristicMatches++;
+    }
+  }
+  if (heuristicMatches > 0) {
+    log(`Heuristic classifier: ${heuristicMatches} highlights enriched with sectors`);
   }
 
   // Step 8.5: Fetch flow intelligence for top highlights
