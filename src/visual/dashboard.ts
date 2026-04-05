@@ -773,35 +773,35 @@ export function renderDashboardHtml(): string {
 
     .flow-intel-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px 16px;
+      grid-template-columns: 1fr;
+      gap: 4px 0;
     }
 
     .flow-intel-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       padding: 3px 0;
-      font-size: 0.8rem;
-    }
-
-    .flow-intel-label {
-      flex: 0 0 100px;
-      font-weight: 500;
-      color: var(--text-secondary);
       font-size: 0.78rem;
     }
 
-    .flow-intel-value {
+    .flow-intel-label {
       flex: 0 0 90px;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .flow-intel-value {
+      flex: 0 0 80px;
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       font-weight: 600;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
     }
 
     .flow-intel-meta {
       color: var(--text-muted);
-      font-size: 0.72rem;
+      font-size: 0.68rem;
     }
 
     .flow-intel-note {
@@ -920,7 +920,7 @@ export function renderDashboardHtml(): string {
 
     .ai-setup-grid {
       display: grid;
-      grid-template-columns: 1fr 2fr;
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -1204,7 +1204,7 @@ export function renderDashboardHtml(): string {
           <span class="scan-indicator" id="scan-indicator" style="display:none">
             <span class="dot"></span> Scanning...
           </span>
-          <button class="btn-scan" id="btn-scan" onclick="triggerScan()">Rescan</button>
+          <button class="btn-scan" id="btn-scan" onclick="triggerScan()" data-tooltip="Rescan all data (~300 credits)" data-tooltip-pos="bottom">Rescan</button>
           <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.75rem;padding:0 24px 0 10px;height:34px">
             <option value="0">Manual</option>
             <option value="300000">5 min</option>
@@ -2245,7 +2245,10 @@ export function renderDashboardHtml(): string {
             if (rows[i].getAttribute('data-signal') !== signalFilter) show = false;
           }
         }
-        if (narrativeFilter && rows[i].getAttribute('data-narrative') !== narrativeFilter) show = false;
+        if (narrativeFilter) {
+          var rowNarrative = rows[i].getAttribute('data-narrative') || '';
+          if (rowNarrative !== narrativeFilter && !rowNarrative.startsWith(narrativeFilter) && !narrativeFilter.startsWith(rowNarrative)) show = false;
+        }
         rows[i].style.display = show ? '' : 'none';
         if (show) visibleCount++;
 

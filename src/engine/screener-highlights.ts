@@ -152,6 +152,26 @@ export function extractNarrativeHighlights(
     }
   }
 
+  // Build netflow lookup for ALL entries (including those without sectors)
+  // Used to enrich holdings tokens with netflow data
+  const netflowAllByAddress = new Map<string, NetflowEntry>();
+  const netflowAllBySymbolChain = new Map<string, NetflowEntry>();
+  const netflowAllBySymbol = new Map<string, NetflowEntry>();
+  for (const entry of netflowEntries) {
+    const normKey = normalizeAddress(entry.token_address);
+    if (!netflowAllByAddress.has(normKey)) {
+      netflowAllByAddress.set(normKey, entry);
+    }
+    const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    if (!netflowAllBySymbolChain.has(symbolChainKey)) {
+      netflowAllBySymbolChain.set(symbolChainKey, entry);
+    }
+    const symbolOnly = entry.token_symbol.toLowerCase();
+    if (!netflowAllBySymbol.has(symbolOnly)) {
+      netflowAllBySymbol.set(symbolOnly, entry);
+    }
+  }
+
   // Track which token addresses we've already added (dedup between netflow + holdings)
   const seenAddresses = new Set<string>();
   const candidates: ScreenerHighlight[] = [];
@@ -250,12 +270,16 @@ export function extractNarrativeHighlights(
     const marketCapUsd = entry.market_cap_usd ?? screenerMatch?.market_cap_usd ?? 0;
     const priceUsd = (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
 
+    // Try to get netflow data from any netflow entry (even without sectors)
+    const nfMatch = netflowAllByAddress.get(normAddr)
+      ?? netflowAllBySymbolChain.get(symbolChainKey)
+      ?? netflowAllBySymbol.get(entry.token_symbol.toLowerCase());
+
     const highlight: ScreenerHighlight = {
       token_symbol: entry.token_symbol,
       token_address: entry.token_address,
       chain: entry.chain,
-      // Holdings don't have netflow data — use 0 as netflow
-      netflowUsd: 0,
+      netflowUsd: nfMatch?.net_flow_24h_usd ?? 0,
       buyVolume,
       sellVolume,
       buySellRatio: Math.round(buySellRatio * 100) / 100,
@@ -267,14 +291,17 @@ export function extractNarrativeHighlights(
       volume,
       classification: classifyToken(
         buySellRatio,
-        0, // no netflow from holdings
+        nfMatch?.net_flow_24h_usd ?? 0,
         priceChangePct,
-        undefined,
+        nfMatch?.net_flow_7d_usd,
         priceUsd,
-        undefined,
+        nfMatch?.net_flow_30d_usd,
       ),
       tokenSectors: entry.token_sectors,
       narrativeKey: entry.token_sectors[0],
+      netflow7dUsd: nfMatch?.net_flow_7d_usd,
+      netflow30dUsd: nfMatch?.net_flow_30d_usd,
+      traderCount: nfMatch?.trader_count,
     };
 
     seenAddresses.add(normAddr);
