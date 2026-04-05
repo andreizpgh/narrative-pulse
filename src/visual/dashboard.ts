@@ -613,7 +613,7 @@ export function renderDashboardHtml(): string {
       cursor: pointer;
       user-select: none;
       position: relative;
-      padding-right: 20px;
+      padding-right: 18px;
     }
 
     .token-table thead th.sortable:hover {
@@ -623,29 +623,31 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable::after {
       content: '\\2195';
       position: absolute;
-      right: 4px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.75rem;
+      right: 2px;
+      bottom: 10px;
+      font-size: 0.8rem;
+      line-height: 1;
       color: var(--text-muted);
-      opacity: 0.35;
+      opacity: 0.4;
       transition: opacity 0.15s, color 0.15s;
     }
 
     .token-table thead th.sortable:hover::after {
-      opacity: 0.7;
+      opacity: 0.8;
       color: var(--text-secondary);
     }
 
     .token-table thead th.sortable.sort-asc::after {
       content: '\\2191';
       opacity: 1;
+      font-size: 0.85rem;
       color: var(--color-positive);
     }
 
     .token-table thead th.sortable.sort-desc::after {
       content: '\\2193';
       opacity: 1;
+      font-size: 0.85rem;
       color: var(--color-positive);
     }
 
@@ -737,6 +739,15 @@ export function renderDashboardHtml(): string {
       text-overflow: ellipsis;
       white-space: nowrap;
       vertical-align: middle;
+    }
+
+    .narrative-cell {
+      position: relative;
+    }
+
+    .narrative-cell:hover .narrative-pill {
+      background: rgba(129, 140, 248, 0.2);
+      border-color: rgba(129, 140, 248, 0.3);
     }
 
     /* ── Buy/Sell Bar ──────────────────────────── */
@@ -1741,9 +1752,10 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
       html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
-      html += '<td><span class="narrative-pill" data-tooltip="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
+      html += '<td class="narrative-cell" onclick="filterTableByNarrative(\\'' + escapeHtml(narrativeKey || narrativeDisplay) + '\\')" style="cursor:pointer" data-tooltip="' + escapeHtml(narrativeDisplay) + '"><span class="narrative-pill">' + escapeHtml(narrativeDisplay) + '</span></td>';
       var netflowDisplay = t.netflowUsd === 0 ? '\\u2014' : formatUsd(t.netflowUsd);
-      html += '<td class="mono ' + netflowCls + '">' + netflowDisplay + '</td>';
+      var netflowTooltip = t.netflowUsd === 0 ? 'No netflow data available for this token' : '';
+      html += '<td class="mono ' + netflowCls + '"' + (netflowTooltip ? ' data-tooltip="' + netflowTooltip + '"' : '') + '>' + netflowDisplay + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
@@ -2139,13 +2151,14 @@ export function renderDashboardHtml(): string {
           '</div>';
       }
 
-      // Full grid for 2+ categories
+      // Full grid for 2+ categories — only show non-zero rows
       var html = '';
       html += '<div class="flow-intel-section">';
       html += '<div class="flow-intel-title">FLOW INTELLIGENCE</div>';
       html += '<div class="flow-intel-grid">';
-      for (var i = 0; i < categories.length; i++) {
-        html += flowIntelRow(categories[i].label, categories[i].value, categories[i].wallets, categories[i].note || '');
+      for (var i = 0; i < nonZero.length; i++) {
+        var c = nonZero[i];
+        html += flowIntelRow(c.label, c.value, c.wallets, c.note || '');
       }
       html += '</div></div>';
       return html;
@@ -2155,20 +2168,13 @@ export function renderDashboardHtml(): string {
       if (!netFlow || netFlow === 0) return '';
       var isPositive = netFlow >= 0;
       var color = isPositive ? 'var(--color-positive)' : 'var(--color-negative)';
-      var indicator = '';
-      if (label === 'Exchanges') {
-        indicator = isPositive ? '\\u2705' : '\\u26A0\\uFE0F';
-      } else if (label === 'Fresh Wallets') {
-        indicator = isPositive ? '\\uD83D\\uDD04' : '\\u274C';
-      } else {
-        indicator = isPositive ? '\\u2705' : '\\u274C';
-      }
+      var arrow = isPositive ? '\\u2191' : '\\u2193';
       var walletText = (walletCount && walletCount > 0) ? '(' + walletCount + ' wallets)' : '';
       var noteHtml = note ? '<span class="flow-intel-note">' + escapeHtml(note) + '</span>' : '';
       return '<div class="flow-intel-row">' +
         '<span class="flow-intel-label">' + escapeHtml(label) + '</span>' +
-        '<span class="flow-intel-value" style="color:' + color + '">' + formatUsd(netFlow) + '</span>' +
-        '<span class="flow-intel-meta">' + walletText + ' ' + indicator + '</span>' +
+        '<span class="flow-intel-value" style="color:' + color + '">' + arrow + ' ' + formatUsd(netFlow) + '</span>' +
+        '<span class="flow-intel-meta">' + walletText + '</span>' +
         noteHtml +
         '</div>';
     }
