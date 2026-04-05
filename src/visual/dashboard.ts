@@ -525,7 +525,8 @@ export function renderDashboardHtml(): string {
     }
 
     .expanded-right {
-      min-height: 100%;
+      min-height: 120px;
+      transition: min-height 0.3s ease;
     }
 
     .expanded-footer {
@@ -669,6 +670,20 @@ export function renderDashboardHtml(): string {
       letter-spacing: 0.04em;
     }
 
+    .stablecoin-tag {
+      display: inline-block;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(139, 143, 163, 0.12);
+      color: var(--text-muted);
+      margin-left: 4px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     /* ── Narrative Pill ─────────────────────────── */
 
     .narrative-pill {
@@ -760,7 +775,7 @@ export function renderDashboardHtml(): string {
 
     /* ── AI Analysis ──────────────────────────────── */
 
-    .ai-analysis-section { margin-top: 12px; }
+    .ai-analysis-section { margin-top: 12px; min-height: 120px; display: flex; flex-direction: column; }
 
     .ai-analysis-blur {
       position: relative;
@@ -770,6 +785,9 @@ export function renderDashboardHtml(): string {
       cursor: pointer;
       overflow: hidden;
       transition: border-color 0.25s ease;
+      flex: 1;
+      display: flex;
+      align-items: center;
     }
 
     .ai-analysis-blur:hover {
@@ -815,7 +833,9 @@ export function renderDashboardHtml(): string {
       z-index: 1;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 10px;
+      width: 100%;
     }
 
     .ai-analysis-icon { font-size: 1.1rem; }
@@ -829,6 +849,7 @@ export function renderDashboardHtml(): string {
       border: 1px solid var(--border-color);
       border-radius: 8px;
       background: var(--bg-card-alt);
+      flex: 1;
     }
 
     .ai-setup-title {
@@ -897,6 +918,9 @@ export function renderDashboardHtml(): string {
 
     .ai-loading {
       padding: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .ai-loading-header {
@@ -943,6 +967,7 @@ export function renderDashboardHtml(): string {
       border: 1px solid rgba(129, 140, 248, 0.2);
       border-radius: 8px;
       background: rgba(129, 140, 248, 0.04);
+      flex: 1;
     }
 
     .ai-result-header {
@@ -991,6 +1016,7 @@ export function renderDashboardHtml(): string {
       border: 1px solid rgba(248, 113, 113, 0.2);
       border-radius: 8px;
       background: rgba(248, 113, 113, 0.04);
+      flex: 1;
     }
 
     .ai-error-text {
@@ -1649,6 +1675,9 @@ export function renderDashboardHtml(): string {
         narrativeKey = t.narrativeKey;
       }
 
+      // Stablecoin indicator: mark tokens pegged near $1.00
+      var isStablecoin = t.priceUsd !== undefined && t.priceUsd >= 0.95 && t.priceUsd <= 1.05 && Math.abs(t.priceChange) < 1;
+
       var detailId = 'detail-' + idx;
 
       html += '<tr class="expandable-row" onclick="toggleExpand(this, \\'' + detailId + '\\')"';
@@ -1671,6 +1700,9 @@ export function renderDashboardHtml(): string {
       html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span>';
       if (t.classification === 'diverging') {
         html += ' <span class="diverge-sub" title="Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence">DIVERGE</span>';
+      }
+      if (isStablecoin) {
+        html += ' <span class="stablecoin-tag" title="Price-pegged asset (~$1.00)">STABLE</span>';
       }
       html += '</td>';
       html += '</tr>';
