@@ -63,7 +63,7 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 14px 24px;
+      padding: 18px 28px 14px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
     }
@@ -81,10 +81,13 @@ export function renderDashboardHtml(): string {
     }
 
     .header-title {
-      font-size: 1.2rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: #ffffff;
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .header-sep {
@@ -95,6 +98,7 @@ export function renderDashboardHtml(): string {
     .header-tagline {
       font-size: 0.78rem;
       color: var(--text-secondary);
+      font-weight: 400;
     }
 
     .header-actions {
@@ -105,18 +109,19 @@ export function renderDashboardHtml(): string {
 
     .header-meta {
       font-size: 0.75rem;
-      color: var(--text-muted);
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.04);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.15);
     }
 
     .header-credits {
       font-size: 0.72rem;
       color: var(--text-muted);
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.04);
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-color);
     }
 
@@ -143,19 +148,20 @@ export function renderDashboardHtml(): string {
 
     .btn-scan {
       padding: 8px 20px;
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(129, 140, 248, 0.3);
       border-radius: 8px;
-      background: var(--bg-card-alt);
-      color: var(--text-primary);
+      background: rgba(129, 140, 248, 0.1);
+      color: #a5b4fc;
       font-size: 0.85rem;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .btn-scan:hover {
-      background: rgba(52, 211, 153, 0.15);
-      border-color: var(--color-positive);
-      box-shadow: 0 0 12px rgba(52, 211, 153, 0.15);
+      background: rgba(129, 140, 248, 0.2);
+      border-color: rgba(129, 140, 248, 0.5);
+      box-shadow: 0 0 16px rgba(129, 140, 248, 0.15);
     }
 
     .btn-scan:disabled {
@@ -416,16 +422,17 @@ export function renderDashboardHtml(): string {
 
     .expand-arrow {
       display: inline-block;
-      width: 16px;
-      height: 16px;
-      margin-right: 4px;
+      width: 0;
+      height: 0;
+      border-left: 5px solid var(--text-muted);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      margin-right: 6px;
       vertical-align: middle;
       transition: transform 0.2s ease;
-      color: var(--text-muted);
-      font-size: 0.65rem;
     }
 
-    .expand-arrow.open { transform: rotate(90deg); transform-origin: center center; }
+    .expand-arrow.open { transform: rotate(90deg); }
 
     .expanded-detail {
       display: none;
@@ -521,20 +528,28 @@ export function renderDashboardHtml(): string {
       right: 4px;
       top: 50%;
       transform: translateY(-50%);
-      font-size: 0.65rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
-      opacity: 0.5;
+      opacity: 0.4;
+      transition: opacity 0.15s, color 0.15s;
+    }
+
+    .token-table thead th.sortable:hover::after {
+      opacity: 0.7;
+      color: var(--text-secondary);
     }
 
     .token-table thead th.sortable.sort-asc::after {
       content: '\\2191';
       opacity: 1;
+      font-size: 0.9rem;
       color: var(--color-positive);
     }
 
     .token-table thead th.sortable.sort-desc::after {
       content: '\\2193';
       opacity: 1;
+      font-size: 0.9rem;
       color: var(--color-positive);
     }
 
@@ -568,8 +583,9 @@ export function renderDashboardHtml(): string {
     }
 
     .screener-badge.distributing {
-      background: rgba(248, 113, 113, 0.15);
-      color: var(--color-negative);
+      background: rgba(248, 113, 113, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.2);
     }
 
     .screener-badge.mixed {
@@ -1015,7 +1031,7 @@ export function renderDashboardHtml(): string {
           <span class="header-title">NARRATIVE PULSE</span>
           <span class="header-sep">&middot;</span>
           <span class="header-tagline">Smart Money Intelligence</span>
-          <span class="header-powered" style="font-size:0.62rem;color:var(--text-muted);opacity:0.5;margin-left:4px">powered by Nansen</span>
+          <span class="header-powered" style="font-size:0.68rem;color:var(--text-secondary);font-weight:500;margin-left:4px;padding:2px 8px;border-radius:4px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2)">powered by Nansen</span>
         </div>
         <div class="header-actions">
           <span class="header-meta" id="header-ago">Updated — ago</span>
@@ -1507,17 +1523,17 @@ export function renderDashboardHtml(): string {
                        t.classification === 'heavy_accumulation' ? 'heavy-accumulation' :
                        t.classification === 'diverging' ? 'diverging' :
                        t.classification === 'accumulating' ? 'accumulating' :
-                       t.classification === 'mixed' ? 'mixed' : 'distributing';
+                        t.classification === 'mixed' ? 'distributing' : 'distributing';
       var badgeText = t.classification === 'pumping' ? '\\uD83D\\uDE80 PUMPING' :
                       t.classification === 'heavy_accumulation' ? '\\uD83D\\uDD25 HEAVY ACCUM' :
                       t.classification === 'diverging' ? '\\uD83D\\uDCCA DIVERGING' :
                       t.classification === 'accumulating' ? '\\uD83D\\uDC40 ACCUM' :
-                      t.classification === 'mixed' ? '\\u25D0 MIXED' : '\\u26A0\\uFE0F DIST';
+                       t.classification === 'mixed' ? '\\uD83D\\uDCA5 SELLING' : '\\uD83D\\uDCA5 SELLING';
       var badgeTooltip = t.classification === 'pumping' ? 'High SM buying ratio but token already pumped > 30% — caution' :
                          t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
                          t.classification === 'diverging' ? 'Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence' :
                          t.classification === 'accumulating' ? 'Buy/sell ratio \\u2265 1.5: Moderate Smart Money buying' :
-                         t.classification === 'mixed' ? 'Positive netflow but buy/sell ratio < 1.5: Mixed signal' : 'Negative netflow & low ratio: Smart Money is selling';
+                          t.classification === 'mixed' ? 'SM netflow positive but low conviction — monitoring' : 'Negative netflow & low ratio: Smart Money is selling';
 
       var signalSortOrder = t.classification === 'pumping' ? 0 :
                             t.classification === 'diverging' ? 1 :
@@ -1550,7 +1566,7 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-6="' + (t.marketCapUsd || 0) + '"';
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
-      html += '<td><span class="expand-arrow">\\u25B6</span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
+      html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
       html += '<td><span class="narrative-pill" title="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
       html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
@@ -2015,7 +2031,7 @@ export function renderDashboardHtml(): string {
       }
       for (var s = 0; s < signalOptions.length; s++) {
         var opt = signalOptions[s];
-        if (!opt.value || activeSignals[opt.value]) {
+        if (!opt.value || activeSignals[opt.value] || opt.value === '__selling') {
           signalSelect.innerHTML += '<option value="' + escapeHtml(opt.value) + '">' + opt.label + '</option>';
         }
       }
