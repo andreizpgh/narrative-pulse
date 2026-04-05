@@ -72,7 +72,7 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 16px 28px;
+      padding: 16px 24px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
     }
@@ -1633,7 +1633,7 @@ export function renderDashboardHtml(): string {
         html += '</div>';
       } else if (counts.mixed > 0) {
         html += '<div class="signal-card" onclick="filterBySignalGroup(\\'mixed\\')" style="cursor:pointer">';
-        html += '<div class="signal-card-icon">\\u25D0</div>';
+        html += '<div class="signal-card-icon">\\u2696\\uFE0F</div>';
         html += '<div class="signal-card-value">' + counts.mixed + '</div>';
         html += '<div class="signal-card-label">MIXED</div>';
         html += '<div class="signal-card-hint">SM inflow, low conviction</div>';
@@ -1734,7 +1734,7 @@ export function renderDashboardHtml(): string {
                       t.classification === 'heavy_accumulation' ? '\\uD83D\\uDD25 HEAVY ACCUM' :
                       t.classification === 'diverging' ? '\\uD83D\\uDCCA DIVERGING' :
                       t.classification === 'accumulating' ? '\\uD83D\\uDC40 ACCUM' :
-                       t.classification === 'mixed' ? '\\u25D0 MIXED' : '\\u26A0\\uFE0F SELLING';
+                       t.classification === 'mixed' ? '\\u2696\\uFE0F MIXED' : '\\u26A0\\uFE0F SELLING';
       var badgeTooltip = t.classification === 'pumping' ? 'High SM buying ratio but token already pumped > 30% — caution' :
                          t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
                          t.classification === 'diverging' ? 'Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence' :
@@ -1750,13 +1750,16 @@ export function renderDashboardHtml(): string {
       // Narrative display: first 2 sectors joined with " + "
       var narrativeDisplay = '\\u2014';
       var narrativeKey = '';
+      var narrativeFull = ''; // full name for tooltip
       if (t.tokenSectors && t.tokenSectors.length > 0) {
         var sectors = t.tokenSectors.slice(0, 2);
-        narrativeDisplay = sectors.join(' + ');
+        narrativeFull = sectors.join(' + ');
+        narrativeDisplay = narrativeFull;
         if (narrativeDisplay.length > 25) narrativeDisplay = narrativeDisplay.substring(0, 22) + '...';
         narrativeKey = t.tokenSectors[0];
       } else if (t.narrativeKey) {
         narrativeDisplay = t.narrativeKey;
+        narrativeFull = t.narrativeKey;
         narrativeKey = t.narrativeKey;
       }
 
@@ -1780,7 +1783,7 @@ export function renderDashboardHtml(): string {
         html += ' <span class="stablecoin-tag" data-tooltip="Price-pegged asset (~$1.00)">STABLE</span>';
       }
       html += '</td>';
-      html += '<td class="narrative-cell" onclick="filterTableByNarrative(\\'' + escapeHtml(narrativeKey || narrativeDisplay) + '\\')" style="cursor:pointer" data-tooltip="' + escapeHtml(narrativeDisplay) + '"><span class="narrative-pill">' + escapeHtml(narrativeDisplay) + '</span></td>';
+      html += '<td class="narrative-cell" onclick="filterTableByNarrative(\\'' + escapeHtml(narrativeKey || narrativeDisplay) + '\\')" style="cursor:pointer" data-tooltip="' + escapeHtml(narrativeFull || narrativeDisplay) + '"><span class="narrative-pill">' + escapeHtml(narrativeDisplay) + '</span></td>';
       var netflowDisplay = t.netflowUsd === 0 ? '\\u2014' : formatUsd(t.netflowUsd);
       var netflowTooltip = t.netflowUsd === 0 ? 'No netflow data available for this token' : '';
       html += '<td class="mono ' + netflowCls + '"' + (netflowTooltip ? ' data-tooltip="' + netflowTooltip + '"' : '') + '>' + netflowDisplay + '</td>';
@@ -2236,7 +2239,7 @@ export function renderDashboardHtml(): string {
         { value: 'accumulating', label: '\\uD83D\\uDC40 Accumulating' },
         { value: 'diverging', label: '\\uD83D\\uDCCA Diverging' },
         { value: 'pumping', label: '\\uD83D\\uDE80 Pumping' },
-        { value: 'mixed', label: '\\u25D0 Mixed' },
+        { value: 'mixed', label: '\\u2696\\uFE0F Mixed' },
         { value: '__selling', label: '\\u26A0\\uFE0F Selling' },
       ];
       signalSelect.innerHTML = '';
@@ -2385,7 +2388,9 @@ export function renderDashboardHtml(): string {
       }
 
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
-      chartDom.style.cursor = 'pointer';
+      // Set pointer cursor on the canvas element that ECharts creates inside the container
+      var canvasEl = chartDom.querySelector('canvas');
+      if (canvasEl) canvasEl.style.cursor = 'pointer';
 
       // Take top 10 narratives by absolute netflow (no $100 threshold)
       var sorted = narratives.slice().sort(function(a, b) {
@@ -2460,6 +2465,7 @@ export function renderDashboardHtml(): string {
         series: [
           {
             type: 'bar',
+            cursor: 'pointer',
             barMaxWidth: 24,
             barMinHeight: 8,
             label: {
