@@ -1610,7 +1610,7 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-icon">\\uD83D\\uDC40</div>';
       html += '<div class="signal-card-value">' + counts.accumulating + '</div>';
       html += '<div class="signal-card-label">ACCUMULATING</div>';
-      html += '<div class="signal-card-hint">SM buying, price stable</div>';
+      html += '<div class="signal-card-hint">Buy ratio &ge; 1.5x</div>';
       html += '</div>';
 
       // PUMPING card
@@ -2425,7 +2425,7 @@ export function renderDashboardHtml(): string {
             return '<strong>' + d.name + '</strong><br/>SM ' + direction + ': <strong>' + formatUsdAbs(d.value) + '</strong>';
           }
         },
-        grid: { top: 10, bottom: 30, left: 130, right: 80 },
+        grid: { top: 10, bottom: 30, left: 180, right: 60 },
         xAxis: {
           type: 'value',
           axisLabel: {
@@ -2485,6 +2485,20 @@ export function renderDashboardHtml(): string {
       chart.on('click', function(params) {
         if (params.name) {
           filterTableByNarrative(params.name);
+        }
+      });
+
+      // Full-row click: detect clicks anywhere in chart area, map Y to category
+      chart.getZr().on('click', function(params) {
+        var pixelX = params.offsetX;
+        var pixelY = params.offsetY;
+        // Get the chart's coordinate system to convert pixel to category
+        var pointInGrid = chart.convertFromPixel({ seriesIndex: 0 }, [pixelX, pixelY]);
+        if (pointInGrid && pointInGrid[1] !== undefined) {
+          var categoryIndex = Math.round(pointInGrid[1]);
+          if (categoryIndex >= 0 && categoryIndex < names.length) {
+            filterTableByNarrative(names[categoryIndex]);
+          }
         }
       });
 
