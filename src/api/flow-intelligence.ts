@@ -13,6 +13,15 @@ import type { FlowIntelligence } from "../types.js";
 
 const ENDPOINT = "/tgm/flow-intelligence";
 
+// Nansen holdings return chain="bsc" but flow-intelligence expects "bnb"
+const CHAIN_MAP: Record<string, string> = {
+  bsc: "bnb",
+};
+
+function normalizeChain(chain: string): string {
+  return CHAIN_MAP[chain] ?? chain;
+}
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -40,7 +49,7 @@ export async function fetchFlowIntelligence(
   for (const token of tokens) {
     try {
       const body: Record<string, unknown> = {
-        chain: token.chain,
+        chain: normalizeChain(token.chain),
         token_address: token.token_address,
       };
 

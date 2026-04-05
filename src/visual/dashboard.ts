@@ -72,7 +72,7 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 14px 28px;
+      padding: 16px 28px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
     }
@@ -81,13 +81,12 @@ export function renderDashboardHtml(): string {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      min-height: 40px;
     }
 
     .header-brand {
       display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      gap: 2px;
       flex-shrink: 0;
     }
 
@@ -100,24 +99,28 @@ export function renderDashboardHtml(): string {
       -webkit-text-fill-color: transparent;
       background-clip: text;
       white-space: nowrap;
-    }
-
-    .header-sep {
-      color: var(--text-muted);
-      font-size: 1rem;
-      line-height: 1;
+      line-height: 1.2;
     }
 
     .header-tagline {
-      font-size: 0.82rem;
-      color: var(--text-secondary);
+      font-size: 0.72rem;
+      color: var(--text-muted);
       font-weight: 400;
+      letter-spacing: 0.03em;
+      line-height: 1.2;
+    }
+
+    .header-powered {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       flex-shrink: 0;
     }
 
@@ -135,16 +138,7 @@ export function renderDashboardHtml(): string {
     }
 
     .header-credits {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      padding: 6px 10px;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border-color);
-      height: 34px;
-      display: flex;
-      align-items: center;
-      white-space: nowrap;
+      display: none;
     }
 
     .scan-indicator {
@@ -338,7 +332,7 @@ export function renderDashboardHtml(): string {
       position: relative;
     }
 
-    [data-tooltip]::after {
+      [data-tooltip]::after {
       content: attr(data-tooltip);
       position: absolute;
       bottom: calc(100% + 8px);
@@ -351,10 +345,9 @@ export function renderDashboardHtml(): string {
       font-size: 0.72rem;
       font-weight: 400;
       line-height: 1.4;
-      white-space: nowrap;
-      max-width: 280px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      width: max-content;
+      max-width: 240px;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.2s ease;
@@ -619,9 +612,8 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable {
       cursor: pointer;
       user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+      position: relative;
+      padding-right: 20px;
     }
 
     .token-table thead th.sortable:hover {
@@ -630,11 +622,14 @@ export function renderDashboardHtml(): string {
 
     .token-table thead th.sortable::after {
       content: '\\2195';
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
       font-size: 0.75rem;
       color: var(--text-muted);
       opacity: 0.35;
       transition: opacity 0.15s, color 0.15s;
-      flex-shrink: 0;
     }
 
     .token-table thead th.sortable:hover::after {
@@ -925,7 +920,7 @@ export function renderDashboardHtml(): string {
 
     .ai-setup-grid {
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 2fr;
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -1201,11 +1196,10 @@ export function renderDashboardHtml(): string {
       <div class="header-row">
         <div class="header-brand">
           <span class="header-title">NARRATIVE PULSE</span>
-          <span class="header-sep">&middot;</span>
           <span class="header-tagline">Smart Money Intelligence</span>
-          <span class="header-powered" style="font-size:0.72rem;color:var(--text-secondary);font-weight:500;padding:6px 10px;border-radius:6px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2);height:34px;display:flex;align-items:center">powered by Nansen</span>
         </div>
         <div class="header-actions">
+          <span class="header-powered">powered by <span style="color:var(--text-secondary);font-weight:500">Nansen</span></span>
           <span class="header-meta" id="header-ago">Updated — ago</span>
           <span class="scan-indicator" id="scan-indicator" style="display:none">
             <span class="dot"></span> Scanning...
@@ -1218,7 +1212,6 @@ export function renderDashboardHtml(): string {
             <option value="900000" selected>15 min</option>
             <option value="1800000">30 min</option>
           </select>
-          <span class="header-credits" id="header-credits">300 credits</span>
         </div>
       </div>
     </header>
@@ -1239,7 +1232,7 @@ export function renderDashboardHtml(): string {
 
     <!-- Footer -->
     <div class="footer">
-      Powered by <span>Nansen API</span> (5 endpoints) + <span>DexScreener</span> &middot; ~300 credits/scan
+      Narrative Pulse &middot; Smart Money Intelligence &middot; Nansen API + DexScreener
     </div>
   </div>
 
@@ -1279,7 +1272,7 @@ export function renderDashboardHtml(): string {
     }
 
     function formatPercent(value) {
-      if (!value || value === 0) return '\\u2014';
+      if (value === undefined || value === null) return '\\u2014';
       var sign = value >= 0 ? '+' : '-';
       return sign + Math.abs(value).toFixed(1) + '%';
     }
@@ -1690,7 +1683,7 @@ export function renderDashboardHtml(): string {
       var html = '';
       var netflowCls = t.netflowUsd >= 0 ? 'netflow-positive' : 'netflow-negative';
       var priceCls = t.priceChange > 0 ? 'netflow-positive' : (t.priceChange < 0 ? 'netflow-negative' : '');
-      var priceText = t.priceChange === 0 ? '\\u2014' : formatPercent(t.priceChange);
+      var priceText = (t.priceChange === undefined || t.priceChange === null) ? '\\u2014' : formatPercent(t.priceChange);
 
       var totalVol = Math.abs(t.buyVolume) + Math.abs(t.sellVolume);
       var buyPct = totalVol > 0 ? (Math.abs(t.buyVolume) / totalVol * 100) : 50;
@@ -1749,15 +1742,13 @@ export function renderDashboardHtml(): string {
       html += '>';
       html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
       html += '<td><span class="narrative-pill" data-tooltip="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
-      html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
+      var netflowDisplay = t.netflowUsd === 0 ? '\\u2014' : formatUsd(t.netflowUsd);
+      html += '<td class="mono ' + netflowCls + '">' + netflowDisplay + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
       html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span>';
-      if (t.classification === 'diverging') {
-        html += ' <span class="diverge-sub" data-tooltip="Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence">DIVERGE</span>';
-      }
       if (isStablecoin) {
         html += ' <span class="stablecoin-tag" data-tooltip="Price-pegged asset (~$1.00)">STABLE</span>';
       }
@@ -1907,15 +1898,15 @@ export function renderDashboardHtml(): string {
       el.innerHTML = '<div class="ai-setup">' +
         '<div class="ai-setup-title">\\uD83E\\uDD16 AI Analysis Setup</div>' +
         '<div class="ai-setup-desc">Connect your LLM provider to analyze tokens with AI. Your API key is stored locally in this browser only.</div>' +
+        '<div class="ai-field" style="margin-bottom:10px"><label>Provider</label>' +
+          '<select id="ai-provider" class="filter-select" style="width:100%" onchange="toggleCustomUrl()">' +
+            '<option value="openai"' + (existingConfig.provider === 'openai' ? ' selected' : '') + '>OpenAI</option>' +
+            '<option value="anthropic"' + (existingConfig.provider === 'anthropic' ? ' selected' : '') + '>Anthropic</option>' +
+            '<option value="openrouter"' + (existingConfig.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option>' +
+            '<option value="custom"' + (existingConfig.provider === 'custom' ? ' selected' : '') + '>Custom (OpenAI Compatible)</option>' +
+          '</select>' +
+        '</div>' +
         '<div class="ai-setup-grid">' +
-          '<div class="ai-field"><label>Provider</label>' +
-            '<select id="ai-provider" class="filter-select" style="width:100%" onchange="toggleCustomUrl()">' +
-              '<option value="openai"' + (existingConfig.provider === 'openai' ? ' selected' : '') + '>OpenAI</option>' +
-              '<option value="anthropic"' + (existingConfig.provider === 'anthropic' ? ' selected' : '') + '>Anthropic</option>' +
-              '<option value="openrouter"' + (existingConfig.provider === 'openrouter' ? ' selected' : '') + '>OpenRouter</option>' +
-              '<option value="custom"' + (existingConfig.provider === 'custom' ? ' selected' : '') + '>Custom (OpenAI Compatible)</option>' +
-            '</select>' +
-          '</div>' +
           '<div class="ai-field"><label>API Key</label>' +
             '<input type="password" id="ai-key" class="ai-input" placeholder="sk-..." value="' + escapeHtml(existingConfig.apiKey || '') + '">' +
           '</div>' +
@@ -2216,7 +2207,6 @@ export function renderDashboardHtml(): string {
         { value: 'diverging', label: '\\uD83D\\uDCCA Diverging' },
         { value: 'pumping', label: '\\uD83D\\uDE80 Pumping' },
         { value: 'mixed', label: '\\u25D0 Mixed' },
-        { value: 'distributing', label: '\\u26A0\\uFE0F Distributing' },
         { value: '__selling', label: '\\u26A0\\uFE0F Selling' },
       ];
       signalSelect.innerHTML = '';
