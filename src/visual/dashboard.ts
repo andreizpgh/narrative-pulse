@@ -72,7 +72,7 @@ export function renderDashboardHtml(): string {
     /* ── Header ─────────────────────────────────── */
 
     .header {
-      padding: 18px 28px 14px;
+      padding: 14px 28px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 20px;
     }
@@ -81,31 +81,35 @@ export function renderDashboardHtml(): string {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      min-height: 40px;
     }
 
     .header-brand {
       display: flex;
-      align-items: baseline;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
     }
 
     .header-title {
-      font-size: 1.35rem;
+      font-size: 1.15rem;
       font-weight: 900;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      white-space: nowrap;
     }
 
     .header-sep {
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 1rem;
+      line-height: 1;
     }
 
     .header-tagline {
-      font-size: 0.78rem;
+      font-size: 0.82rem;
       color: var(--text-secondary);
       font-weight: 400;
     }
@@ -113,38 +117,49 @@ export function renderDashboardHtml(): string {
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .header-meta {
       font-size: 0.75rem;
       color: var(--text-secondary);
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 6px;
       background: rgba(52, 211, 153, 0.08);
       border: 1px solid rgba(52, 211, 153, 0.15);
+      height: 34px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
     }
 
     .header-credits {
       font-size: 0.72rem;
       color: var(--text-muted);
-      padding: 4px 10px;
+      padding: 6px 10px;
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-color);
+      height: 34px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
     }
 
     .scan-indicator {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       color: var(--color-warning);
+      height: 34px;
+      padding: 0 10px;
     }
 
     .scan-indicator .dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: var(--color-warning);
       animation: pulse 1.2s ease-in-out infinite;
@@ -156,15 +171,19 @@ export function renderDashboardHtml(): string {
     }
 
     .btn-scan {
-      padding: 8px 20px;
+      height: 34px;
+      padding: 0 18px;
       border: 1px solid rgba(129, 140, 248, 0.3);
-      border-radius: 8px;
+      border-radius: 7px;
       background: rgba(129, 140, 248, 0.1);
       color: #a5b4fc;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
     }
 
     .btn-scan:hover {
@@ -193,12 +212,39 @@ export function renderDashboardHtml(): string {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       text-align: center;
-      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .signal-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius);
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(52,211,153,0), rgba(129,140,248,0), rgba(52,211,153,0));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      transition: background 0.4s ease;
+      pointer-events: none;
     }
 
     .signal-card:hover {
-      border-color: rgba(255, 255, 255, 0.12);
-      box-shadow: 0 0 20px rgba(52, 211, 153, 0.06);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .signal-card:hover::before {
+      background: linear-gradient(135deg, rgba(52,211,153,0.5), rgba(129,140,248,0.5), rgba(52,211,153,0.5));
+      background-size: 200% 200%;
+      animation: borderGlow 3s linear infinite;
+    }
+
+    @keyframes borderGlow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
     }
 
     .signal-card-icon {
@@ -276,6 +322,12 @@ export function renderDashboardHtml(): string {
       outline: none;
       border-color: var(--color-positive);
       box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+    }
+
+    .filter-select option {
+      background: #1e2230;
+      color: #e8e9ed;
+      padding: 8px 10px;
     }
 
     .filter-count {
@@ -523,8 +575,9 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable {
       cursor: pointer;
       user-select: none;
-      position: relative;
-      padding-right: 18px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .token-table thead th.sortable:hover {
@@ -533,14 +586,11 @@ export function renderDashboardHtml(): string {
 
     .token-table thead th.sortable::after {
       content: '\\2195';
-      position: absolute;
-      right: 4px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      opacity: 0.4;
+      opacity: 0.35;
       transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0;
     }
 
     .token-table thead th.sortable:hover::after {
@@ -551,14 +601,12 @@ export function renderDashboardHtml(): string {
     .token-table thead th.sortable.sort-asc::after {
       content: '\\2191';
       opacity: 1;
-      font-size: 0.9rem;
       color: var(--color-positive);
     }
 
     .token-table thead th.sortable.sort-desc::after {
       content: '\\2193';
       opacity: 1;
-      font-size: 0.9rem;
       color: var(--color-positive);
     }
 
@@ -1072,7 +1120,7 @@ export function renderDashboardHtml(): string {
           <span class="header-title">NARRATIVE PULSE</span>
           <span class="header-sep">&middot;</span>
           <span class="header-tagline">Smart Money Intelligence</span>
-          <span class="header-powered" style="font-size:0.68rem;color:var(--text-secondary);font-weight:500;margin-left:4px;padding:2px 8px;border-radius:4px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2)">powered by Nansen</span>
+          <span class="header-powered" style="font-size:0.72rem;color:var(--text-secondary);font-weight:500;padding:6px 10px;border-radius:6px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.2);height:34px;display:flex;align-items:center">powered by Nansen</span>
         </div>
         <div class="header-actions">
           <span class="header-meta" id="header-ago">Updated — ago</span>
@@ -1080,7 +1128,7 @@ export function renderDashboardHtml(): string {
             <span class="dot"></span> Scanning...
           </span>
           <button class="btn-scan" id="btn-scan" onclick="triggerScan()">Rescan</button>
-          <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.75rem;padding:4px 24px 4px 8px">
+          <select class="filter-select" id="refresh-interval" onchange="setRefreshInterval(this.value)" style="font-size:0.75rem;padding:0 24px 0 10px;height:34px">
             <option value="0">Manual</option>
             <option value="300000">5 min</option>
             <option value="600000">10 min</option>
@@ -1575,7 +1623,7 @@ export function renderDashboardHtml(): string {
                       t.classification === 'heavy_accumulation' ? '\\uD83D\\uDD25 HEAVY ACCUM' :
                       t.classification === 'diverging' ? '\\uD83D\\uDCCA DIVERGING' :
                       t.classification === 'accumulating' ? '\\uD83D\\uDC40 ACCUM' :
-                       t.classification === 'mixed' ? '\\uD83D\\uDCA5 SELLING' : '\\uD83D\\uDCA5 SELLING';
+                       t.classification === 'mixed' ? '\\u26A0\\uFE0F SELLING' : '\\u26A0\\uFE0F SELLING';
       var badgeTooltip = t.classification === 'pumping' ? 'High SM buying ratio but token already pumped > 30% — caution' :
                          t.classification === 'heavy_accumulation' ? 'Buy/sell ratio \\u2265 3.0: Strong Smart Money buying' :
                          t.classification === 'diverging' ? 'Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence' :
@@ -2068,8 +2116,8 @@ export function renderDashboardHtml(): string {
         { value: 'diverging', label: '\\uD83D\\uDCCA Diverging' },
         { value: 'pumping', label: '\\uD83D\\uDE80 Pumping' },
         { value: 'mixed', label: '\\u25D0 Mixed' },
-        { value: 'distributing', label: '\\u26A0\\uFE0F Selling' },
-        { value: '__selling', label: '\\u26A0\\uFE0F All Selling' },
+        { value: 'distributing', label: '\\u26A0\\uFE0F Distributing' },
+        { value: '__selling', label: '\\u26A0\\uFE0F Selling' },
       ];
       signalSelect.innerHTML = '';
       var activeSignals = {};
