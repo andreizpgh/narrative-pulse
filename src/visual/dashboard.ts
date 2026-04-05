@@ -1766,7 +1766,11 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-6="' + (t.marketCapUsd || 0) + '"';
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
-      html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
+      html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain);
+      if (isStablecoin) {
+        html += ' <span class="stablecoin-tag" data-tooltip="Price-pegged asset (~$1.00)">STABLE</span>';
+      }
+      html += '</td>';
       html += '<td class="narrative-cell" onclick="filterTableByNarrative(\\'' + escapeHtml(narrativeKey || narrativeDisplay) + '\\')" style="cursor:pointer" data-tooltip="' + escapeHtml(narrativeDisplay) + '"><span class="narrative-pill">' + escapeHtml(narrativeDisplay) + '</span></td>';
       var netflowDisplay = t.netflowUsd === 0 ? '\\u2014' : formatUsd(t.netflowUsd);
       var netflowTooltip = t.netflowUsd === 0 ? 'No netflow data available for this token' : '';
@@ -1775,11 +1779,7 @@ export function renderDashboardHtml(): string {
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-      html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span>';
-      if (isStablecoin) {
-        html += ' <span class="stablecoin-tag" data-tooltip="Price-pegged asset (~$1.00)">STABLE</span>';
-      }
-      html += '</td>';
+      html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span></td>';
       html += '</tr>';
 
       // Expanded detail row
@@ -2445,35 +2445,10 @@ export function renderDashboardHtml(): string {
           axisTick: { show: false }
         },
         series: [
-          // Full-width invisible clickable bars — make entire row clickable
-          {
-            type: 'bar',
-            barMaxWidth: 9999,
-            barGap: '-100%',
-            barCategoryGap: '20%',
-            data: topNarratives.map(function(n) {
-              var maxVal = 0;
-              for (var i = 0; i < topNarratives.length; i++) {
-                var abs = Math.abs(topNarratives[i].totalNetflow24h);
-                if (abs > maxVal) maxVal = abs;
-              }
-              return maxVal * 1.5;
-            }),
-            itemStyle: {
-              color: 'rgba(0,0,0,0)',
-              borderColor: 'rgba(0,0,0,0)'
-            },
-            label: { show: false },
-            tooltip: { show: false },
-            emphasis: {
-              itemStyle: { color: 'rgba(255,255,255,0.03)' }
-            },
-            z: 0
-          },
-          // Actual data bars
           {
             type: 'bar',
             barMaxWidth: 24,
+            barMinHeight: 8,
             label: {
               show: true,
               fontSize: 11,
@@ -2502,8 +2477,7 @@ export function renderDashboardHtml(): string {
                   color: isInflow ? '#34d399' : '#f87171'
                 }
               };
-            }),
-            z: 1
+            })
           }
         ]
       });

@@ -17,7 +17,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -33,80 +33,135 @@
       align-items: center;
     }
 
-    /* ── Top 2px gradient accent line ── */
+    /* ── 3px gradient accent line ── */
     .accent-line {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #34d399, #8b5cf6);
+      height: 3px;
+      background: linear-gradient(90deg, #34d399, #60a5fa, #8b5cf6);
+      z-index: 2;
     }
 
-    /* ── Content area ── */
+    /* ── Radial glow behind title ── */
+    .title-glow {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 280px;
+      background: radial-gradient(
+        ellipse at 50% 30%,
+        rgba(52, 211, 153, 0.08) 0%,
+        rgba(96, 165, 250, 0.04) 35%,
+        rgba(139, 92, 246, 0.03) 55%,
+        transparent 75%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Content wrapper ── */
     .content {
+      position: relative;
+      z-index: 1;
       width: 100%;
-      height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 42px 50px 0;
+      padding: 0 80px;
+      margin-top: 46px;
     }
 
     /* ── Title ── */
     .title {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 800;
-      letter-spacing: 3px;
+      letter-spacing: 4px;
       color: #ffffff;
       text-align: center;
     }
 
     .subtitle {
       font-size: 14px;
-      color: #8b8fa3;
+      color: #9ca0b0;
       text-align: center;
-      margin-top: 8px;
-      letter-spacing: 0.3px;
+      margin-top: 6px;
+      letter-spacing: 0.4px;
     }
 
     /* ── Value proposition card ── */
     .value-card {
-      margin-top: 40px;
-      max-width: 740px;
-      padding: 28px 40px;
+      margin-top: 32px;
+      max-width: 720px;
+      padding: 24px 36px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 16px;
-      text-align: center;
+      border-radius: 14px;
     }
 
     .value-text {
       font-size: 17px;
-      font-weight: 500;
-      color: #c8cad4;
-      line-height: 1.6;
+      font-weight: 400;
+      color: #d4d6e0;
+      line-height: 1.65;
       text-align: center;
     }
 
-    /* ── Stats row ── */
+    /* ── Stats row: 4 connected boxes ── */
     .stats-row {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      margin-top: 40px;
+      margin-top: 32px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .stat-group {
+    .stat-box {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 18px 38px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stat-box:last-child {
+      border-right: none;
+    }
+
+    /* Colored dots with glow */
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+
+    .stat-dot.green {
+      background: #34d399;
+      box-shadow: 0 0 12px rgba(52, 211, 153, 0.5);
+    }
+
+    .stat-dot.purple {
+      background: #8b5cf6;
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+    }
+
+    .stat-dot.blue {
+      background: #60a5fa;
+      box-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
+    }
+
+    .stat-dot.yellow {
+      background: #fbbf24;
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
     }
 
     .stat-number {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: #ffffff;
       text-align: center;
@@ -114,63 +169,97 @@
 
     .stat-label {
       font-size: 11px;
-      font-weight: 500;
-      color: #8b8fa3;
+      font-weight: 600;
+      color: #9ca0b0;
       letter-spacing: 0.5px;
       text-transform: uppercase;
       margin-top: 4px;
       text-align: center;
+      line-height: 1.35;
     }
 
-    .stat-separator {
-      width: 1px;
-      height: 32px;
-      background: rgba(255, 255, 255, 0.1);
-      margin: 0 48px;
-    }
-
-    /* ── Features line ── */
+    /* ── Features: 3 rows with left border accent ── */
     .features {
-      margin-top: 32px;
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .feature-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 0 10px 10px 0;
+      border-left: 3px solid;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .feature-row.green {
+      border-left-color: #34d399;
+    }
+
+    .feature-row.yellow {
+      border-left-color: #fbbf24;
+    }
+
+    .feature-row.purple {
+      border-left-color: #8b5cf6;
+    }
+
+    .feature-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    .feature-desc {
       font-size: 13px;
       color: #8b8fa3;
-      letter-spacing: 0.3px;
-      text-align: center;
-    }
-
-    .features .dot {
-      margin: 0 10px;
-      color: rgba(255, 255, 255, 0.2);
+      text-align: right;
     }
 
     /* ── Footer ── */
     .footer {
       margin-top: auto;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
       display: flex;
       flex-direction: column;
       align-items: center;
       width: 100%;
-      padding: 0 50px;
+      padding: 0 80px;
     }
 
     .gradient-divider {
       width: 100%;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.2), transparent);
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(52, 211, 153, 0.3),
+        rgba(139, 92, 246, 0.3),
+        transparent
+      );
     }
 
     .footer-text {
-      margin-top: 16px;
+      margin-top: 14px;
       font-size: 11px;
       color: #4a4d5a;
       text-align: center;
     }
 
     .footer-tag {
-      margin-top: 6px;
+      margin-top: 5px;
       font-size: 12px;
-      color: #8b8fa3;
+      color: #a0a4b8;
       text-align: center;
       letter-spacing: 0.2px;
     }
@@ -180,6 +269,7 @@
   <div class="banner">
 
     <div class="accent-line"></div>
+    <div class="title-glow"></div>
 
     <div class="content">
 
@@ -192,32 +282,44 @@
         <div class="value-text">Track WHERE institutional capital rotates between crypto narratives &mdash; before the crowd notices.</div>
       </div>
 
-      <!-- Stats -->
+      <!-- Stats: 4 connected boxes -->
       <div class="stats-row">
-        <div class="stat-group">
+        <div class="stat-box">
+          <div class="stat-dot green"></div>
           <div class="stat-number">5</div>
-          <div class="stat-label">Endpoints</div>
+          <div class="stat-label">Nansen<br>Endpoints</div>
         </div>
-        <div class="stat-separator"></div>
-        <div class="stat-group">
+        <div class="stat-box">
+          <div class="stat-dot purple"></div>
           <div class="stat-number">11</div>
-          <div class="stat-label">Step Pipeline</div>
+          <div class="stat-label">Step<br>Pipeline</div>
         </div>
-        <div class="stat-separator"></div>
-        <div class="stat-group">
+        <div class="stat-box">
+          <div class="stat-dot blue"></div>
           <div class="stat-number">5</div>
-          <div class="stat-label">Chains</div>
+          <div class="stat-label">Chains<br>ETH&middot;SOL&middot;&hellip;</div>
         </div>
-        <div class="stat-separator"></div>
-        <div class="stat-group">
+        <div class="stat-box">
+          <div class="stat-dot yellow"></div>
           <div class="stat-number">MCP</div>
-          <div class="stat-label">Server</div>
+          <div class="stat-label">Server<br>3 Tools</div>
         </div>
       </div>
 
-      <!-- Features -->
+      <!-- Features: left-border accent rows -->
       <div class="features">
-        Divergence Detection <span class="dot">&middot;</span> AI Analysis (BYOK) <span class="dot">&middot;</span> Flow Intelligence <span class="dot">&middot;</span> Live Dashboard
+        <div class="feature-row green">
+          <div class="feature-title">Narrative Aggregation</div>
+          <div class="feature-desc">Track capital rotation at the sector level</div>
+        </div>
+        <div class="feature-row yellow">
+          <div class="feature-title">Divergence Detection</div>
+          <div class="feature-desc">Find tokens before they pump</div>
+        </div>
+        <div class="feature-row purple">
+          <div class="feature-title">MCP Integration</div>
+          <div class="feature-desc">3 tools for Claude Desktop &amp; Cursor</div>
+        </div>
       </div>
 
     </div>
