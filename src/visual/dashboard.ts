@@ -458,7 +458,6 @@ export function renderDashboardHtml(): string {
     #sankey-chart {
       width: 100%;
       height: 280px;
-      cursor: pointer;
     }
 
     .sankey-card { margin-bottom: 24px; }
@@ -2388,9 +2387,6 @@ export function renderDashboardHtml(): string {
       }
 
       var chart = echarts.init(chartDom, null, { renderer: 'canvas' });
-      // Set pointer cursor on the canvas element that ECharts creates inside the container
-      var canvasEl = chartDom.querySelector('canvas');
-      if (canvasEl) canvasEl.style.cursor = 'pointer';
 
       // Take top 10 narratives by absolute netflow (no $100 threshold)
       var sorted = narratives.slice().sort(function(a, b) {
@@ -2465,7 +2461,6 @@ export function renderDashboardHtml(): string {
         series: [
           {
             type: 'bar',
-            cursor: 'pointer',
             barMaxWidth: 24,
             barMinHeight: 8,
             label: {

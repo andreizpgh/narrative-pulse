@@ -7,7 +7,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#)
 [![5 Chains](https://img.shields.io/badge/Chains-ETH%20%7C%20SOL%20%7C%20BASE%20%7C%20BNB%20%7C%20ARB-F59E0B?style=flat-square)](#)
 
-<p align="center"><img src="baner.png" width="1200" alt="Narrative Pulse Banner"/></p>
+<p align="center"><img src="screenshots/baner.png" width="1200" alt="Narrative Pulse Banner"/></p>
 
 ## What it does
 
@@ -23,8 +23,8 @@ The result: instead of 500+ tokens with positive netflow (noise), you get a rank
     <td align="center"><b>Expanded Token with AI Analysis</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/dashboard-overview.png" width="500" alt="Dashboard Overview"/></td>
-    <td><img src="docs/screenshots/expanded-ai-analysis.png" width="500" alt="Expanded AI Analysis"/></td>
+    <td><img src="screenshots/dashboard-overview.png" width="500" alt="Dashboard Overview"/></td>
+    <td><img src="screenshots/expanded-ai-analysis.png" width="500" alt="Expanded AI Analysis"/></td>
   </tr>
 </table>
 
