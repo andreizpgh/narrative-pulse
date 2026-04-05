@@ -5,7 +5,7 @@
 // Guarantees every highlight has a real Nansen sector.
 // ============================================================
 
-import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry, HoldingsEntry } from "../types.js";
+import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry, HoldingsEntry, EnrichedTokenData } from "../types.js";
 import { normalizeAddress } from "../utils/normalize.js";
 
 // ============================================================
@@ -131,7 +131,14 @@ export function extractNarrativeHighlights(
   netflowEntries: NetflowEntry[],
   holdingsEntries: Map<string, HoldingsEntry>,
   screenerData: Map<string, TokenScreenerEntry>,
+  enrichedTokens: EnrichedTokenData[],
 ): ScreenerHighlight[] {
+  // Build enriched data lookup (from DexScreener — step 4)
+  const enrichedByAddress = new Map<string, EnrichedTokenData>();
+  for (const token of enrichedTokens) {
+    enrichedByAddress.set(normalizeAddress(token.token_address), token);
+  }
+
   // Build screener lookup maps (3-tier matching)
   const screenerByAddress = new Map<string, TokenScreenerEntry>();
   const screenerBySymbolChain = new Map<string, TokenScreenerEntry>();
@@ -196,13 +203,21 @@ export function extractNarrativeHighlights(
       ?? screenerBySymbolChain.get(symbolChainKey)
       ?? screenerBySymbol.get(entry.token_symbol.toLowerCase());
 
-    const buyVolume = screenerMatch?.buy_volume ?? 0;
-    const sellVolume = screenerMatch?.sell_volume ?? 0;
+    // Check for DexScreener enrichment first (primary source)
+    const enriched = enrichedByAddress.get(normAddr);
+
+    const buyVolume = screenerMatch?.buy_volume ?? enriched?.buys24h ?? 0;
+    const sellVolume = screenerMatch?.sell_volume ?? enriched?.sells24h ?? 0;
     const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
-    const priceChangePct = (screenerMatch?.price_change ?? 0) * 100;
-    const volume = screenerMatch?.volume ?? 0;
-    const marketCapUsd = screenerMatch?.market_cap_usd ?? entry.market_cap_usd ?? 0;
-    const priceUsd = (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
+
+    // Price change: DexScreener enriched > screener > 0
+    const priceChangePct = enriched?.priceChange24h
+      ?? ((screenerMatch?.price_change ?? 0) * 100);
+
+    const volume = enriched?.volume24h ?? screenerMatch?.volume ?? 0;
+    const marketCapUsd = enriched?.marketCap ?? screenerMatch?.market_cap_usd ?? entry.market_cap_usd ?? 0;
+    const priceUsd = (enriched && enriched.priceUsd > 0) ? enriched.priceUsd
+      : (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
 
     if (screenerMatch) netflowScreenerMatches++;
 
@@ -262,13 +277,20 @@ export function extractNarrativeHighlights(
       ?? screenerBySymbolChain.get(symbolChainKey)
       ?? screenerBySymbol.get(entry.token_symbol.toLowerCase());
 
-    const buyVolume = screenerMatch?.buy_volume ?? 0;
-    const sellVolume = screenerMatch?.sell_volume ?? 0;
+    // Check for DexScreener enrichment first (primary source)
+    const enriched = enrichedByAddress.get(normAddr);
+
+    const buyVolume = screenerMatch?.buy_volume ?? enriched?.buys24h ?? 0;
+    const sellVolume = screenerMatch?.sell_volume ?? enriched?.sells24h ?? 0;
     const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
-    const priceChangePct = (screenerMatch?.price_change ?? 0) * 100;
-    const volume = screenerMatch?.volume ?? 0;
-    const marketCapUsd = entry.market_cap_usd ?? screenerMatch?.market_cap_usd ?? 0;
-    const priceUsd = (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
+
+    const priceChangePct = enriched?.priceChange24h
+      ?? ((screenerMatch?.price_change ?? 0) * 100);
+
+    const volume = enriched?.volume24h ?? screenerMatch?.volume ?? 0;
+    const marketCapUsd = enriched?.marketCap ?? entry.market_cap_usd ?? screenerMatch?.market_cap_usd ?? 0;
+    const priceUsd = (enriched && enriched.priceUsd > 0) ? enriched.priceUsd
+      : (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
 
     // Try to get netflow data from any netflow entry (even without sectors)
     const nfMatch = netflowAllByAddress.get(normAddr)

@@ -214,10 +214,11 @@ function stepClassification(
 function stepScreenerHighlights(
   screenerData: Map<string, TokenScreenerEntry>,
   netflowEntries: NetflowEntry[],
-  holdingsData: Map<string, HoldingsEntry>
+  holdingsData: Map<string, HoldingsEntry>,
+  enrichedTokens: EnrichedTokenData[]
 ): ScreenerHighlight[] {
   log("Step 8/11: Extracting narrative highlights...");
-  const highlights = extractNarrativeHighlights(netflowEntries, holdingsData, screenerData);
+  const highlights = extractNarrativeHighlights(netflowEntries, holdingsData, screenerData, enrichedTokens);
   const heavy = highlights.filter(h => h.classification === "heavy_accumulation").length;
   const accum = highlights.filter(h => h.classification === "accumulating").length;
   const diverging = highlights.filter(h => h.classification === "diverging").length;
@@ -356,10 +357,68 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   const holdingsCount = holdingsData.size;
 
   // Step 4: Enrich with DexScreener (graceful — failures return empty array)
-  const enrichedTokens = await stepEnrich(netflowEntries, screenerData);
+  let enrichedTokens = await stepEnrich(netflowEntries, screenerData);
 
   // Step 4.5: Fetch token profile descriptions (graceful degradation)
   const tokenProfiles = await stepFetchTokenProfiles();
+
+  // Step 4.6: Fetch DexScreener data for holdings tokens not yet enriched
+  let holdingsDexCount = 0;
+  const enrichedByAddress = new Map<string, EnrichedTokenData>();
+  for (const token of enrichedTokens) {
+    enrichedByAddress.set(normalizeAddress(token.token_address), token);
+  }
+
+  // Collect holdings token addresses not already enriched
+  const holdingsTokensToEnrich: Array<{ address: string; chain: string }> = [];
+  for (const [, entry] of holdingsData) {
+    const normAddr = normalizeAddress(entry.token_address);
+    if (!enrichedByAddress.has(normAddr)) {
+      holdingsTokensToEnrich.push({ address: entry.token_address, chain: entry.chain });
+    }
+  }
+
+  if (holdingsTokensToEnrich.length > 0) {
+    try {
+      const holdingsDexData = await fetchDexScreenerData(holdingsTokensToEnrich);
+      for (const [, entry] of holdingsData) {
+        const normAddr = normalizeAddress(entry.token_address);
+        if (enrichedByAddress.has(normAddr)) continue; // already have data
+
+        const dexPair = holdingsDexData.get(normAddr);
+        if (dexPair) {
+          const enriched: EnrichedTokenData = {
+            token_address: entry.token_address,
+            token_symbol: entry.token_symbol,
+            chain: entry.chain,
+            priceUsd: dexPair.priceUsd ? parseFloat(dexPair.priceUsd) : 0,
+            priceChange24h: dexPair.priceChange?.h24 ?? 0,
+            priceChange1h: dexPair.priceChange?.h1 ?? 0,
+            volume24h: dexPair.volume.h24,
+            liquidity: dexPair.liquidity?.usd ?? 0,
+            marketCap: dexPair.marketCap ?? entry.market_cap_usd ?? 0,
+            fdv: dexPair.fdv ?? 0,
+            buys24h: dexPair.txns.h24.buys,
+            sells24h: dexPair.txns.h24.sells,
+            netflow24hUsd: 0,  // no netflow data for holdings-only tokens
+            netflow7dUsd: 0,
+            traderCount: 0,
+            tokenSectors: entry.token_sectors,
+            tokenAgeDays: entry.token_age_days,
+          };
+          enrichedTokens.push(enriched);
+          enrichedByAddress.set(normAddr, enriched);
+          holdingsDexCount++;
+        }
+      }
+      if (holdingsDexCount > 0) {
+        log(`Step 4.6: Enriched ${holdingsDexCount} holdings tokens with DexScreener data`);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log(`Step 4.6: Holdings DexScreener enrichment failed (${msg}) — continuing without`);
+    }
+  }
 
   // Step 5: Discover sectors
   const sectors = stepDiscovery(netflowEntries);
@@ -373,7 +432,7 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   assignTopTokens(narratives, classified, tokenNarrativeMap);
 
   // Step 8: Extract narrative highlights (sector-first approach)
-  const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries, holdingsData);
+  const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries, holdingsData, enrichedTokens);
 
   // Enrich highlights with token profile descriptions
   if (tokenProfiles.size > 0) {

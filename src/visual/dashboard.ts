@@ -1586,7 +1586,7 @@ export function renderDashboardHtml(): string {
         for (var i = 0; i < highlights.length; i++) {
           var c = highlights[i].classification;
           if (c === 'heavy_accumulation') counts.hot++;
-          else if (c === 'diverging') { counts.accumulating++; counts.diverging++; }
+          else if (c === 'diverging') counts.diverging++;
           else if (c === 'accumulating') counts.accumulating++;
           else if (c === 'pumping') counts.pumping++;
           else counts.selling++; // mixed + distributing
@@ -1605,12 +1605,12 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-hint">Strong SM buying, price rising</div>';
       html += '</div>';
 
-      // ACCUMULATING card (includes diverging)
+      // ACCUMULATING card
       html += '<div class="signal-card" onclick="filterBySignalGroup(\\'accumulating\\')" style="cursor:pointer">';
       html += '<div class="signal-card-icon">\\uD83D\\uDC40</div>';
       html += '<div class="signal-card-value">' + counts.accumulating + '</div>';
       html += '<div class="signal-card-label">ACCUMULATING</div>';
-      html += '<div class="signal-card-hint">' + (counts.diverging > 0 ? counts.diverging + ' with divergence signal' : 'SM buying, price stable') + '</div>';
+      html += '<div class="signal-card-hint">SM buying, price stable</div>';
       html += '</div>';
 
       // PUMPING card
@@ -1621,12 +1621,12 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-hint">Price surged &gt;30%</div>';
       html += '</div>';
 
-      // SELLING card
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'selling\\')" style="cursor:pointer">';
-      html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
-      html += '<div class="signal-card-value">' + counts.selling + '</div>';
-      html += '<div class="signal-card-label">SELLING</div>';
-      html += '<div class="signal-card-hint">SM outflow or low conviction</div>';
+      // DIVERGING card
+      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'diverging\\')" style="cursor:pointer">';
+      html += '<div class="signal-card-icon">\\uD83D\\uDCCA</div>';
+      html += '<div class="signal-card-value">' + counts.diverging + '</div>';
+      html += '<div class="signal-card-label">DIVERGING</div>';
+      html += '<div class="signal-card-hint">SM accumulating, price flat</div>';
       html += '</div>';
 
       html += '</div>';
@@ -2327,6 +2327,8 @@ export function renderDashboardHtml(): string {
         signalSelect.value = 'accumulating';
       } else if (group === 'pumping') {
         signalSelect.value = 'pumping';
+      } else if (group === 'diverging') {
+        signalSelect.value = 'diverging';
       } else if (group === 'selling') {
         signalSelect.value = '__selling';
       }
