@@ -298,6 +298,9 @@ export function renderDashboardHtml(): string {
     }
 
     .filter-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
       padding: 6px 28px 6px 10px;
       border: 1px solid var(--border-color);
       border-radius: 6px;
@@ -305,11 +308,10 @@ export function renderDashboardHtml(): string {
       color: var(--text-primary);
       font-size: 0.82rem;
       cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8fa3' d='M3 4.5L6 8l3-3.5H3z'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a5e72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 8px center;
+      background-size: 12px;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -328,6 +330,47 @@ export function renderDashboardHtml(): string {
       background: #1e2230;
       color: #e8e9ed;
       padding: 8px 10px;
+    }
+
+    /* ── Custom CSS Tooltips ─────────────────────── */
+
+    [data-tooltip] {
+      position: relative;
+    }
+
+    [data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: #2a2d3a;
+      color: #e8e9ed;
+      font-size: 0.72rem;
+      font-weight: 400;
+      line-height: 1.4;
+      white-space: nowrap;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 100;
+      border: 1px solid rgba(129, 140, 248, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-tooltip]:hover::after {
+      opacity: 1;
+    }
+
+    /* For elements near the top of the page, show tooltip below */
+    [data-tooltip-pos="bottom"]::after {
+      bottom: auto;
+      top: calc(100% + 8px);
     }
 
     .filter-count {
@@ -1621,14 +1664,14 @@ export function renderDashboardHtml(): string {
 
       html += '<table class="token-table" id="' + tableId + '">';
       html += '<thead><tr>';
-      html += '<th title="Token symbol and chain">Token</th>';
-      html += '<th title="Narrative sector">Narrative</th>';
-      html += '<th class="sortable" title="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Netflow 24h</th>';
-      html += '<th title="Visual ratio of buy volume (green) vs sell volume (red)">Buy / Sell</th>';
-      html += '<th class="sortable" title="Buy volume divided by sell volume" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Ratio</th>';
-      html += '<th class="sortable" title="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Price \\u0394</th>';
-      html += '<th class="sortable" title="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 6, \\'number\\')">Market Cap</th>';
-      html += '<th class="sortable" title="Signal classification" onclick="sortTable(\\'' + tableId + '\\', 7, \\'text\\')">Signal</th>';
+      html += '<th data-tooltip="Token symbol and chain">Token</th>';
+      html += '<th data-tooltip="Narrative sector">Narrative</th>';
+      html += '<th class="sortable" data-tooltip="Smart Money net capital flow over 24 hours (buys minus sells)" onclick="sortTable(\\'' + tableId + '\\', 2, \\'number\\')">Netflow 24h</th>';
+      html += '<th data-tooltip="Visual ratio of buy volume (green) vs sell volume (red)">Buy / Sell</th>';
+      html += '<th class="sortable" data-tooltip="Buy volume divided by sell volume" onclick="sortTable(\\'' + tableId + '\\', 4, \\'number\\')">Ratio</th>';
+      html += '<th class="sortable" data-tooltip="Price change over the last 24 hours" onclick="sortTable(\\'' + tableId + '\\', 5, \\'number\\')">Price \\u0394</th>';
+      html += '<th class="sortable" data-tooltip="Current market capitalization" onclick="sortTable(\\'' + tableId + '\\', 6, \\'number\\')">Market Cap</th>';
+      html += '<th class="sortable" data-tooltip="Signal classification" onclick="sortTable(\\'' + tableId + '\\', 7, \\'text\\')">Signal</th>';
       html += '</tr></thead><tbody>';
 
       if (highlights && highlights.length > 0) {
@@ -1705,18 +1748,18 @@ export function renderDashboardHtml(): string {
       html += ' data-sort-7="' + signalSortOrder + '-' + escapeHtml(t.token_symbol).toLowerCase() + '"';
       html += '>';
       html += '<td><span class="expand-arrow"></span>' + dexLink(t.chain, t.token_address, '<strong>' + escapeHtml(stripEmoji(t.token_symbol)) + '</strong>') + chainLabel(t.chain) + '</td>';
-      html += '<td><span class="narrative-pill" title="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
+      html += '<td><span class="narrative-pill" data-tooltip="' + escapeHtml(narrativeDisplay) + '">' + escapeHtml(narrativeDisplay) + '</span></td>';
       html += '<td class="mono ' + netflowCls + '">' + formatUsd(t.netflowUsd) + '</td>';
       html += '<td><div class="buy-sell-bar"><div class="buy-bar" style="width:' + buyPct.toFixed(1) + '%"></div><div class="sell-bar" style="width:' + sellPct.toFixed(1) + '%"></div></div></td>';
       html += '<td class="mono" style="color: var(--color-positive)">' + ratioText + '</td>';
       html += '<td class="mono ' + priceCls + '">' + priceText + '</td>';
       html += '<td class="mono">' + formatMcap(t.marketCapUsd) + '</td>';
-      html += '<td><span class="screener-badge ' + badgeClass + '" title="' + badgeTooltip + '">' + badgeText + '</span>';
+      html += '<td><span class="screener-badge ' + badgeClass + '" data-tooltip="' + badgeTooltip + '">' + badgeText + '</span>';
       if (t.classification === 'diverging') {
-        html += ' <span class="diverge-sub" title="Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence">DIVERGE</span>';
+        html += ' <span class="diverge-sub" data-tooltip="Sustained 7-day SM accumulation but price hasn\\'t moved — potential divergence">DIVERGE</span>';
       }
       if (isStablecoin) {
-        html += ' <span class="stablecoin-tag" title="Price-pegged asset (~$1.00)">STABLE</span>';
+        html += ' <span class="stablecoin-tag" data-tooltip="Price-pegged asset (~$1.00)">STABLE</span>';
       }
       html += '</td>';
       html += '</tr>';
@@ -1792,7 +1835,7 @@ export function renderDashboardHtml(): string {
 
       // Token description (from DexScreener profiles, if available)
       if (t.tokenDescription) {
-        html += '<div class="token-description" title="' + escapeHtml(t.tokenDescription) + '">';
+        html += '<div class="token-description" data-tooltip="' + escapeHtml(t.tokenDescription) + '">';
         var descText = t.tokenDescription;
         if (descText.length > 200) {
           descText = descText.substring(0, 197) + '...';
