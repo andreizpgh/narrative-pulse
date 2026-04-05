@@ -458,6 +458,7 @@ export function renderDashboardHtml(): string {
     #sankey-chart {
       width: 100%;
       height: 280px;
+      cursor: pointer;
     }
 
     .sankey-card { margin-bottom: 24px; }
