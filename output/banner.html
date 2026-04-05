@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1200">
+  <title>Narrative Pulse — Banner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0f1117;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .banner {
+      width: 1200px;
+      height: 675px;
+      background: #0f1117;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Top 2px gradient accent line ── */
+    .accent-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #34d399, #8b5cf6);
+    }
+
+    /* ── Content area ── */
+    .content {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 42px 50px 0;
+    }
+
+    /* ── Title ── */
+    .title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #8b8fa3;
+      text-align: center;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Value proposition card ── */
+    .value-card {
+      margin-top: 40px;
+      max-width: 740px;
+      padding: 28px 40px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .value-text {
+      font-size: 17px;
+      font-weight: 500;
+      color: #c8cad4;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-top: 40px;
+    }
+
+    .stat-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-number {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #8b8fa3;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    .stat-separator {
+      width: 1px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 0 48px;
+    }
+
+    /* ── Features line ── */
+    .features {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #8b8fa3;
+      letter-spacing: 0.3px;
+      text-align: center;
+    }
+
+    .features .dot {
+      margin: 0 10px;
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: auto;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 0 50px;
+    }
+
+    .gradient-divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.2), transparent);
+    }
+
+    .footer-text {
+      margin-top: 16px;
+      font-size: 11px;
+      color: #4a4d5a;
+      text-align: center;
+    }
+
+    .footer-tag {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #8b8fa3;
+      text-align: center;
+      letter-spacing: 0.2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+
+    <div class="accent-line"></div>
+
+    <div class="content">
+
+      <!-- Title -->
+      <div class="title">NARRATIVE PULSE</div>
+      <div class="subtitle">Smart Money Narrative Intelligence</div>
+
+      <!-- Value proposition -->
+      <div class="value-card">
+        <div class="value-text">Track WHERE institutional capital rotates between crypto narratives &mdash; before the crowd notices.</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-group">
+          <div class="stat-number">5</div>
+          <div class="stat-label">Endpoints</div>
+        </div>
+        <div class="stat-separator"></div>
+        <div class="stat-group">
+          <div class="stat-number">11</div>
+          <div class="stat-label">Step Pipeline</div>
+        </div>
+        <div class="stat-separator"></div>
+        <div class="stat-group">
+          <div class="stat-number">5</div>
+          <div class="stat-label">Chains</div>
+        </div>
+        <div class="stat-separator"></div>
+        <div class="stat-group">
+          <div class="stat-number">MCP</div>
+          <div class="stat-label">Server</div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="features">
+        Divergence Detection <span class="dot">&middot;</span> AI Analysis (BYOK) <span class="dot">&middot;</span> Flow Intelligence <span class="dot">&middot;</span> Live Dashboard
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="gradient-divider"></div>
+      <div class="footer-text">Built for Nansen CLI Build Challenge &mdash; Week 3</div>
+      <div class="footer-tag">@nansen_ai &middot; #NansenCLI</div>
+    </div>
+
+  </div>
+</body>
+</html>

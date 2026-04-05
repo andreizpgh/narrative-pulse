@@ -1205,7 +1205,7 @@ export function renderDashboardHtml(): string {
           <span class="header-tagline">Smart Money Intelligence</span>
         </div>
         <div class="header-actions">
-          <span class="header-powered">powered by <span style="color:var(--text-secondary);font-weight:500">Nansen</span></span>
+          <span class="header-powered">powered by&nbsp;<span style="color:var(--text-secondary);font-weight:500">Nansen</span></span>
           <span class="header-meta" id="header-ago">Updated — ago</span>
           <span class="scan-indicator" id="scan-indicator" style="display:none">
             <span class="dot"></span> Scanning...
@@ -1621,13 +1621,22 @@ export function renderDashboardHtml(): string {
       html += '<div class="signal-card-hint">Price surged &gt;30%</div>';
       html += '</div>';
 
-      // DIVERGING card
-      html += '<div class="signal-card" onclick="filterBySignalGroup(\\'diverging\\')" style="cursor:pointer">';
-      html += '<div class="signal-card-icon">\\uD83D\\uDCCA</div>';
-      html += '<div class="signal-card-value">' + counts.diverging + '</div>';
-      html += '<div class="signal-card-label">DIVERGING</div>';
-      html += '<div class="signal-card-hint">SM accumulating, price flat</div>';
-      html += '</div>';
+      // 4th card: DIVERGING (when present) or SELLING (fallback)
+      if (counts.diverging > 0) {
+        html += '<div class="signal-card" onclick="filterBySignalGroup(\\'diverging\\')" style="cursor:pointer">';
+        html += '<div class="signal-card-icon">\\uD83D\\uDCCA</div>';
+        html += '<div class="signal-card-value">' + counts.diverging + '</div>';
+        html += '<div class="signal-card-label">DIVERGING</div>';
+        html += '<div class="signal-card-hint">SM accumulating, price flat</div>';
+        html += '</div>';
+      } else {
+        html += '<div class="signal-card" onclick="filterBySignalGroup(\\'selling\\')" style="cursor:pointer">';
+        html += '<div class="signal-card-icon">\\u26A0\\uFE0F</div>';
+        html += '<div class="signal-card-value">' + counts.selling + '</div>';
+        html += '<div class="signal-card-label">SELLING</div>';
+        html += '<div class="signal-card-hint">SM outflow or low conviction</div>';
+        html += '</div>';
+      }
 
       html += '</div>';
       html += '<div class="signal-explanation">\\u24D8 From 500+ tokens across 5 chains. Top ' + total + ' by composite score: buy/sell ratio, netflow, and SM trader activity.</div>';
@@ -2435,39 +2444,68 @@ export function renderDashboardHtml(): string {
           axisLine: { lineStyle: { color: '#2a2d3a' } },
           axisTick: { show: false }
         },
-        series: [{
-          type: 'bar',
-          barMaxWidth: 24,
-          label: {
-            show: true,
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-            formatter: function(p) { return formatUsdAbs(p.value); }
-          },
-          data: topNarratives.map(function(n) {
-            var isInflow = n.totalNetflow24h >= 0;
-            return {
-              value: n.totalNetflow24h,
-              itemStyle: {
-                color: isInflow
-                  ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                      { offset: 0, color: 'rgba(52, 211, 153, 0.3)' },
-                      { offset: 1, color: 'rgba(52, 211, 153, 0.8)' }
-                    ])
-                  : new echarts.graphic.LinearGradient(1, 0, 0, 0, [
-                      { offset: 0, color: 'rgba(248, 113, 113, 0.3)' },
-                      { offset: 1, color: 'rgba(248, 113, 113, 0.8)' }
-                    ]),
-                borderRadius: isInflow ? [0, 4, 4, 0] : [4, 0, 0, 4]
-              },
-              label: {
-                position: isInflow ? 'right' : 'left',
-                color: isInflow ? '#34d399' : '#f87171'
+        series: [
+          // Full-width invisible clickable bars — make entire row clickable
+          {
+            type: 'bar',
+            barMaxWidth: 9999,
+            barGap: '-100%',
+            barCategoryGap: '20%',
+            data: topNarratives.map(function(n) {
+              var maxVal = 0;
+              for (var i = 0; i < topNarratives.length; i++) {
+                var abs = Math.abs(topNarratives[i].totalNetflow24h);
+                if (abs > maxVal) maxVal = abs;
               }
-            };
-          })
-        }]
+              return maxVal * 1.5;
+            }),
+            itemStyle: {
+              color: 'rgba(0,0,0,0)',
+              borderColor: 'rgba(0,0,0,0)'
+            },
+            label: { show: false },
+            tooltip: { show: false },
+            emphasis: {
+              itemStyle: { color: 'rgba(255,255,255,0.03)' }
+            },
+            z: 0
+          },
+          // Actual data bars
+          {
+            type: 'bar',
+            barMaxWidth: 24,
+            label: {
+              show: true,
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+              formatter: function(p) { return formatUsdAbs(p.value); }
+            },
+            data: topNarratives.map(function(n) {
+              var isInflow = n.totalNetflow24h >= 0;
+              return {
+                value: n.totalNetflow24h,
+                itemStyle: {
+                  color: isInflow
+                    ? new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        { offset: 0, color: 'rgba(52, 211, 153, 0.3)' },
+                        { offset: 1, color: 'rgba(52, 211, 153, 0.8)' }
+                      ])
+                    : new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                        { offset: 0, color: 'rgba(248, 113, 113, 0.3)' },
+                        { offset: 1, color: 'rgba(248, 113, 113, 0.8)' }
+                      ]),
+                  borderRadius: isInflow ? [0, 4, 4, 0] : [4, 0, 0, 4]
+                },
+                label: {
+                  position: isInflow ? 'right' : 'left',
+                  color: isInflow ? '#34d399' : '#f87171'
+                }
+              };
+            }),
+            z: 1
+          }
+        ]
       });
 
       chart.on('click', function(params) {
