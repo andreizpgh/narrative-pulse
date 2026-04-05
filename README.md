@@ -2,16 +2,16 @@
 
 > **Track WHERE smart money rotates between crypto narratives — before the crowd notices.**
 
-[![Nansen CLI Challenge](https://img.shields.io/badge/Nansen-CLI_Build_Challenge_Week_3-6366F1?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PC9zdmc+)](#)
+[![Nansen CLI Challenge](https://img.shields.io/badge/Nansen-CLI_Build_Challenge_Week_3-6366F1?style=flat-square)](https://www.nansen.ai)
 [![TypeScript 5.5](https://img.shields.io/badge/TypeScript_5.5-Strict-3178C6?style=flat-square&logo=typescript)](#)
 [![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#)
 [![5 Chains](https://img.shields.io/badge/Chains-ETH%20%7C%20SOL%20%7C%20BASE%20%7C%20BNB%20%7C%20ARB-F59E0B?style=flat-square)](#)
 
-<p align="center"><img src="screenshots/baner.png" width="1200" alt="Narrative Pulse Banner"/></p>
+<p align="center"><img src="screenshots/banner.png" width="1200" alt="Narrative Pulse Banner"/></p>
 
 ## What it does
 
-Narrative Pulse aggregates Nansen smart-money data at the **narrative level**, not individual tokens. It fuses 5 Nansen API endpoints with DexScreener enrichment into an 11-step pipeline that shows where capital is rotating between crypto narratives — DeFi, AI, RWA, Memecoins, and beyond.
+Narrative Pulse aggregates Nansen smart-money data at the **narrative level**, not individual tokens. It fuses 5 Nansen API endpoints with DexScreener enrichment into a pipeline that shows where capital is rotating between crypto narratives — DeFi, AI, RWA, Memecoins, and beyond.
 
 The result: instead of 500+ tokens with positive netflow (noise), you get a ranked view of which narratives are heating up, which are cooling down, and which tokens show smart-money accumulation **before price moves**.
 
@@ -19,8 +19,8 @@ The result: instead of 500+ tokens with positive netflow (noise), you get a rank
 
 <table>
   <tr>
-    <td align="center"><b>Live Dashboard — Narrative Overview</b></td>
-    <td align="center"><b>Expanded Token with AI Analysis</b></td>
+    <td align="center"><b>Live Dashboard</b></td>
+    <td align="center"><b>Expanded Token + AI Analysis</b></td>
   </tr>
   <tr>
     <td><img src="screenshots/dashboard-overview.png" width="500" alt="Dashboard Overview"/></td>
@@ -36,11 +36,11 @@ The result: instead of 500+ tokens with positive netflow (noise), you get a rank
 
 3. **Flow Intelligence** — breaks down capital flows for top tokens into 6 segments: Smart Traders, Whales, Exchanges, Fresh Wallets, Public Figures, Top PnL.
 
-4. **AI Analysis (BYOK)** — per-token LLM insights via OpenAI, Anthropic, OpenRouter, or any OpenAI-compatible endpoint. Keys are never stored.
+4. **AI Analysis (BYOK)** — per-token LLM insights via OpenAI, Anthropic, OpenRouter, or any OpenAI-compatible endpoint. Keys stored locally in browser only.
 
-5. **MCP Server** — 3 tools (`get_narrative_scan`, `get_hot_tokens`, `get_early_signals`) for Claude Desktop / Cursor integration.
+5. **MCP Server** — 3 tools for Claude Desktop / Cursor integration.
 
-6. **Live Dashboard** — dark-themed web UI with ECharts Sankey diagrams, sortable tables, auto-refresh, and one-click scan triggers.
+6. **Live Dashboard** — dark-themed web UI with ECharts charts, sortable tables, auto-refresh, and one-click scan triggers.
 
 ## How to run
 
@@ -48,41 +48,39 @@ The result: instead of 500+ tokens with positive netflow (noise), you get a rank
 git clone https://github.com/andrei-zakharov/narrative-pulse.git
 cd narrative-pulse && npm install
 export NANSEN_API_KEY=<your-key>
-npx narrative-pulse scan
+npx tsx src/index.ts scan
 ```
 
 For the live dashboard:
 
 ```bash
-npx narrative-pulse serve          # http://localhost:3000
-npx narrative-pulse serve --port 8080
+npx tsx src/index.ts serve          # http://localhost:3000
+npx tsx src/index.ts serve --port 8080
 ```
 
-## Architecture
+## Pipeline
 
 ```
 Nansen API (5 endpoints) + DexScreener (free)
-                |
-          11-Step Pipeline
-                |
-    Terminal | HTML Report | Live Dashboard | MCP
+                    │
+              11-Step Pipeline
+                    │
+    Terminal │ HTML Report │ Live Dashboard │ MCP
 ```
 
-**The 11 steps** (~300 credits per standard scan):
+**The pipeline steps** (~300 credits per standard scan):
 
 1. Fetch smart-money netflows (5 chains, paginated)
 2. Fetch token-screener data (price, volume, buy/sell)
 3. Fetch smart-money holdings (SM portfolio positions)
-4. Enrich with DexScreener (free, cached, all tokens)
-4.5. Fetch token profiles (DexScreener descriptions)
-5. Discover sectors (extract unique narratives)
-6. Aggregate by narrative (group tokens, sum netflows)
-7. Classify tokens (Hot / Accumulating / Pumping / Selling)
-8. Extract narrative highlights (top-30 SM active tokens)
-8.5. Fetch flow intelligence (6-segment breakdown, top-5)
-9. Detect early signals (SM accumulation before price move)
+4. Enrich with DexScreener (free, cached, batched)
+5. Discover sectors (unique narrative combinations)
+6. Aggregate tokens by narrative (group, sum netflows)
+7. Classify tokens (Hot / Accumulating / Diverging / Pumping / Mixed / Selling)
+8. Extract top-30 highlights (composite scoring)
+9. Fetch flow intelligence (6-segment breakdown, top-5)
 10. Compute narrative rotations (delta vs previous scan)
-11. Generate sub-narratives (Agent API, `--deep` flag only)
+11. Sub-narratives via Agent API (`--deep` flag only)
 
 ## CLI Commands
 
@@ -143,7 +141,7 @@ src/
 │   ├── scanner.ts        # 11-step pipeline orchestrator
 │   ├── discovery.ts      # Sector discovery
 │   ├── aggregator.ts     # Narrative aggregation
-│   ├── classifier.ts     # Hot/Watch/Avoid/Pumping
+│   ├── classifier.ts     # Token classification
 │   ├── enricher.ts       # Merge Nansen + DexScreener + early signals
 │   ├── screener-highlights.ts  # Top-30 SM active tokens
 │   ├── sub-narratives.ts # Agent API sub-narrative analysis
@@ -165,7 +163,3 @@ src/
 ## License
 
 MIT
-
----
-
-Built for [Nansen CLI Build Challenge](https://nansen.ai) — Week 3 | @nansen_ai · #NansenCLI
