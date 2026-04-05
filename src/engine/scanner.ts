@@ -14,8 +14,7 @@ import { classifyTokens } from "./classifier.js";
 import { generateSubNarratives } from "./sub-narratives.js";
 import { computeRotations, loadSnapshot, saveSnapshot } from "./rotations.js";
 import { enrichTokenData, detectEarlySignals } from "./enricher.js";
-import { extractScreenerHighlights } from "./screener-highlights.js";
-import { classifyByHeuristic } from "./narrative-heuristic.js";
+import { extractNarrativeHighlights } from "./screener-highlights.js";
 import { fetchDexScreenerData, fetchTokenProfiles } from "../api/dexscreener.js";
 import { config } from "../config.js";
 import { normalizeAddress } from "../utils/normalize.js";
@@ -214,10 +213,11 @@ function stepClassification(
 
 function stepScreenerHighlights(
   screenerData: Map<string, TokenScreenerEntry>,
-  netflowEntries?: NetflowEntry[]
+  netflowEntries: NetflowEntry[],
+  holdingsData: Map<string, HoldingsEntry>
 ): ScreenerHighlight[] {
-  log("Step 8/11: Extracting screener highlights...");
-  const highlights = extractScreenerHighlights(screenerData, netflowEntries);
+  log("Step 8/11: Extracting narrative highlights...");
+  const highlights = extractNarrativeHighlights(netflowEntries, holdingsData, screenerData);
   const heavy = highlights.filter(h => h.classification === "heavy_accumulation").length;
   const accum = highlights.filter(h => h.classification === "accumulating").length;
   const diverging = highlights.filter(h => h.classification === "diverging").length;
@@ -372,90 +372,8 @@ export async function runScan(options?: { skipAgent?: boolean }): Promise<ScanRe
   const tokenNarrativeMap = buildTokenNarrativeMap(netflowEntries);
   assignTopTokens(narratives, classified, tokenNarrativeMap);
 
-  // Step 8: Extract screener highlights (HERO section — always rich data)
-  const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries);
-
-  // Step 7.5: Cross-reference screener highlights with enriched data
-  // EnrichedTokenData has tokenSectors, fdv, liquidity from netflow + DexScreener merge
-  const enrichedByAddress = new Map<string, EnrichedTokenData>();
-  const enrichedBySymbolChain = new Map<string, EnrichedTokenData>();
-  for (const et of enrichedTokens) {
-    const normAddr = normalizeAddress(et.token_address);
-    if (!enrichedByAddress.has(normAddr)) {
-      enrichedByAddress.set(normAddr, et);
-    }
-    const symKey = `${et.token_symbol.toLowerCase()}:${et.chain}`;
-    if (!enrichedBySymbolChain.has(symKey)) {
-      enrichedBySymbolChain.set(symKey, et);
-    }
-  }
-
-  for (const h of screenerHighlights) {
-    // Skip if already enriched by netflow cross-reference
-    if (h.tokenSectors && h.tokenSectors.length > 0) continue;
-
-    const normAddr = normalizeAddress(h.token_address);
-    const symKey = `${h.token_symbol.toLowerCase()}:${h.chain}`;
-    const match = enrichedByAddress.get(normAddr) ?? enrichedBySymbolChain.get(symKey);
-
-    if (match) {
-      if (match.tokenSectors && match.tokenSectors.length > 0) {
-        h.tokenSectors = match.tokenSectors;
-        h.narrativeKey = match.tokenSectors[0];
-      }
-      if (match.netflow7dUsd) h.netflow7dUsd = match.netflow7dUsd;
-      if (match.liquidity) h.liquidity = match.liquidity;
-      if (match.fdv) h.fdv = match.fdv;
-    }
-  }
-
-  // Step 7.6: Cross-reference screener highlights with holdings data for sectors
-  // Holdings contains a different set of tokens than netflow, with token_sectors on each entry.
-  // This fills gaps where highlights have no narrative after the enriched data cross-reference.
-  if (holdingsData.size > 0) {
-    // Build symbol-only lookup for cross-chain matching
-    const holdingsBySymbol = new Map<string, HoldingsEntry>();
-    for (const entry of holdingsData.values()) {
-      const symbolKey = entry.token_symbol.toLowerCase();
-      if (!holdingsBySymbol.has(symbolKey)) {
-        holdingsBySymbol.set(symbolKey, entry);
-      }
-    }
-
-    let holdingsAddrMatches = 0;
-    let holdingsSymbolMatches = 0;
-    for (const h of screenerHighlights) {
-      if (h.tokenSectors && h.tokenSectors.length > 0) continue;
-
-      const normAddr = normalizeAddress(h.token_address);
-      const matchByAddr = holdingsData.get(normAddr);
-      const matchBySymbol = holdingsBySymbol.get(h.token_symbol.toLowerCase());
-      const match = matchByAddr ?? matchBySymbol;
-
-      if (match && match.token_sectors && match.token_sectors.length > 0) {
-        h.tokenSectors = match.token_sectors;
-        h.narrativeKey = match.token_sectors[0];
-        if (matchByAddr) holdingsAddrMatches++;
-        else holdingsSymbolMatches++;
-      }
-    }
-    log(`Holdings cross-reference: address=${holdingsAddrMatches}, symbol-only=${holdingsSymbolMatches} highlights enriched with sectors`);
-  }
-
-  // Heuristic fallback for remaining highlights without sectors
-  let heuristicMatches = 0;
-  for (const h of screenerHighlights) {
-    if (h.tokenSectors && h.tokenSectors.length > 0) continue;
-    const heuristicSectors = classifyByHeuristic(h.token_symbol);
-    if (heuristicSectors.length > 0) {
-      h.tokenSectors = heuristicSectors;
-      h.narrativeKey = heuristicSectors[0];
-      heuristicMatches++;
-    }
-  }
-  if (heuristicMatches > 0) {
-    log(`Heuristic classifier: ${heuristicMatches} highlights enriched with sectors`);
-  }
+  // Step 8: Extract narrative highlights (sector-first approach)
+  const screenerHighlights = stepScreenerHighlights(screenerData, netflowEntries, holdingsData);
 
   // Enrich highlights with token profile descriptions
   if (tokenProfiles.size > 0) {

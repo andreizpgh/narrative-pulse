@@ -1,13 +1,12 @@
 // ============================================================
 // Screener Highlights — Top Smart Money Active Tokens
-// Extracts the most active tokens from token-screener data.
-// Always produces rich output (~500 screener entries → top 30 highlights).
-// Cross-references with netflow data for enriched signals.
+// SECTOR-FIRST approach: starts from netflow + holdings (which
+// have sectors), then enriches with screener buy/sell data.
+// Guarantees every highlight has a real Nansen sector.
 // ============================================================
 
-import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry } from "../types.js";
+import type { TokenScreenerEntry, ScreenerHighlight, NetflowEntry, HoldingsEntry } from "../types.js";
 import { normalizeAddress } from "../utils/normalize.js";
-import { classifyByHeuristic } from "./narrative-heuristic.js";
 
 // ============================================================
 // Constants
@@ -115,154 +114,213 @@ function scoreEntry(entry: TokenScreenerEntry): number {
 }
 
 // ============================================================
-// Public API
+// Public API — Sector-First Highlights
 // ============================================================
 
 /**
- * Extract top Smart Money active tokens from screener data.
- * Returns up to 30 highlights sorted by a composite score
- * combining buy/sell ratio and netflow magnitude.
+ * Extract top Smart Money active tokens using a SECTOR-FIRST approach.
  *
- * Optionally cross-references with netflow data to enrich highlights
- * with sector, narrative, and 7d/30d netflow information.
+ * Sources:
+ *   1. Netflow entries WITH sectors (primary — every entry has token_sectors)
+ *   2. Holdings entries WITH sectors (secondary — adds unique narratives)
+ *
+ * Both sources are cross-referenced with screener data for buy/sell ratio.
+ * Every returned highlight is guaranteed to have a real Nansen sector.
  */
-export function extractScreenerHighlights(
+export function extractNarrativeHighlights(
+  netflowEntries: NetflowEntry[],
+  holdingsEntries: Map<string, HoldingsEntry>,
   screenerData: Map<string, TokenScreenerEntry>,
-  netflowEntries?: NetflowEntry[]
 ): ScreenerHighlight[] {
-  // Build netflow lookup for cross-referencing
-  const netflowByAddress = new Map<string, NetflowEntry>();
-  const netflowBySymbolChain = new Map<string, NetflowEntry>();
-  const netflowBySymbol = new Map<string, NetflowEntry>();
+  // Build screener lookup maps (3-tier matching)
+  const screenerByAddress = new Map<string, TokenScreenerEntry>();
+  const screenerBySymbolChain = new Map<string, TokenScreenerEntry>();
+  const screenerBySymbol = new Map<string, TokenScreenerEntry>();
 
-  if (netflowEntries) {
-    for (const entry of netflowEntries) {
-      const normKey = normalizeAddress(entry.token_address);
-      if (!netflowByAddress.has(normKey)) {
-        netflowByAddress.set(normKey, entry);
-      }
-      const symbolKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
-      if (!netflowBySymbolChain.has(symbolKey)) {
-        netflowBySymbolChain.set(symbolKey, entry);
-      }
-      // Symbol-only index catches cross-chain matches (e.g., ETH in netflow vs SOL in screener)
-      const symbolOnly = entry.token_symbol.toLowerCase();
-      if (!netflowBySymbol.has(symbolOnly)) {
-        netflowBySymbol.set(symbolOnly, entry);
-      }
+  for (const entry of screenerData.values()) {
+    const normKey = normalizeAddress(entry.token_address);
+    if (!screenerByAddress.has(normKey)) {
+      screenerByAddress.set(normKey, entry);
+    }
+    const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    if (!screenerBySymbolChain.has(symbolChainKey)) {
+      screenerBySymbolChain.set(symbolChainKey, entry);
+    }
+    const symbolOnly = entry.token_symbol.toLowerCase();
+    if (!screenerBySymbol.has(symbolOnly)) {
+      screenerBySymbol.set(symbolOnly, entry);
     }
   }
 
-  // Match rate counters
-  let addressMatches = 0;
-  let symbolChainMatches = 0;
-  let symbolOnlyMatches = 0;
-
+  // Track which token addresses we've already added (dedup between netflow + holdings)
+  const seenAddresses = new Set<string>();
   const candidates: ScreenerHighlight[] = [];
 
-  for (const entry of screenerData.values()) {
-    // Skip low-volume noise
-    if (entry.volume < MIN_VOLUME_USD) continue;
+  // --- SOURCE 1: Netflow entries WITH sectors (primary — 64/100) ---
+  let netflowWithSectors = 0;
+  let netflowScreenerMatches = 0;
 
-    const buyVolume = entry.buy_volume ?? 0;
-    const sellVolume = entry.sell_volume ?? 0;
-    const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
+  for (const entry of netflowEntries) {
+    // Only entries WITH token_sectors
+    if (!entry.token_sectors || entry.token_sectors.length === 0) continue;
+    netflowWithSectors++;
 
-    // Only include tokens with meaningful SM activity
-    if (Math.abs(entry.netflow) < 100) continue;
+    const normAddr = normalizeAddress(entry.token_address);
 
-    // Skip structural noise — huge volume, zero trading signal
+    // Skip structural noise
     if (isStructuralNoise(entry.token_symbol)) continue;
 
-    // Price-based stablecoin filter: tokens pegged near $1.00 are stablecoins
-    // regardless of symbol (catches unknown/renamed stablecoins)
-    if (entry.price_usd >= 0.99 && entry.price_usd <= 1.01) continue;
-
-    // Price change for classification (not filtered — structural noise filter handles stablecoins)
-    const priceChangePct = (entry.price_change ?? 0) * 100;
-
-    // Cross-reference with netflow data (3-tier matching):
-    //   1. Exact address match (same chain, same token)
-    //   2. symbol:chain match (same symbol on same chain — different address format)
-    //   3. Symbol-only match (cross-chain, e.g., token on ETH in netflow vs SOL in screener)
-    const normAddr = normalizeAddress(entry.token_address);
+    // Cross-reference with screener for buy/sell ratio
     const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
-    const symbolOnly = entry.token_symbol.toLowerCase();
+    const screenerMatch = screenerByAddress.get(normAddr)
+      ?? screenerBySymbolChain.get(symbolChainKey)
+      ?? screenerBySymbol.get(entry.token_symbol.toLowerCase());
 
-    const matchByAddress = netflowByAddress.get(normAddr);
-    const matchBySymbolChain = netflowBySymbolChain.get(symbolChainKey);
-    const matchBySymbol = netflowBySymbol.get(symbolOnly);
+    const buyVolume = screenerMatch?.buy_volume ?? 0;
+    const sellVolume = screenerMatch?.sell_volume ?? 0;
+    const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
+    const priceChangePct = (screenerMatch?.price_change ?? 0) * 100;
+    const volume = screenerMatch?.volume ?? 0;
+    const marketCapUsd = screenerMatch?.market_cap_usd ?? entry.market_cap_usd ?? 0;
+    const priceUsd = (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
 
-    const netflowMatch = matchByAddress ?? matchBySymbolChain ?? matchBySymbol;
-
-    // Track match tier for logging
-    if (matchByAddress) addressMatches++;
-    else if (matchBySymbolChain) symbolChainMatches++;
-    else if (matchBySymbol) symbolOnlyMatches++;
+    if (screenerMatch) netflowScreenerMatches++;
 
     const highlight: ScreenerHighlight = {
       token_symbol: entry.token_symbol,
       token_address: entry.token_address,
       chain: entry.chain,
-      netflowUsd: entry.netflow,
+      netflowUsd: entry.net_flow_24h_usd,
       buyVolume,
       sellVolume,
       buySellRatio: Math.round(buySellRatio * 100) / 100,
-      // Nansen token-screener returns price_change as decimal fraction (0.01 = 1%); convert to percentage for consistency with DexScreener
-      priceChange: (entry.price_change ?? 0) * 100,
-      marketCapUsd: entry.market_cap_usd ?? 0,
-      priceUsd: entry.price_usd > 0 ? entry.price_usd : undefined,
-      nofBuyers: entry.nof_buyers ?? 0,
-      nofSellers: entry.nof_sellers ?? 0,
-      volume: entry.volume ?? 0,
+      priceChange: priceChangePct,
+      marketCapUsd,
+      priceUsd,
+      nofBuyers: screenerMatch?.nof_buyers ?? 0,
+      nofSellers: screenerMatch?.nof_sellers ?? 0,
+      volume,
       classification: classifyToken(
         buySellRatio,
-        entry.netflow,
+        entry.net_flow_24h_usd,
         priceChangePct,
-        netflowMatch?.net_flow_7d_usd,
-        entry.price_usd > 0 ? entry.price_usd : undefined,
-        netflowMatch?.net_flow_30d_usd,
+        entry.net_flow_7d_usd,
+        priceUsd,
+        entry.net_flow_30d_usd,
       ),
+      // ALWAYS has sectors — this is the whole point
+      tokenSectors: entry.token_sectors,
+      narrativeKey: entry.token_sectors[0],
+      netflow7dUsd: entry.net_flow_7d_usd,
+      netflow30dUsd: entry.net_flow_30d_usd,
+      traderCount: entry.trader_count,
     };
 
-    // Enrich with netflow data if matched
-    if (netflowMatch) {
-      highlight.tokenSectors = netflowMatch.token_sectors;
-      highlight.narrativeKey = netflowMatch.token_sectors.length > 0
-        ? netflowMatch.token_sectors[0]
-        : undefined;
-      highlight.netflow7dUsd = netflowMatch.net_flow_7d_usd;
-      highlight.netflow30dUsd = netflowMatch.net_flow_30d_usd;
-      highlight.traderCount = netflowMatch.trader_count;
-    }
-
-    // Heuristic fallback: classify by symbol patterns when no sectors available
-    if (!highlight.tokenSectors || highlight.tokenSectors.length === 0) {
-      const heuristicSectors = classifyByHeuristic(entry.token_symbol);
-      if (heuristicSectors.length > 0) {
-        highlight.tokenSectors = heuristicSectors;
-        highlight.narrativeKey = heuristicSectors[0];
-      }
-    }
-
+    seenAddresses.add(normAddr);
     candidates.push(highlight);
   }
 
-  // Sort by composite score descending
+  // --- SOURCE 2: Holdings entries WITH sectors (secondary — adds unique narratives) ---
+  let holdingsWithSectors = 0;
+  let holdingsAdded = 0;
+
+  for (const [, entry] of holdingsEntries) {
+    if (!entry.token_sectors || entry.token_sectors.length === 0) continue;
+    holdingsWithSectors++;
+
+    const normAddr = normalizeAddress(entry.token_address);
+
+    // Dedup: skip if already in from netflow
+    if (seenAddresses.has(normAddr)) continue;
+
+    // Skip structural noise
+    if (isStructuralNoise(entry.token_symbol)) continue;
+
+    // Cross-reference with screener
+    const symbolChainKey = `${entry.token_symbol.toLowerCase()}:${entry.chain}`;
+    const screenerMatch = screenerByAddress.get(normAddr)
+      ?? screenerBySymbolChain.get(symbolChainKey)
+      ?? screenerBySymbol.get(entry.token_symbol.toLowerCase());
+
+    const buyVolume = screenerMatch?.buy_volume ?? 0;
+    const sellVolume = screenerMatch?.sell_volume ?? 0;
+    const buySellRatio = sellVolume > 0 ? buyVolume / sellVolume : buyVolume > 0 ? 99 : 0;
+    const priceChangePct = (screenerMatch?.price_change ?? 0) * 100;
+    const volume = screenerMatch?.volume ?? 0;
+    const marketCapUsd = entry.market_cap_usd ?? screenerMatch?.market_cap_usd ?? 0;
+    const priceUsd = (screenerMatch && screenerMatch.price_usd > 0) ? screenerMatch.price_usd : undefined;
+
+    const highlight: ScreenerHighlight = {
+      token_symbol: entry.token_symbol,
+      token_address: entry.token_address,
+      chain: entry.chain,
+      // Holdings don't have netflow data — use 0 as netflow
+      netflowUsd: 0,
+      buyVolume,
+      sellVolume,
+      buySellRatio: Math.round(buySellRatio * 100) / 100,
+      priceChange: priceChangePct,
+      marketCapUsd,
+      priceUsd,
+      nofBuyers: screenerMatch?.nof_buyers ?? 0,
+      nofSellers: screenerMatch?.nof_sellers ?? 0,
+      volume,
+      classification: classifyToken(
+        buySellRatio,
+        0, // no netflow from holdings
+        priceChangePct,
+        undefined,
+        priceUsd,
+        undefined,
+      ),
+      tokenSectors: entry.token_sectors,
+      narrativeKey: entry.token_sectors[0],
+    };
+
+    seenAddresses.add(normAddr);
+    candidates.push(highlight);
+    holdingsAdded++;
+  }
+
+  // --- SCORE AND SORT ---
+  // Score: |netflow| × buy/sell ratio × volatility bonus
+  // Holdings tokens without netflow get scored by buy/sell ratio × volume only
   const scored = candidates
     .map((c) => {
-      const screenerEntry = screenerData.get(c.token_address);
-      return { highlight: c, score: screenerEntry ? scoreEntry(screenerEntry) : 0 };
+      const ratio = Math.min(c.buySellRatio, 10);
+      const volatilityBonus = 1 + Math.min(Math.abs(c.priceChange) / 20, 2);
+      const netflowScore = Math.abs(c.netflowUsd);
+      const volumeScore = c.volume > 0 ? Math.min(c.volume / 100_000, 5) : 0;
+      // Tokens with netflow get higher score (they're in netflow for a reason)
+      const score = c.netflowUsd !== 0
+        ? ratio * netflowScore * volatilityBonus
+        : ratio * volumeScore * volatilityBonus;
+      return { highlight: c, score };
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_HIGHLIGHTS)
     .map((s) => s.highlight);
 
-  // Log match rate breakdown
+  // Log
   const sectorPopulated = scored.filter(h => h.tokenSectors && h.tokenSectors.length > 0).length;
   console.log(
-    `[ScreenerHighlights] Netflow match rates: address=${addressMatches}, symbol:chain=${symbolChainMatches}, symbol-only=${symbolOnlyMatches} | ${sectorPopulated}/${scored.length} highlights with sectors`
+    `[NarrativeHighlights] Sources: ${netflowWithSectors} netflow with sectors (${netflowScreenerMatches} screener-matched), ` +
+    `${holdingsWithSectors} holdings with sectors (${holdingsAdded} added) | ` +
+    `${sectorPopulated}/${scored.length} highlights with sectors`
   );
 
   return scored;
+}
+
+// ============================================================
+// Deprecated — backward compatibility wrapper
+// ============================================================
+
+/** @deprecated Use extractNarrativeHighlights instead */
+export function extractScreenerHighlights(
+  _screenerData: Map<string, TokenScreenerEntry>,
+  _netflowEntries?: NetflowEntry[]
+): ScreenerHighlight[] {
+  // Legacy wrapper — no longer used by the pipeline
+  return [];
 }
