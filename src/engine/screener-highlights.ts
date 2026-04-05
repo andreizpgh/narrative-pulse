@@ -311,16 +311,3 @@ export function extractNarrativeHighlights(
 
   return scored;
 }
-
-// ============================================================
-// Deprecated — backward compatibility wrapper
-// ============================================================
-
-/** @deprecated Use extractNarrativeHighlights instead */
-export function extractScreenerHighlights(
-  _screenerData: Map<string, TokenScreenerEntry>,
-  _netflowEntries?: NetflowEntry[]
-): ScreenerHighlight[] {
-  // Legacy wrapper — no longer used by the pipeline
-  return [];
-}
