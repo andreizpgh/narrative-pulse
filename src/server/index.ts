@@ -67,6 +67,7 @@ Market Cap: ${fmtM(td.marketCapUsd)}
 Price Change 24h: ${fmtPct(td.priceChange)}
 SM Netflow 24h: ${fmtK(td.netflowUsd)}
 SM Netflow 7d: ${fmtK(td.netflow7dUsd)}
+SM Netflow 30d: ${fmtK(td.netflow30dUsd)}
 Buy/Sell Ratio: ${td.buySellRatio ?? "N/A"}x
 Buy Volume: ${fmtK(td.buyVolume)}
 Sell Volume: ${fmtK(td.sellVolume)}
@@ -74,7 +75,11 @@ Classification: ${td.classification ?? "N/A"}
 Narrative: ${td.narrativeKey ?? "N/A"}
 ${flowSection}
 
-Focus on: What does the Smart Money activity suggest? Is this accumulation or distribution? Any divergence signals? What's the risk/reward? Keep it concise and actionable.`;
+IMPORTANT CONTEXT:
+- If 30d SM netflow is very high (>$50K), the token has been accumulating for a long time — price likely already reflects this. Don't call it "early" or "anticipating" a move.
+- If classification is "pumping", the token already surged >30% — focus on risk, not entry.
+- If 7d netflow is positive but 24h price change is flat, this MAY be divergence — but only if 30d netflow is moderate.
+- Focus on: What does Smart Money activity suggest? Accumulation or distribution? Real divergence or already priced in? Risk/reward?`;
 }
 
 // ── Number formatting helpers ────────────────────────────────

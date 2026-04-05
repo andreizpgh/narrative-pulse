@@ -53,7 +53,8 @@ function classifyToken(
   netflowUsd: number,
   priceChangePct: number,
   netflow7dUsd?: number,
-  priceUsd?: number
+  priceUsd?: number,
+  netflow30dUsd?: number,
 ): ScreenerHighlight["classification"] {
   // 0. Stablecoin guard: near-$1 price + near-zero change → never classify as diverging
   //    Prevents false "accumulation before pump" signals for stablecoins that slipped through
@@ -67,8 +68,13 @@ function classifyToken(
   if (priceChangePct > 30) return "pumping";
 
   // 2. Diverging: SM accumulating but price hasn't moved (divergence signal)
-  //    Only when we have 7d netflow data showing sustained accumulation
-  if (netflow7dUsd !== undefined && netflow7dUsd > 5000 && priceChangePct >= -5 && priceChangePct <= 10) {
+  //    Requires: 7d netflow positive, 24h price flat, AND 30d netflow not extremely positive
+  //    (if 30d netflow is very high, the price likely already moved — not a divergence)
+  if (
+    netflow7dUsd !== undefined && netflow7dUsd > 5000 &&
+    priceChangePct >= -5 && priceChangePct <= 10 &&
+    (netflow30dUsd === undefined || netflow30dUsd < 100_000)
+  ) {
     return "diverging";
   }
 
@@ -214,7 +220,8 @@ export function extractScreenerHighlights(
         entry.netflow,
         priceChangePct,
         netflowMatch?.net_flow_7d_usd,
-        entry.price_usd > 0 ? entry.price_usd : undefined
+        entry.price_usd > 0 ? entry.price_usd : undefined,
+        netflowMatch?.net_flow_30d_usd,
       ),
     };
 
