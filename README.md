@@ -2,9 +2,9 @@
 
 > **Track WHERE smart money rotates between crypto narratives — before the crowd notices.**
 
-[![Nansen CLI Challenge](https://img.shields.io/badge/Nansen-CLI_Build_Challenge_Week_3-6366F1?style=flat-square)](https://www.nansen.ai)
-[![TypeScript 5.5](https://img.shields.io/badge/TypeScript_5.5-Strict-3178C6?style=flat-square&logo=typescript)](#)
-[![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](#)
+[![Nansen CLI Challenge](https://img.shields.io/badge/Nansen-CLI_Build_Challenge_Week_3-6366F1?style=flat-square)](https://x.com/nansen_ai/status/2033508720592949417)
+[![TypeScript 5.5](https://img.shields.io/badge/TypeScript_5.5-Strict-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![MIT License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
 [![5 Chains](https://img.shields.io/badge/Chains-ETH%20%7C%20SOL%20%7C%20BASE%20%7C%20BNB%20%7C%20ARB-F59E0B?style=flat-square)](#)
 
 <p align="center"><img src="screenshots/banner.png" width="1200" alt="Narrative Pulse Banner"/></p>
@@ -54,7 +54,7 @@ npx tsx src/index.ts scan
 For the live dashboard:
 
 ```bash
-npx tsx src/index.ts serve          # http://localhost:3000
+npx tsx src/index.ts serve  # http://localhost:3000
 npx tsx src/index.ts serve --port 8080
 ```
 
