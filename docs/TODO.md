@@ -1,13 +1,15 @@
 # Narrative Pulse — Problem List & Fix Plan
 
 > **Created**: 2026-04-05
+> **Last Updated**: 2026-04-05 (after user feedback session)
 > **Status**: Active development, final polish before contest submission
-> **Deadline**: Today, April 5, 2026
+> **Deadline**: April 5, 2026
+> **Credits Remaining**: ~6880
 
 ## Priority Legend
-- 🔴 P0 — Blocks submission or breaks core functionality
-- 🟡 P1 — Significant quality issue, hurts presentation
-- 🟢 P2 — Nice to have, polish
+- 🔴 P0 — Blocks core functionality or makes product look broken
+- 🟡 P1 — Significant quality issue, hurts presentation for judges
+- 🟢 P2 — Polish, nice to have
 
 ---
 
@@ -15,216 +17,254 @@
 
 **Symptom**: Only 1 of 30 screener highlights has a narrative. The rest show "—".
 
-**Root cause**: THREE bugs compounding:
+**Root cause**: THREE compounding issues:
+1. `TokenScreenerEntry` (src/types.ts) does NOT declare `token_sectors` — even if Nansen returns it, we ignore it
+2. Cross-reference in `screener-highlights.ts` matches by `(address)` or `(symbol:chain)` — but NOT `(symbol only)`. Tokens on different chains = no match
+3. Holdings cross-reference in `scanner.ts` only matches by address — no symbol fallback
 
-1. **Holdings cross-reference normalization mismatch** (CRITICAL): `src/api/holdings.ts` `dedupeByAddress()` stores raw `entry.token_address` as Map key, but `src/engine/scanner.ts` lookup uses `normalizeAddress(h.token_address)` (lowercase). `Map.get()` is case-sensitive → **0 matches always**.
+**Dependencies**: ✅ RESOLVED — Nansen token-screener does NOT return `token_sectors` (confirmed 2026-04-05, see `docs/NANSEN-API-RESEARCH.md`). Only netflow and holdings endpoints have sector data.
 
-2. **Holdings and screener highlights are different token sets**: Holdings = top 50 tokens by portfolio VALUE (what SM holds). Screener highlights = top 30 by netflow ACTIVITY (what SM trades). Minimal overlap.
+**Fix plan** (confirmed strategy):
+1. In `src/engine/screener-highlights.ts`: add `netflowBySymbol` map for symbol-only matching (cross-chain catch: token on ETH in netflow, SOL in screener)
+2. In `src/engine/scanner.ts`: add symbol-only matching to holdings cross-reference (build `holdingsBySymbol` map)
+3. Add match-rate logging at each stage to track coverage
+4. Consider: increase netflow pages from 2→3 (+50 credits) for broader coverage
+5. Consider: increase holdings pages from 1→2 (+50 credits) for broader coverage
+6. **Do NOT** add `token_sectors` to `TokenScreenerEntry` — it doesn't exist in the API response
 
-3. **Netflow cross-reference also low coverage**: Only 100 netflow entries vs 500 screener entries. Different scoring formulas = different token sets.
-
-**Fix**:
-1. In `src/api/holdings.ts` `dedupeByAddress()`: normalize the Map key with `normalizeAddress(entry.token_address)` — import the function from `../utils/normalize.js`
-2. Add symbol+chain fallback matching in scanner.ts (like other cross-references)
-3. Consider increasing holdings pages from 1 to 2 (+50 credits) for better coverage
-4. **Nuclear option if still low match rate**: For highlights without tokenSectors, use the Nansen token-screener response itself — check if it has any sector-related field we're not using
-
-**Files**: `src/api/holdings.ts`, `src/engine/scanner.ts`
-
----
-
-## 🔴 P0-02: Flow Intelligence block — mostly empty, badly organized, inconsistent
-
-**Symptom**: 
-- Block appears on only 5/30 tokens (by design — topN config)
-- When it appears, 5 of 6 rows show "+$0" with green checkmarks
-- Even `hasNonZeroFlow()` guard (which we added) doesn't help when ONE value is non-zero — the block shows but is 80% zeros
-- The block wastes ~200px of vertical space
-- Layout is poor: label on left, value in middle, meta on right, with huge empty gaps
-- No explanation of what "Smart Traders" vs "Whales" vs "Top PnL" means
-
-**Fix**:
-1. **Hide individual zero rows**, not just the entire section. Only show rows where the net_flow value is non-zero
-2. Make the block more compact — use a 2-column grid instead of 6 full-width rows
-3. Add a small header explaining what the data means
-4. If only 1 row has data and it's "Exchanges: -$1.5M" — still show it (that's meaningful)
-
-**Files**: `src/visual/dashboard.ts` — `renderFlowIntelligence()` and `flowIntelRow()`
+**Files**: `src/types.ts`, `src/engine/screener-highlights.ts`, `src/engine/scanner.ts`
 
 ---
 
-## 🟡 P1-01: AI analysis — loading animation collapses instantly
+## 🔴 P0-02: Capital Flow Map (bar chart) shows too few narratives
 
-**Symptom**: Click on the AI shimmer placeholder → it instantly disappears and is replaced by a single-line "Analyzing with openrouter..." with a tiny spinner. No smooth transition.
+**Symptom**: Only 2 of 7 narratives visible (Memecoins $22.8K, GameFi $612). Others are below $100 threshold.
 
-**Expected**: The shimmer block should smoothly transform — maybe shrink in height, keep the animation, then reveal the loading state. Not an abrupt innerHTML replace.
+**Root cause**: Lines 2023-2024 in dashboard.ts filter narratives by `> $100` netflow. Most narratives have tiny flows ($3-$50).
 
-**Fix**:
-1. Instead of `el.innerHTML = ...` (instant replace), use a CSS transition approach:
-   - Phase 1: Add a CSS class that transitions the shimmer block (height collapse, opacity fade) over ~300ms
-   - Phase 2: After transition ends, replace content with loading state
-   - Phase 3: When result arrives, transition back in
-2. Alternative simpler approach: Keep the shimmer background but overlay the loading text on top (opacity transition)
+**Fix plan**:
+- Do NOT lower threshold to $0 — $3 netflow is noise, looks bad for judges
+- Better approach: show top-N narratives by absolute netflow (e.g. top 10), regardless of threshold
+- OR: use a dynamic threshold like `max(min_netflow, $50)` to avoid showing $3 flows
+- Consider: aggregate smaller narratives into "Other" category
+- The bar chart should look professional — if there are only 2 meaningful narratives, show 2 but make the chart compact (not full-width)
 
-**Files**: `src/visual/dashboard.ts` — `showAiSetup()`, `runAiAnalysis()`, CSS for `.ai-analysis-*`
-
----
-
-## 🟡 P1-02: AI analysis — markdown not rendered
-
-**Symptom**: LLM response contains `**Assessment:**` and `**Actionable:**` but they render as literal asterisks in the UI. No bold, no lists, no formatting.
-
-**Fix**: Add a minimal markdown-to-HTML renderer (~20 lines):
-- `**text**` → `<strong>text</strong>`
-- `*text*` → `<em>text</em>`
-- `- item` → `<li>item</li>`
-- `\n` → `<br>` (or wrap in `<p>` tags)
-- No external dependencies needed
-
-Apply in `showAiResult()` before setting innerHTML.
-
-**Files**: `src/visual/dashboard.ts` — add `renderMarkdown(text)` function, use in `showAiResult()`
+**Files**: `src/visual/dashboard.ts` — `renderSankeyChart()` around lines 2023-2024
 
 ---
 
-## 🟡 P1-03: AI analysis — block position and size in expanded card
+## 🔴 P0-03: Stablecoins appearing in highlights — false divergence signals
 
-**Symptom**: AI block is a long thin strip at the bottom of the expanded card. Wastes horizontal space. In the screenshots, it takes up about 1/3 of the vertical space of the expanded card.
+**Symptom**: Stablecoins (USDT, USDC, etc.) show as "diverging" because SM netflow is positive but price_change ≈ 0. AI analysis then says "accumulation before pump" for a STABLECOIN — embarrassing for judges.
 
-**Fix**: Make AI section more compact:
-- Reduce padding
-- Result text: smaller font, tighter line-height
-- Consider making it a collapsible section (click header to expand/collapse)
-- Or: when no analysis yet, show compact placeholder. When result exists, show expanded result.
+**Root cause**: `STRUCTURAL_NOISE_PATTERNS` filter in `screener-highlights.ts` exists but may be incomplete, or tokens with stablecoin-like symbols not in the list are passing through. Also, the `classifyToken()` function doesn't check for near-zero price as a stablecoin indicator.
 
-**Files**: `src/visual/dashboard.ts` — CSS for `.ai-result`, `.ai-setup`, `.ai-analysis-blur`
+**Fix plan**:
+1. Expand `STRUCTURAL_NOISE_PATTERNS` — add more patterns
+2. Add a price-based stablecoin filter: if `priceUsd` is between $0.99 and $1.01 → skip (it's a stablecoin regardless of symbol)
+3. In `classifyToken()`: if `|priceChange| < 0.1%` AND `priceUsd ≈ $1.00` → classify as `mixed` (not `diverging`)
+4. Consider: filter out tokens with `priceUsd < $0.001` as well (dust/shitcoins)
 
----
-
-## 🟡 P1-04: Selling card filters by "mixed" instead of "selling"
-
-**Symptom**: Top-right signal card says "SELLING: 5" (counts mixed + distributing). But clicking it sets the filter to `mixed` only — distributing tokens are hidden.
-
-**Fix**: Two options:
-- **(A)** Multi-value filter: modify `applyFilters()` to support filtering by multiple classification values when "selling" group is selected
-- **(B)** Simpler: show the card label as "LOW SIGNAL" and filter to `mixed` only (since `distributing` count is always 0 in practice — log shows "0 distributing" consistently)
-
-Option B is simpler and reflects reality (distributing tokens don't appear in highlights).
-
-**Files**: `src/visual/dashboard.ts` — `filterBySignalGroup()`, card label
+**Files**: `src/engine/screener-highlights.ts` — `STRUCTURAL_NOISE_PATTERNS`, `classifyToken()`, extraction logic
 
 ---
 
-## 🟡 P1-05: Chain indicators — dots are indistinguishable, prefer text labels
+## 🟡 P1-01: Expanded card layout — AI analysis section wastes space
 
-**Symptom**: 8px colored dots next to token names. Base (#00aaff) and Arbitrum (#28a0f0) are nearly identical. Solana (#9c6ade) and the old purple are also close. Users can't tell chains apart.
+**Symptom**: When expanded, the card is a single full-width column. Left side has metrics, right side is empty. Flow Intelligence and AI Analysis are stacked vertically at the bottom — long thin strips.
 
-**User preference**: Text labels like Nansen uses (ETH, SOL, BASE, BNB, ARB) — small, subtle, but readable. Or chain icons if feasible.
-
-**Fix**: Replace `chainDot()` with a text label approach:
-```javascript
-function chainLabel(chain) {
-  var styles = {
-    ethereum: 'background:rgba(98,126,234,0.15);color:#8ba0f0',
-    solana: 'background:rgba(156,106,222,0.15);color:#b48de8',
-    base: 'background:rgba(0,170,255,0.15);color:#4db8ff',
-    bnb: 'background:rgba(243,186,47,0.15);color:#f5c842',
-    arbitrum: 'background:rgba(40,160,240,0.15);color:#5eb8f0'
-  };
-  var labels = { ethereum: 'ETH', solana: 'SOL', base: 'BASE', bnb: 'BNB', arbitrum: 'ARB' };
-  var style = styles[chain] || 'background:rgba(139,143,163,0.15);color:#8b8fa3';
-  var label = labels[chain] || chain;
-  return '<span style="' + style + ';font-size:0.6rem;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:0.02em;margin-left:6px;vertical-align:middle">' + label + '</span>';
-}
+**Fix plan**: Restructure expanded card into a 2-column layout:
 ```
+┌──────────────────────────┬─────────────────────┐
+│ Price | MCap | FDV | Liq │                     │
+│ Netflow 24h | 7d | 30d   │   AI Analysis       │
+│ Buy/Sell | Ratio | SM     │   (square block)    │
+│ Flow Intelligence        │                     │
+└──────────────────────────┴─────────────────────┘
+```
+- Left column: metrics + flow intelligence (full width of left half)
+- Right column: AI Analysis (square, not thin strip)
+- DexScreener link spans full width at bottom
+- When AI analysis hasn't been triggered, show the shimmer block as a square placeholder
 
-Remove chain legend row (no longer needed with labels).
-
-**Files**: `src/visual/dashboard.ts` — `chainDot()` → `chainLabel()`, remove chain legend
+**Files**: `src/visual/dashboard.ts` — `renderExpandedDetail()`
 
 ---
 
-## 🟡 P1-06: Header design still below par
+## 🟡 P1-02: AI Analysis loading animation — needs to be sleek and modern
 
-**Symptom**: Header is functional but doesn't match the visual quality of the rest of the dashboard. Feels "thin" and utilitarian.
+**Symptom**: Current loading is a basic spinner + "Analyzing with openrouter..." text. The shimmer-to-loading transition is abrupt (just an innerHTML replace). Not modern or sleek.
 
-**Fix**: Add visual weight:
-- Subtle gradient accent line at the very top of the page (2px, green→purple→green)
-- Slightly larger title with letter-spacing
-- Status badges with background pills (not bare text)
-- Consider: small Nansen logo or "Powered by Nansen" subtle text in header
+**Fix plan**: Redesign the AI loading state:
+1. **Shimmer → Loading**: Smooth CSS transition (height/opacity), not instant replace
+2. **Loading state**: Modern skeleton animation — pulsing gradient bars (like ChatGPT loading)
+3. **Loading → Result**: Fade in with subtle slide-up
+4. Remove the generic spinner. Use a sophisticated "thinking" animation
+5. Consider: streaming text display (if API supports it) — characters appearing one by one
+
+**Files**: `src/visual/dashboard.ts` — `runAiAnalysis()`, AI-related CSS classes
+
+---
+
+## 🟡 P1-03: AI Analysis markdown rendering incomplete
+
+**Symptom**: Bold works. But bullet lists, numbered lists, headers may not render correctly with real LLM output.
+
+**Fix plan**: Extend `renderMarkdown()` function:
+- `- item` → proper `<li>` wrapped in `<ul>`
+- `1. item` → proper `<li>` wrapped in `<ol>`
+- `### Header` → `<h3>` (for structure)
+- Preserve line breaks properly
+- Test with a realistic AI response
+
+**Files**: `src/visual/dashboard.ts` — `renderMarkdown()`
+
+---
+
+## 🟡 P1-04: Selling card doesn't filter the table
+
+**Symptom**: Clicking the "SELLING" signal card at the top sets the filter dropdown to `__selling` which should show `mixed` + `distributing` tokens. But the dropdown's `__selling` option may not be populated (it's only added when `distributing` exists in data — and distributing tokens are rare). Also, there's no "SELLING" tag/badge in the table — tokens show as "MIXED" but the card says "SELLING".
+
+**Root cause**: Two issues:
+1. The dropdown option `__selling` is only added when `activeSignals['distributing']` exists (line 1891). Since `distributing` tokens are rare (often 0), this option doesn't appear → clicking the SELLING card sets a value that doesn't exist in the dropdown → filter breaks.
+2. No visual "Selling" badge in the table — `mixed` and `distributing` show different labels but neither says "Selling"
+
+**Fix plan**:
+1. Always add the `__selling` option to the dropdown (not conditional on distributing existing)
+2. OR: make the SELLING card filter to just `mixed` (since distributing is always 0 in practice)
+3. Add a "Selling" display to the badge when `mixed` or `distributing` with negative netflow
+4. Consider renaming the SELLING card to "LOW SIGNAL" if we can't reliably identify selling
+
+**Files**: `src/visual/dashboard.ts` — signal card onclick, signal dropdown population, badge rendering
+
+---
+
+## 🟡 P1-05: Header looks ugly
+
+**Symptom**: Header is functional but doesn't look professional. "NARRATIVE PULSE · Smart Money Intelligence" is plain text. The "powered by Nansen" is barely visible. The layout feels thin and utilitarian.
+
+**Fix plan**: Complete header redesign:
+1. Top accent line (2px gradient bar, green→purple→green, already added)
+2. Larger title with proper typography (letter-spacing, weight)
+3. Status badges as colored pills (not bare gray text)
+4. "powered by Nansen" as a subtle but visible element (not 0.5 opacity)
+5. Rescan button more prominent (maybe with an icon)
+6. Better spacing and visual hierarchy
+7. Consider: a subtle background gradient or noise texture
 
 **Files**: `src/visual/dashboard.ts` — header HTML and CSS
 
 ---
 
-## 🟡 P1-07: Signal cards hover effect too weak
+## 🟡 P1-06: Sorting arrows painfully small
 
-**Symptom**: Previous `translateY(-2px)` was "amateur". Current `border-color` transition is nearly invisible. Need something between these extremes.
+**Symptom**: Column header sort arrows (↕ ↗ ↘) are 0.65rem — nearly invisible. Users can't tell columns are sortable.
 
-**Fix**: Subtle background glow + very slight shadow:
-```css
-.signal-card { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
-.signal-card:hover {
-  border-color: rgba(255,255,255,0.12);
-  box-shadow: 0 0 20px rgba(52,211,153,0.06);
-}
-```
+**Fix plan**:
+1. Increase arrow size to at least 0.8rem
+2. Make the entire header cell show cursor:pointer (already done) but also add a subtle hover state
+3. Active sort arrow should be more prominent (brighter color, maybe slightly larger)
+4. Consider: sort indicator as a small up/down triangle pair (▼▲) instead of Unicode arrows
 
-No translateY, no scale. Just a soft ambient glow.
-
-**Files**: `src/visual/dashboard.ts` — `.signal-card:hover` CSS
+**Files**: `src/visual/dashboard.ts` — `.token-table thead th.sortable` CSS
 
 ---
 
-## 🟡 P1-08: Sankey chart looks poor — only inflows, no outflows
+## 🟡 P1-07: Expand triangle misaligned during rotation
 
-**Symptom**: Sankey shows "Smart Money → Memecoins/GameFi/Bags.fm" with green bands. No red outflows. Looks like a basic bar chart, not a flow diagram. The user called it "бедно" (poor).
+**Symptom**: When a row is expanded, the ▶ triangle rotates to ▼. During the rotation, it shifts slightly upward on the Y axis — not perfectly centered. The `transform-origin: center center` doesn't seem to be doing its job perfectly.
 
-**Root cause**: When ALL narratives have positive netflow, there are no outflow nodes. Sankey becomes a one-directional diagram.
+**Root cause**: The `▶` character (U+25B6) is not visually centered in its bounding box. When rotated 90°, the visual center shifts.
 
-**Fix options**:
-- **(A)** When no outflows exist, show a different visualization (e.g., horizontal bar chart of netflow by narrative) instead of a Sankey
-- **(B)** Add "Market Average" as a baseline outflow node
-- **(C)** Make the Sankey more visually interesting even with one direction: use gradient colors, thicker bands, labels with amounts
-- **(D)** Add a "previous scan" comparison — show which narratives gained vs lost flow vs last scan (rotation data)
+**Fix plan**:
+1. Use a CSS-drawn triangle instead of Unicode character (more predictable)
+2. OR: adjust `transform-origin` to compensate (e.g., `transform-origin: 50% 60%`)
+3. OR: use an SVG chevron icon (cleanest solution)
+4. Test with the actual animation to ensure smooth rotation without Y-shift
 
-Option A or D would add the most value.
-
-**Files**: `src/visual/dashboard.ts` — `renderSankeyChart()`, `renderSankeySection()`
+**Files**: `src/visual/dashboard.ts` — `.expand-arrow` CSS and the `▶` character in renderTokenRow
 
 ---
 
-## 🟢 P2-01: System-styled dropdowns and tooltips
+## 🟡 P1-08: Flow Intelligence section — looks empty with only 1 row
 
-**Symptom**: Filter `<select>` elements and `title=` tooltips use OS-default styling. On dark theme, the dropdown popup is white (jarring contrast). Tooltips are system gray boxes.
+**Symptom**: When only 1 of 6 categories has non-zero data (e.g. "Exchanges: -$564K"), the section shows a single line in a full-width container. Looks broken.
 
-**Fix**: Custom-styled selects and CSS tooltips. This is a significant CSS effort.
+**Current behavior**: Zero-value rows are hidden. This is correct (don't show 5 rows of "$0"). But 1 row still looks sparse.
 
-**Files**: `src/visual/dashboard.ts` — CSS for `.filter-select`, tooltip system
+**Fix plan**: Do NOT show all 6 rows with "—" (tried before, looks bad). Instead:
+1. If only 1 category has data → show it as a compact single-line summary, not a full section:
+   `Flow Intel: Exchanges outflow -$564K (3 wallets)`
+2. If ≥2 categories have data → show the current grid layout
+3. Consider: add a mini bar visualization for the single-row case (small inline sparkline)
+
+**Files**: `src/visual/dashboard.ts` — `renderFlowIntelligence()`, `hasNonZeroFlow()`
 
 ---
 
-## 🟢 P2-02: Rescan button + interval selector layout
+## 🟡 P1-09: Red narratives (outflows) — can we show them?
 
-**Symptom**: User called the Rescan button next to interval selector "колхоз" (hokey/rushed).
+**Symptom**: Currently we only show narratives with positive SM inflow (green bars). But if Smart Money is EXITING a narrative (negative netflow), that's equally valuable intel. The question is: can we identify and show these?
 
-**Fix**: Group scan controls more intentionally — maybe a "scan controls" section with better spacing and visual grouping.
+**Current data**: `narratives` array in ScanResult includes ALL narratives, some with negative `totalNetflow24h`. But in the dashboard, `outflows` are filtered by `< -$100` which may miss small outflows.
 
-**Files**: `src/visual/dashboard.ts` — header HTML
+**Fix plan**:
+1. In the bar chart, show BOTH inflows (green bars, right) and outflows (red bars, left) side by side
+2. Outflow narratives should be clickable and filter the table (same as inflows)
+3. Add a color legend: green = SM inflow, red = SM outflow
+4. This makes the data more complete — judges see both sides of the market
+5. If using Sankey (when both exist), ensure it shows the full flow picture
+
+**Files**: `src/visual/dashboard.ts` — `renderSankeyChart()`, bar chart rendering
+
+---
+
+## 🟢 P2-01: Overall visual polish — make it look like a premium product
+
+**Symptom**: The dashboard works but looks like a student project, not a 1st-place contest entry. Needs that "high-end quality" feel.
+
+**Fix plan** (collection of micro-improvements):
+1. **Custom tooltips**: Replace all `title="..."` with styled CSS tooltips (dark, rounded, with arrow)
+2. **Signal card hover**: More sophisticated animation (subtle glow + slight scale, already partially done)
+3. **Table row transitions**: Smoother expand/collapse, subtle highlight when filter changes
+4. **Filter dropdowns**: Custom-styled selects (dark background, rounded, matching theme)
+5. **Micro-interactions**: Button press effects, card hover shadows, smooth scroll
+6. **Typography**: Consistent font sizing hierarchy, proper line-heights
+7. **Spacing**: Consistent padding/margin system (4px grid)
+8. **Color system**: Ensure all colors are from the CSS custom properties, no inline magic values
+
+**Files**: `src/visual/dashboard.ts` — CSS section + various HTML elements
+
+---
+
+## 🟢 P2-02: System-styled dropdowns
+
+**Symptom**: Filter `<select>` elements use OS-default styling. On dark theme, the dropdown popup is white (jarring).
+
+**Fix plan**: Custom-styled selects with dark theme. Significant CSS effort.
+
+**Files**: `src/visual/dashboard.ts` — CSS for `.filter-select`
 
 ---
 
 ## Implementation Order
 
-1. **P0-01** (narratives) — most critical, blocks the core concept
-2. **P0-02** (flow intelligence) — makes expanded cards look broken
-3. **P1-05** (chain labels) — quick visual win
-4. **P1-04** (selling card) — logic bug
-5. **P1-07** (signal hover) — quick CSS fix
-6. **P1-01** (AI loading animation) — polish
-7. **P1-02** (AI markdown) — functional issue
-8. **P1-03** (AI block layout) — polish
-9. **P1-06** (header) — polish
-10. **P1-08** (Sankey) — if time permits
-11. **P2-01, P2-02** — if time permits
+### Phase 1: Critical fixes (unblocked)
+1. **P0-01** (narratives) — symbol-only matching in screener-highlights.ts + scanner.ts
+2. **P0-03** (stablecoins) — expand noise filter + price-based stablecoin detection
+3. **P0-02** (bar chart) — smart threshold, not $0 (show top-N narratives)
+4. **P1-09** (red narratives) — show outflows alongside inflows
+
+### Phase 2: Layout & interactions
+5. **P1-01** (expanded card 2-column layout) — restructure
+6. **P1-04** (selling card filter) — logic fix
+7. **P1-02** (AI loading animation) — modern feel
+8. **P1-07** (expand triangle) — visual polish
+
+### Phase 3: Polish
+9. **P1-05** (header redesign)
+10. **P1-06** (sort arrows)
+11. **P1-08** (flow intel compact)
+12. **P1-03** (AI markdown)
+13. **P2-01** (visual polish pass)
+14. **P2-02** (custom dropdowns)

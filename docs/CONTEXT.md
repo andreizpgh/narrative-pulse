@@ -1,8 +1,9 @@
 # Narrative Pulse — Full Project Context
 
-> **Последнее обновление**: 2026-04-05
+> **Последнее обновление**: 2026-04-05 (post user feedback session)
 > **Статус**: Активная разработка, финальная полировка перед submissions
 > **Дедлайн**: 5 апреля 2026
+> **Credits Remaining**: ~6880
 
 ## 1. Конкурс
 
@@ -66,7 +67,7 @@ src/
 │   ├── sub-narratives.ts # Agent API sub-narrative analysis
 │   └── rotations.ts      # Narrative rotation tracking (delta between scans)
 ├── visual/
-│   ├── dashboard.ts      # Dynamic HTML dashboard (~2100 LOC, main output)
+│   ├── dashboard.ts      # Dynamic HTML dashboard (~2200 LOC, main output)
 │   ├── html-report.ts    # Static HTML report
 │   ├── terminal-report.ts # CLI output
 │   ├── research-card.ts  # Shareable PNG card (1200×675)
@@ -79,6 +80,8 @@ src/
 │   └── cron.ts           # 24/7 cron mode
 └── utils/
     └── normalize.ts      # EVM lowercase, Solana as-is
+scripts/
+└── test-screener-fields.ts  # Test: does Nansen screener return token_sectors? (~10 credits)
 ```
 
 ### 11-Step Pipeline
@@ -92,9 +95,10 @@ src/
 8. Extract screener highlights (top-30 by composite score)
 8.5 Cross-reference with enriched data (tokenSectors, fdv, liquidity)
 8.6 Cross-reference with holdings data (tokenSectors fallback)
-9. Detect early signals (SM accumulating before price move)
-10. Track rotations (delta vs previous scan)
-11. Sub-narratives (optional, 2000 credits, --deep flag)
+9. Fetch flow intelligence for top-5 tokens
+10. Detect early signals (SM accumulating before price move)
+11. Track rotations (delta vs previous scan)
+12. Sub-narratives (optional, 2000 credits, --deep flag)
 
 ### Credits Per Scan
 | Endpoint | Cost |
@@ -106,7 +110,7 @@ src/
 | **Total** | **~300** |
 
 ### API Credits Remaining
-~7780 credits (started with 9600, ~26 scans done during development)
+~6880 credits (started with 9600, ~9 scans left)
 
 ---
 
@@ -131,11 +135,15 @@ src/
 - PUMPING category (>30% price surge)
 - Divergence detection (7d SM accumulation + flat price)
 - Dashboard restructure (Sankey above table, remove Narrative Flows)
-- Nansen-inspired visual design (chain dots, no $ prefix, hide empty fields)
+- Nansen-inspired visual design (chain dots → text labels, no $ prefix, hide empty fields)
 - AI Analysis per-token (BYOK, OpenAI/Anthropic/OpenRouter/Custom)
 - Signal cards clickable (filter table)
 - Holdings cross-reference for narrative column
 - Custom provider support (OpenAI-compatible with custom base URL)
+
+### V3.5 (commits 74-75): Dashboard UI fixes (current)
+- Holdings deduplication normalization fix (holdings.ts Map key)
+- Dashboard UI polish: flow intel zero-row hiding, chain text labels, AI fade transition, AI markdown, Sankey bar chart fallback, ECharts dispose, signal card hover, header accent line
 
 ---
 
@@ -143,16 +151,16 @@ src/
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ NARRATIVE PULSE · Smart Money Intelligence          │
+│ ▬▬▬ accent gradient line (2px, green→purple) ▬▬▬▬▬ │
+│ NARRATIVE PULSE · Smart Money Intelligence           │
 │ [Updated 5m ago]  [Rescan]  [Auto: 15m ▼]  [300cr]  │
 ├─────────────────────────────────────────────────────┤
 │ [HOT: 12]  [ACCUMULATING: 5]  [PUMPING: 6]  [SELLING: 7] │
 ├─────────────────────────────────────────────────────┤
-│ SANKEY CHART (compact, 280px, clickable→filter)      │
+│ SANKEY / BAR CHART (compact, 280px, clickable→filter)│
 ├─────────────────────────────────────────────────────┤
 │ MAIN TABLE (hero, gradient accent top)              │
 │ [All Chains ▼] [All Signals ▼]  30 tokens          │
-│ Chain legend: ●ETH ●SOL ●BASE ●BNB ●ARB           │
 │                                                     │
 │ Token  Narrative  Netflow  B/S  Ratio  Price  MCap  │
 │ AIFI   AI+DeSci   +$731K  ████  10x   +11.7% $27M  │
@@ -160,8 +168,8 @@ src/
 │ ── Expanded ────────────────────────────────────    │
 │ Price $1.318 │ MCap $27M │ FDV $35M │ Liq $340K     │
 │ Netflow 24h/7d/30d │ Buy/Sell │ Ratio │ SM Traders  │
-│ FLOW INTELLIGENCE (hidden when all $0)              │
-│ AI ANALYSIS (shimmer blur → setup → loading → result)│
+│ FLOW INTELLIGENCE (only non-zero rows)              │
+│ AI ANALYSIS (shimmer → setup → loading → result)    │
 │ [DexScreener ↗]                                     │
 ├─────────────────────────────────────────────────────┤
 │ Powered by Nansen API (5 endpoints) + DexScreener    │
@@ -179,13 +187,17 @@ src/
 
 ### NARRATIVE COLUMN
 **Проблема**: 30 screener highlights отобраны из 500 по composite score. Большинство не совпадают с 100 netflow entries. tokenSectors = пустой.
-**Решение**: Три уровня cross-reference: (1) netflow direct, (2) enriched data, (3) holdings data. Holdings — новый fallback источник (данные уже фетчатся за 50 credits, раньше просто выбрасывались).
-**Остаточный риск**: Если токен не в netflow И не в holdings — narrative останется пустой. Это нормально, не все токены имеют секторный тег.
+**Решение**: Три уровня cross-reference: (1) screener own token_sectors, (2) netflow enriched data, (3) holdings data. Plus symbol-only matching fallback.
+**Остаточный риск**: Зависит от того, возвращает ли Nansen token_sectors в screener. Тест создан (`scripts/test-screener-fields.ts`), ждём результатов.
 
 ### SIGNAL CATEGORIES
 **Внутренние** (6): heavy_accumulation, accumulating, diverging, pumping, mixed, distributing
 **Display** (4 карточки): HOT, ACCUMULATING (+diverge sub-badge), PUMPING, SELLING
 **Почему**: Watch и Diverge были "буквально одно и то же". Diverge теперь sub-badge внутри Accumulating. 4 карточки вместо 6 = чище.
+
+### STABLECOIN FILTERING
+**Проблема**: Stablecoins проходят через фильтр и показывают "diverging" (SM netflow positive, price ≈ $1.00). AI analysis говорит "accumulation before pump" для стейблкоина.
+**Решение** (план): (1) расширить STRUCTURAL_NOISE_PATTERNS, (2) добавить ценовой фильтр ($0.99-$1.01 = stablecoin), (3) не классифицировать как diverging если price_change ≈ 0%.
 
 ### AI ANALYSIS
 **Per-token, не dashboard-level**. Reasons:
@@ -195,8 +207,13 @@ src/
 **Архитектура**: Frontend → наш backend proxy (`POST /api/ai-analyze`) → LLM API. API key хранится в localStorage, никогда на сервере.
 **Провайдеры**: OpenAI, Anthropic, OpenRouter, Custom (OpenAI-compatible с любым base URL)
 
+### RED NARRATIVES (outflows)
+**Вопрос**: Можем ли мы показывать нарративы с ОТТОКОМ SM капитала? Это такая же ценная информация.
+**Текущее состояние**: Санkey/bar chart показывает только inflows. Outflows фильтруются по `> $100`.
+**План**: Показывать оба направления — зелёные (inflow) и красные (outflow) бары. Это делает картину рынка полной.
+
 ### TOKEN DISPLAY
-**Без $ prefix** (как Nansen). **Цветные точки** вместо текстовых badge для цепей.
+**Без $ prefix** (как Nansen). **Текстовые badge** для цепей (ETH, SOL, BASE, BNB, ARB).
 **Пустые поля скрыты** (Nansen approach) вместо показа "—".
 
 ---
@@ -218,6 +235,14 @@ src/
 - `perp-screener` / `perps/perpetuals` — 404
 - `smart-money/perp-trades` — 422
 
+### ✅ ПОДТВЕРЖДЕНО: token_sectors НЕТ в token-screener
+- **Test run**: 2026-04-05, `scripts/test-screener-fields.ts`, 10 credits
+- **Result**: 0/10 entries have `token_sectors`. See `docs/NANSEN-API-RESEARCH.md`
+- **Implication**: Only netflow (100 entries) and holdings (50 entries) have `token_sectors`
+- **Fix for P0-01**: Symbol-only matching fallback + consider increasing pages for better coverage
+- Netflow endpoint: `token_sectors` есть и RICH: "AI Agents + Artificial Intelligence + DeSci"
+- Holdings endpoint: `token_sectors` есть
+
 ### Полезные поля которые мы используем
 - `token_sectors` — RICH: "AI Agents + Artificial Intelligence + DeSci" (брали только [0])
 - `flow-intelligence` — 6 сегментов: Smart Traders, Public Figures, Whales, Top PnL, Exchanges, Fresh Wallets
@@ -226,34 +251,25 @@ src/
 
 ---
 
-## 7. Известные проблемы и баги (по состоянию на 2026-04-05)
+## 7. Известные проблемы (полный список)
 
-### ✅ ИСПРАВЛЕНО
-- Expanded rows не раскрывались (inline style override)
-- Emoji в тикерах (🌱 WHATSAPP)
-- Credits display устарел (220→300)
-- Narrative Flows "(0 (8))" формат
-- Пустые FDV/Liquidity в expanded rows
-- ScreenerHighlight терял enriched fields при сериализации
-- Flow Intelligence показывал пустые блоки с +$0
-- Signal cards не были кликабельны
-- AI analysis бесконечная загрузка (нет таймаута)
-- Expand arrow сдвигался при ротации
-- Нет легенды для цветных точек цепей
+См. `docs/TODO.md` — 15 проблем, приоритизированы P0→P1→P2.
 
-### ⚠️ ТРЕБУЕТ ТЕСТИРОВАНИЯ
-1. **Narrative column** — holdings cross-reference должен заполнять секторы для большего числа токенов, но match rate пока неизвестен
-2. **AI analysis** — добавлен AbortController timeout 30s, нужно проверить что запросы реально доходят до LLM и возвращаются
-3. **Auto-refresh race condition** — если scan происходит пока AI анализ грузится, DOM уничтожается и результат теряется. Нужно проверить.
-4. **SELLING card** — фильтрует только 'mixed', не 'distributing'. Карточка показывает сумму обоих.
-
-### 🔴 НЕ ИСПРАВЛЕНО (известные ограничения)
-1. **html-report.ts** — не синхронизирован с dashboard.ts (старая структура с Narrative Flows, старые badge классы, нет AI секции)
-2. **terminal-report.ts** — есть столбцы которые могут быть неактуальны
-3. **MCP server** — не обновлялся, не знает о flow-intelligence, AI analysis, holdings enrichment
-4. **System dropdowns** — фильтры и tooltips используют системные стили, не кастомные
-5. **No red outflows in Sankey** — когда все нарративы positive, нет outflow нод
-6. **ECharts memory** — каждый auto-refresh создаёт новый instance, без dispose()
+### Краткий обзор:
+- 🔴 P0-01: Narrative column empty (29/30 tokens show "—") — ✅ test done, fix strategy confirmed (symbol-only matching)
+- 🔴 P0-02: Bar chart shows only 2 of 7 narratives (threshold too high/need smart approach)
+- 🔴 P0-03: Stablecoins in highlights (false divergence signals, embarrassing for judges)
+- 🟡 P1-01: Expanded card 1-column layout wastes space (need 2-column with AI on right)
+- 🟡 P1-02: AI loading animation not sleek/modern
+- 🟡 P1-03: AI markdown rendering incomplete
+- 🟡 P1-04: Selling card doesn't filter table + no "SELLING" badge
+- 🟡 P1-05: Header looks ugly
+- 🟡 P1-06: Sort arrows too small
+- 🟡 P1-07: Expand triangle misaligned during rotation
+- 🟡 P1-08: Flow Intelligence looks empty with 1 row
+- 🟡 P1-09: Red narratives (outflows) not shown — data incomplete
+- 🟢 P2-01: Overall visual polish (custom tooltips, micro-interactions, typography)
+- 🟢 P2-02: System-styled dropdowns
 
 ---
 
@@ -276,20 +292,14 @@ Per-token анализ с bring-your-own-key. 4 провайдера + custom. S
 
 ---
 
-## 9. Use Cases (как продукт используется)
-
-```
-UC1: Трейдер → serve → dashboard → table → expand → AI analyze → trade
-UC2: Аналитик → scan --deep → HTML report → research
-UC3: AI Agent → mcp → get_narrative_scan → JSON → trading decision
-UC4: Virality → dashboard → share card → X/Twitter → #NansenCLI
-```
-
----
-
-## 10. Что НУЖНО сделать до submissions
+## 9. Что НУЖНО сделать до submissions
 
 ### Обязательно (P0)
+- [x] **Run test** — `npx tsx scripts/test-screener-fields.ts` → ❌ screener does NOT have token_sectors (see `docs/NANSEN-API-RESEARCH.md`)
+- [ ] **Fix P0-01** — Narrative column (symbol-only matching in screener-highlights.ts + scanner.ts)
+- [ ] **Fix P0-03** — Stablecoin filtering
+- [ ] **Fix P0-02** — Bar chart threshold (smart approach, not $0)
+- [ ] **Fix P1-09** — Red narratives (outflows)
 - [ ] **Живой тест** — `npx narrative-pulse serve`, проверить все фиксы
 - [ ] **Скриншоты** — dashboard, expanded rows, AI analysis, Sankey
 - [ ] **Video demo** (90 сек) — CLI scan → dashboard → AI analysis → MCP
@@ -297,33 +307,37 @@ UC4: Virality → dashboard → share card → X/Twitter → #NansenCLI
 - [ ] **README update** — актуальная информация, скриншоты
 
 ### Желательно (P1)
-- [ ] **html-report.ts sync** — адаптировать под новую структуру
-- [ ] **MCP server update** — добавить flow-intelligence, analyze_token
-- [ ] **Custom tooltips** — заменить системные title= на стилизованные
+- [ ] **P1-01** — Expanded card 2-column layout
+- [ ] **P1-04** — Selling card filter fix
+- [ ] **P1-02** — AI loading animation modernization
+- [ ] **P1-05** — Header redesign
+- [ ] **P1-06** — Sort arrows bigger
+- [ ] **P1-07** — Expand triangle alignment
 
 ### Если останется время (P2)
-- [ ] **LLM integration** — полноценный анализ с explainability
-- [ ] **Share button** — генерация Twitter card из dashboard
-- [ ] **Settings page** — интервал обновления, credits calculator
+- [ ] **P2-01** — Visual polish pass
+- [ ] **P2-02** — Custom dropdowns
+- [ ] **html-report.ts sync** — адаптировать под новую структуру
+- [ ] **MCP server update** — добавить flow-intelligence, analyze_token
 
 ---
 
-## 11. Code Conventions
+## 10. Code Conventions
 
-- TypeScript strict: no `any`, no `as any`
-- Commits: `type: description` (feat/fix/refactor/style/docs)
-- Graceful degradation: enrichment failure never breaks pipeline
-- CSS: custom properties (--var), dark theme, Nansen-inspired minimalism
-- JS in HTML templates: `var` not `let/const`, escaped quotes `\'` in onclick
-
----
-
-## 12. Конфигурация
-
-```bash
-export NANSEN_API_KEY=<key>
-# Или: nansen login --api-key <key>
-# Читается из ~/.nansen/config.json или NANSEN_API_KEY
-```
-
-Все пороги в `src/config.ts`.
+- **TypeScript strict**: no `any`, no `as any`. All types in `src/types.ts`
+- **Error handling**: try/catch on all API calls, retry with backoff
+- **File naming**: `verbNoun.ts` or `noun-phrase.ts`
+- **Commits**: one logical unit per commit, format: `type: description`
+  - `feat:` new feature
+  - `fix:` bug fix
+  - `refactor:` code restructuring
+  - `style:` visual changes (CSS, HTML templates)
+  - `docs:` documentation only
+  - Detailed multi-line commit messages explaining what and why
+  - Example: `fix: add symbol-only matching for narrative cross-reference\n\nScreener highlights were missing narratives because tokens on different\nchains (e.g. ETH in netflow vs SOL in screener) had different addresses.\nAdded symbol-only fallback matching to catch cross-chain matches.\n\nFiles: screener-highlights.ts, scanner.ts`
+- **Graceful degradation**: enrichment failure never breaks pipeline
+- **CSS**: custom properties (--var), dark theme, Nansen-inspired minimalism
+- **JS in HTML templates** (`dashboard.ts`): `var` not `let/const`, escaped quotes `\\'` in onclick (double-escaped for template literals)
+- **Unicode escapes in dashboard.ts**: `\\uD83D\\uDD25` (double-escaped)
+- **normalizeAddress()**: EVM→lowercase, Solana→as-is
+- **price_change** in token-screener: decimal fraction (0.01 = 1%), not percentage
